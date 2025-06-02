@@ -1,7 +1,5 @@
-import os
 import time
-from dotenv import load_dotenv
-from playwright.sync_api import sync_playwright, Page
+from playwright.sync_api import sync_playwright
 
 from config import load_config, config
 from login import perform_login_if_needed
@@ -37,16 +35,36 @@ def main():
     print(urls)
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(
+        browser = p.firefox.launch(
             headless=False,
-            args=["--disable-blink-features=AutomationControlled"]
         )
-        context = browser.new_context()
+        
+        # 브라우저 컨텍스트에 스텔스 설정 추가
+        context = browser.new_context(
+            viewport={"width": 1920, "height": 1080},
+            user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:123.0) Gecko/20100101 Firefox/123.0",
+            java_script_enabled=True,
+            has_touch=False,
+            is_mobile=False,
+        )
+        
         page = context.new_page()
-        # playwright 스텔스 모드
-        # 이거 있어야 LMS가 playwright인걸 모르게 함
+        
+        # Firefox에 맞는 자동화 감지 방지 스크립트
         page.add_init_script(
-            "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+            """
+            // Firefox-specific 자동화 감지 방지
+            Object.defineProperty(window.navigator, 'webdriver', {
+                get: () => false,
+                configurable: true
+            });
+
+            // Firefox의 자동화 관련 속성 수정
+            Object.defineProperty(navigator, 'platform', {
+                get: () => 'MacIntel'
+            });
+            """
+        )
 
         for url in urls:
             print(f"\n[INFO] 처리 중: {url}")
