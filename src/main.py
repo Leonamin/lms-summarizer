@@ -7,10 +7,6 @@ from config import load_config, config
 from login import perform_login_if_needed
 from video_parser import download_video, extract_video_url
 
-# from login import perform_login_if_needed
-# from video_parser import extract_video_url
-# from downloader import download_video
-
 
 def get_video_urls() -> list[str]:
     print("다운로드할 링크를 입력하세요. 0 또는 빈 줄을 입력하면 종료됩니다.")
@@ -41,9 +37,16 @@ def main():
     print(urls)
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=False)
+        browser = p.chromium.launch(
+            headless=False,
+            args=["--disable-blink-features=AutomationControlled"]
+        )
         context = browser.new_context()
         page = context.new_page()
+        # playwright 스텔스 모드
+        # 이거 있어야 LMS가 playwright인걸 모르게 함
+        page.add_init_script(
+            "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
 
         for url in urls:
             print(f"\n[INFO] 처리 중: {url}")
@@ -51,7 +54,7 @@ def main():
             time.sleep(2)  # 네트워크 안정화를 위한 대기
 
             # 로그인 필요 여부 판단 및 처리
-            if perform_login_if_needed(page, config["USERNAME"], config["PASSWORD"]):
+            if perform_login_if_needed(page, config["USERID"], config["PASSWORD"]):
                 print("[INFO] 로그인 완료 또는 유지됨.")
             else:
                 print("[INFO] 로그인 불필요.")

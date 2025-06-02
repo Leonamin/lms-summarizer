@@ -19,8 +19,25 @@ def extract_video_url(page: Page) -> str:
     time.sleep(10)
 
     try:
-        # 1. 재생 버튼 클릭
-        play_btn = page.query_selector(".vc-front-screen-play-btn")
+        # 1단계: outer iframe 진입
+        outer = page.frame(name="tool_content")
+        if not outer:
+            print("[ERROR] 1단계 iframe(tool_content) 없음")
+            return None
+
+        # 2단계: inner iframe 진입
+        inner = None
+        for frame in outer.child_frames:
+            if "commons.ssu.ac.kr" in frame.url:
+                inner = frame
+                break
+
+        if not inner:
+            print("[ERROR] 2단계 iframe(commons) 없음")
+            return None
+
+        # 2. 재생 버튼 클릭
+        play_btn = inner.query_selector(".vc-front-screen-play-btn")
         if play_btn:
             play_btn.click()
             print("[INFO] 재생 버튼 클릭됨.")
@@ -28,9 +45,9 @@ def extract_video_url(page: Page) -> str:
             print("[WARN] 재생 버튼을 찾을 수 없음.")
             return None
 
-        # 2. 대기 중 confirm-dialog가 나오면 확인 버튼 클릭
+        # 3. 대기 중 confirm-dialog가 나오면 확인 버튼 클릭
         time.sleep(2)
-        confirm_dialog = page.query_selector("#confirm-dialog")
+        confirm_dialog = inner.query_selector("#confirm-dialog")
         if confirm_dialog:
             cancel_btn = confirm_dialog.query_selector(
                 ".confirm-cancel-btn.confirm-btn"
@@ -39,7 +56,7 @@ def extract_video_url(page: Page) -> str:
                 cancel_btn.click()
                 print("[INFO] 확인창 닫음.")
 
-        # 3. mp4 요청 기다리기 (최대 5초)
+        # 4. mp4 요청 기다리기 (최대 5초)
         for _ in range(10):
             if video_url:
                 break

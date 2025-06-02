@@ -35,3 +35,9 @@ playwright 용 특별 설치
 ```
 playwright install
 ```
+
+### .env 설정
+```
+USERID=(아이디)학번
+PASSWORD=비밀번호
+```
