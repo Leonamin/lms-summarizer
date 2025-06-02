@@ -50,12 +50,16 @@ def main():
 
         for url in urls:
             print(f"\n[INFO] 처리 중: {url}")
-            page.goto(url)
-            time.sleep(2)  # 네트워크 안정화를 위한 대기
+            # 페이지 이동 및 로딩 대기
+            page.goto(url, wait_until="networkidle")
+            print(f"[DEBUG] 페이지 이동 완료: {page.url}")
 
             # 로그인 필요 여부 판단 및 처리
             if perform_login_if_needed(page, config["USERID"], config["PASSWORD"]):
                 print("[INFO] 로그인 완료 또는 유지됨.")
+                # 로그인 후 페이지 로딩 대기
+                page.wait_for_load_state("networkidle")
+                print(f"[DEBUG] 로그인 후 현재 URL: {page.url}")
             else:
                 print("[INFO] 로그인 불필요.")
 
@@ -68,7 +72,7 @@ def main():
             else:
                 print("[WARN] 동영상 링크를 찾지 못했습니다.")
 
-            time.sleep(1000000)
+        time.sleep(1000000)
         # browser.close()
 
 
