@@ -114,6 +114,40 @@ def open_as_chrome(p: Playwright) -> tuple[Page, any]:
     )
     return page, browser
 
+def open_as_chrome_installed(p: Playwright) -> tuple[Page, any]:
+    browser = p.chromium.launch(
+        headless=False,
+        executable_path="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",  # macOS 기준
+        args=[
+            "--disable-blink-features=AutomationControlled",
+            "--enable-proprietary-codecs",
+            "--disable-web-security",
+            "--auto-open-devtools-for-tabs",
+            "--use-fake-ui-for-media-stream",
+        ],
+    )
+
+    context = browser.new_context(
+        user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        permissions=["camera", "microphone", "geolocation"],
+    )
+
+    page = context.new_page()
+    page.add_init_script("""
+        Object.defineProperty(navigator, 'webdriver', {
+            get: () => undefined,
+        });
+        window.chrome = { runtime: {} };
+    """)
+
+    return page, browser
+
+
+open_webbrowser = {
+    'F': open_as_firefox,
+    'C': open_as_chrome,
+    'CI': open_as_chrome_installed,
+}
 
 def main():
     load_config()
@@ -121,7 +155,7 @@ def main():
     print(urls)
 
     with sync_playwright() as p:
-        page, browser = open_as_firefox(p)
+        page, browser = open_webbrowser['CI'](p)
 
         try:
             for url in urls:
