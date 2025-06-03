@@ -114,6 +114,7 @@ def open_as_chrome(p: Playwright) -> tuple[Page, any]:
     )
     return page, browser
 
+
 def open_as_chrome_installed(p: Playwright) -> tuple[Page, any]:
     browser = p.chromium.launch(
         headless=False,
@@ -133,21 +134,24 @@ def open_as_chrome_installed(p: Playwright) -> tuple[Page, any]:
     )
 
     page = context.new_page()
-    page.add_init_script("""
+    page.add_init_script(
+        """
         Object.defineProperty(navigator, 'webdriver', {
             get: () => undefined,
         });
         window.chrome = { runtime: {} };
-    """)
+    """
+    )
 
     return page, browser
 
 
 open_webbrowser = {
-    'F': open_as_firefox,
-    'C': open_as_chrome,
-    'CI': open_as_chrome_installed,
+    "F": open_as_firefox,
+    "C": open_as_chrome,
+    "CI": open_as_chrome_installed,
 }
+
 
 def main():
     load_config()
@@ -155,7 +159,7 @@ def main():
     print(urls)
 
     with sync_playwright() as p:
-        page, browser = open_webbrowser['CI'](p)
+        page, browser = open_webbrowser["CI"](p)
 
         try:
             for url in urls:
@@ -182,7 +186,6 @@ def main():
                 else:
                     print("[WARN] 동영상 링크를 찾지 못했습니다.")
 
-            time.sleep(1000000)
         finally:
             browser.close()
 
