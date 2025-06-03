@@ -11,17 +11,22 @@ def extract_video_url(page: Page) -> str:
 
     video_url = None
 
-    def handle_request(request):
-        print(f"[DEBUG] 네트워크 요청: {request.url}")
-        nonlocal video_url
-        if "ssmovie.mp4" in request.url:
-            video_url = request.url
+    # Firefox에서 작동하는 네트워크 이벤트 핸들러
+    def handle_request(route):
+        print(f"[ROUTE] 요청 감지 - URL: {route.request.url}")
+        print(f"[ROUTE] 요청 타입: {route.request.resource_type}")
+        print(f"[ROUTE] 요청 헤더: {route.request.headers}")
 
-    # 네트워크 요청 감지 등록
-    page.on("request", handle_request)
+        if "ssmovie.mp4" in route.request.url:
+            print(f"[ROUTE] ssmovie.mp4 요청 감지!")
+            print(f"[ROUTE] Method: {route.request.method}")
+            nonlocal video_url
+            video_url = route.request.url
 
-    # Wait for frame loading
-    page.wait_for_load_state("networkidle")
+        route.continue_()
+
+    # 모든 요청을 가로채기 위한 라우트 핸들러 등록
+    page.route("**/*", handle_request)
 
     try:
         # 1단계: outer iframe 진입 - 프레임이 로드될때까지 기다리기
@@ -29,6 +34,7 @@ def extract_video_url(page: Page) -> str:
         for _ in range(10):  # retry up to 10 times
             outer = page.frame(name="tool_content")
             if outer:
+                print(f"[DEBUG] outer iframe 찾음 - URL: {outer.url}")
                 break
             time.sleep(1)
 
@@ -42,6 +48,7 @@ def extract_video_url(page: Page) -> str:
         for frame in all_frames:
             if frame.parent_frame == outer and "commons.ssu.ac.kr" in frame.url:
                 inner = frame
+                print(f"[DEBUG] inner iframe 찾음 - URL: {frame.url}")
                 break
 
         if not inner:
@@ -71,11 +78,16 @@ def extract_video_url(page: Page) -> str:
             # 확인창이 나오지 않으면 무시
             pass
 
-        # 4. mp4 요청 기다리기 (최대 5초)
-        for _ in range(10):
+        # 4. mp4 요청 기다리기 (최대 25초)
+        print("[DEBUG] 비디오 URL 대기 시작")
+        for i in range(50):
             if video_url:
+                print(f"[DEBUG] 비디오 URL 찾음 (반복 {i}): {video_url}")
                 break
             time.sleep(0.5)
+
+        if not video_url:
+            print("[DEBUG] 비디오 URL을 찾지 못했습니다.")
 
     except Exception as e:
         print(f"[ERROR] 동영상 추출 중 예외 발생: {e}")
