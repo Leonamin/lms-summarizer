@@ -4,6 +4,7 @@ from playwright.sync_api import Playwright, Page
 
 from audio_pipeline.pipeline import AudioToTextPipeline
 from login import perform_login_if_needed
+from summarize_pipeline.pipeline import SummarizePipeline
 from video_parser import download_video, extract_video_url
 from user_setting import UserSetting
 
@@ -185,12 +186,26 @@ async def async_main():
     # TODO - 동영상 To 텍스트 변환
     audio_pipeline = AudioToTextPipeline()
 
+    txt_paths = []
     for filepath in downloaded_videos_path:
         try:
             print(f"[INFO] 동영상 텍스트 변환 시작: {filepath}")
-            audio_pipeline.process(filepath)
+            txt_path = audio_pipeline.process(filepath)
+            txt_paths.append(txt_path)
         except Exception as e:
             print(f"[ERROR] 동영상 텍스트 변환 실패: {e}")
+
+    summarized_txt_paths = []
+    summarize_pipeline = SummarizePipeline()
+    for txt_path in txt_paths:
+        summarized_txt_path = summarize_pipeline.process(txt_path)
+        summarized_txt_paths.append(summarized_txt_path)
+
+    print("[INFO] 모든 동영상 요약 완료. 저장된 파일 경로를 출력합니다.")
+    for path in summarized_txt_paths:
+        print(f"[INFO] 요약 파일 경로: {path}")
+
+    print("\n[INFO] 모든 작업이 완료되었습니다.")
 
 
 # 진입점

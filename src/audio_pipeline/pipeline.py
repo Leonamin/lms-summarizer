@@ -8,7 +8,8 @@ class AudioToTextPipeline:
     def __init__(self, sample_rate=16000):
         self.sample_rate = sample_rate
 
-    def process(self, mp4_path: str, remove_wav: bool = True):
+    def process(self, mp4_path: str, remove_wav: bool = True) -> str:
+        # return txt_path
         if not mp4_path.endswith(".mp4"):
             raise ValueError("mp4 파일만 처리 가능합니다.")
 
@@ -28,3 +29,5 @@ class AudioToTextPipeline:
         if remove_wav:
             os.remove(wav_path)
             print(f"[INFO] 임시 파일 삭제됨: {wav_path}")
+
+        return txt_path

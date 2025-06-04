@@ -11,6 +11,7 @@ class UserSetting:
         self.password = os.getenv("PASSWORD")
         self.RETURNZERO_CLIENT_ID = os.getenv("RETURNZERO_CLIENT_ID")
         self.RETURNZERO_CLIENT_SECRET = os.getenv("RETURNZERO_CLIENT_SECRET")
+        self.OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
     def get_video_urls(self) -> list[str]:
         # user_settings.json 파일에서 'video' 블록의 리스트 가져오기
