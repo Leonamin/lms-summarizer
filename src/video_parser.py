@@ -4,33 +4,27 @@ from playwright.sync_api import Page
 import time
 import requests
 
-found_video_url = False
 
-
-def on_request(event):
+def on_request(event, shared_state: dict[str, any]):
+    # ssmovie.mp4 요청 감지
     url = event["request"]["url"]
     print(f"[CDP] 요청 감지: {url}")
     global found_video_url
     if "ssmovie.mp4" in url:
         print(f"[CDP] ssmovie.mp4 요청 감지: {url}")
-
-        if not found_video_url:
-            download_video(url)
-            pass
-        else:
-            found_video_url = True
+        shared_state["video_url"] = url
 
 
-# CDP 핸들러 등록
-def register_cdp_video_sniffer(page: Page):
+def register_cdp_video_sniffer(page: Page, shared_state: dict[str, any]):
+    # CDP 핸들러 등록
     client = page.context.new_cdp_session(page)
     client.send("Network.enable")
 
-    client.on("Network.requestWillBeSent", on_request)
+    client.on("Network.requestWillBeSent", lambda event: on_request(event, shared_state))
 
 
-# iframe 탐색
 def find_canvas_video_frame(page: Page):
+    # iframe 탐색
     outer = None
     for _ in range(10):
         outer = page.frame(name="tool_content")
@@ -51,9 +45,10 @@ def find_canvas_video_frame(page: Page):
     return None
 
 
-# 버튼 클릭 및 확인창 닫기
 def trigger_video_play(frame):
-    play_btn = frame.wait_for_selector(".vc-front-screen-play-btn", timeout=5000)
+    # 버튼 클릭 및 이전 재생 위치 확인창 닫기
+    play_btn = frame.wait_for_selector(
+        ".vc-front-screen-play-btn", timeout=5000)
     if play_btn:
         play_btn.click()
         print("[INFO] 재생 버튼 클릭됨.")
@@ -62,7 +57,8 @@ def trigger_video_play(frame):
         return
 
     try:
-        confirm_dialog = frame.wait_for_selector("#confirm-dialog", timeout=2000)
+        confirm_dialog = frame.wait_for_selector(
+            "#confirm-dialog", timeout=2000)
         if confirm_dialog:
             cancel_btn = confirm_dialog.query_selector(
                 ".confirm-cancel-btn.confirm-btn"
@@ -74,10 +70,8 @@ def trigger_video_play(frame):
         pass
 
 
-# 최종 진입 함수: 페이지 진입 + CDP 등록 + 트리거 + URL 추출 루프
-
-
 def extract_video_url(page: Page) -> str:
+    # 페이지 진입 -> 크롬 개발자 콘솔 등록 -> iframe 진입 -> 재생 버튼 클릭 -> 이전 재생 위치 확인창 닫기 -> 비디오 URL 추출
     print(f"[DEBUG] 현재 페이지 URL: {page.url}")
     shared_state = {"video_url": None}
 
