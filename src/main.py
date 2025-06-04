@@ -165,11 +165,13 @@ async def async_main():
                 else:
                     print("[INFO] 로그인 불필요.")
 
-                video_url = await extract_video_url(page)
+                video_url, title = await extract_video_url(page)
 
                 if video_url:
-                    print(f"[SUCCESS] 동영상 링크 추출됨: {video_url}")
-                    download_video(video_url)
+                    print(f"[SUCCESS] 동영상 링크 추출됨: {video_url}, 제목: {title}")
+                    filepath = download_video(video_url, filename=title)
+                    print(f"[SUCCESS] 동영상 다운로드 완료: {filepath}")
+                    # TODO - 여기에 영상 요약하는 코드 이어 붙이기 or 모든 동영상 다운로드 이후 동작하도록 구현
                 else:
                     print("[WARN] 동영상 링크를 찾지 못했습니다.")
 
