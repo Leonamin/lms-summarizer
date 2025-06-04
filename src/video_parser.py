@@ -1,96 +1,105 @@
+import asyncio
 import os
-from urllib import request
 from urllib.parse import urlparse
-from playwright.sync_api import Page, Frame
-import time
+from playwright.sync_api import Page
+import requests
 
 
-def extract_video_url(page: Page) -> str:
-    # URL 디버깅
-    print(f"[DEBUG] 현재 페이지 URL: {page.url}")
+async def on_request(event, shared_state: dict):
+    url = event["request"]["url"]
+    print(f"[CDP] 요청 감지: {url}")
+    if "ssmovie.mp4" in url and shared_state["video_url"] is None:
+        print(f"[CDP] ssmovie.mp4 요청 감지: {url}")
+        shared_state["video_url"] = url
 
-    video_url = None
 
-    def handle_request(request):
-        print(f"[DEBUG] 네트워크 요청: {request.url}")
-        nonlocal video_url
-        if "ssmovie.mp4" in request.url:
-            video_url = request.url
+async def register_cdp_video_sniffer(page: Page, shared_state: dict):
+    client = await page.context.new_cdp_session(page)
+    await client.send("Network.enable")
+    client.on("Network.requestWillBeSent",
+              lambda e: asyncio.create_task(on_request(e, shared_state)))
 
-    # 네트워크 요청 감지 등록
-    page.on("request", handle_request)
 
-    # Wait for frame loading
-    page.wait_for_load_state("networkidle")
+async def find_canvas_video_frame(page: Page, shared_state: dict):
+    for _ in range(10):
+        outer = page.frame(name="tool_content")
+        if outer:
+            print(f"[DEBUG] outer iframe 찾음 - URL: {outer.url}")
+            try:
+                title_element = await outer.wait_for_selector(".xnlailct-title", timeout=5000)
+                if title_element:
+                    shared_state["title"] = await title_element.text_content()
+                    print(f"[DEBUG] 제목 찾음: {shared_state['title']}")
+            except:
+                print("[WARN] 제목을 찾을 수 없음")
+            for frame in page.frames:
+                if frame.parent_frame == outer and "commons.ssu.ac.kr" in frame.url:
+                    print(f"[DEBUG] inner iframe 찾음 - URL: {frame.url}")
+                    return frame
+        await asyncio.sleep(1)
+    print("[ERROR] iframe 탐색 실패")
+    return None
+
+
+async def trigger_video_play(frame):
+    try:
+        play_btn = await frame.wait_for_selector(".vc-front-screen-play-btn", timeout=5000)
+        await play_btn.click()
+        print("[INFO] 재생 버튼 클릭됨.")
+    except:
+        print("[WARN] 재생 버튼을 찾을 수 없음.")
+        return
 
     try:
-        # 1단계: outer iframe 진입 - 프레임이 로드될때까지 기다리기
-        outer = None
-        for _ in range(10):  # retry up to 10 times
-            outer = page.frame(name="tool_content")
-            if outer:
-                break
-            time.sleep(1)
-
-        if not outer:
-            print("[ERROR] 1단계 iframe(tool_content) 없음")
-            return None
-
-        # 2단계: inner iframe 진입
-        inner = None
-        all_frames = page.frames
-        for frame in all_frames:
-            if frame.parent_frame == outer and "commons.ssu.ac.kr" in frame.url:
-                inner = frame
-                break
-
-        if not inner:
-            print("[ERROR] 2단계 iframe(commons) 없음")
-            return None
-
-        # 2. 재생 버튼 클릭 - 재생버튼이 활성화될때까지 기다리기
-        play_btn = inner.wait_for_selector(".vc-front-screen-play-btn", timeout=5000)
-        if play_btn:
-            play_btn.click()
-            print("[INFO] 재생 버튼 클릭됨.")
-        else:
-            print("[WARN] 재생 버튼을 찾을 수 없음.")
-            return None
-
-        # 3. 대기 중 confirm-dialog가 나오면 확인 버튼 클릭
-        try:
-            confirm_dialog = inner.wait_for_selector("#confirm-dialog", timeout=2000)
-            if confirm_dialog:
-                cancel_btn = confirm_dialog.query_selector(
-                    ".confirm-cancel-btn.confirm-btn"
-                )
-                if cancel_btn:
-                    cancel_btn.click()
-                    print("[INFO] 확인창 닫음.")
-        except:
-            # 확인창이 나오지 않으면 무시
-            pass
-
-        # 4. mp4 요청 기다리기 (최대 5초)
-        for _ in range(10):
-            if video_url:
-                break
-            time.sleep(0.5)
-
-    except Exception as e:
-        print(f"[ERROR] 동영상 추출 중 예외 발생: {e}")
-
-    return video_url
+        confirm_dialog = await frame.wait_for_selector("#confirm-dialog", timeout=2000)
+        cancel_btn = await confirm_dialog.query_selector(".confirm-cancel-btn.confirm-btn")
+        if cancel_btn:
+            await cancel_btn.click()
+            print("[INFO] 확인창 닫음.")
+    except:
+        pass
 
 
-def download_video(url: str, save_dir: str = "downloads"):
+async def extract_video_url(page: Page) -> tuple[str, str]:
+    shared_state = {"video_url": None, "title": None}
+    await register_cdp_video_sniffer(page, shared_state)
+
+    video_frame = await find_canvas_video_frame(page, shared_state)
+    if not video_frame:
+        return None
+
+    await trigger_video_play(video_frame)
+
+    print("[DEBUG] 비디오 URL 대기 시작")
+    for _ in range(100):  # 최대 10초 대기 (0.1초 간격)
+        if shared_state["video_url"]:
+            print(f"[DEBUG] 비디오 URL 찾음: {shared_state['video_url']}")
+            return shared_state["video_url"], shared_state["title"]
+        await asyncio.sleep(0.1)
+
+    print("[DEBUG] 비디오 URL을 찾지 못했습니다.")
+    return None
+
+
+# ------------------------------------------------------------
+
+
+def download_video(url: str, save_dir: str = "downloads", filename: str = None) -> str:
+    if filename is None:
+        # 랜덤 알파벳 8자리
+        filename = ''.join(random.choices(
+            string.ascii_letters + string.digits, k=8))
+
+    # 파일 확장자 추가
+    if not filename.endswith('.mp4'):
+        filename += '.mp4'
+
     try:
         os.makedirs(save_dir, exist_ok=True)
-        filename = os.path.basename(urlparse(url).path)
         filepath = os.path.join(save_dir, filename)
 
         print(f"[INFO] 동영상 다운로드 중...: {url}")
-        response = request.get(url, stream=True)
+        response = requests.get(url, stream=True)
         response.raise_for_status()
 
         with open(filepath, "wb") as f:
@@ -99,19 +108,6 @@ def download_video(url: str, save_dir: str = "downloads"):
                     f.write(chunk)
 
         print(f"[SUCCESS] 다운로드 완료: {filepath}")
+        return os.path.abspath(filepath)
     except Exception as e:
         print(f"[ERROR] 다운로드 실패: {e}")
-
-
-def print_frame_tree(page: Page):
-    def print_frame(f: Frame, indent: int = 0):
-        indent_str = "  " * indent
-        print(f"{indent_str}- Frame | name: {f.name or 'None'}, url: {f.url}")
-        for child in f.child_frames:
-            print_frame(child, indent + 1)
-
-    print("[DEBUG] 현재 프레임 구조:")
-
-    root_frames = [f for f in page.frames if f.parent_frame is None]
-    for frame in root_frames:
-        print_frame(frame)
