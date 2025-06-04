@@ -1,3 +1,5 @@
+import asyncio
+from playwright.async_api import async_playwright
 from playwright.sync_api import sync_playwright, Playwright, Page
 
 from login import perform_login_if_needed
@@ -12,19 +14,19 @@ def get_video_urls(user_setting: UserSetting) -> list[str]:
     return user_setting.input_video_urls()
 
 
-def open_as_firefox(p: Playwright) -> tuple[Page, any]:
+async def open_as_firefox(p: Playwright) -> tuple[Page, any]:
     # 파이어폭스는 동영상 컨텐츠 재생에 성공하지만 깊은 네트워크 감지가 안됨
-    browser = p.firefox.launch(headless=False)
-    context = browser.new_context(
+    browser = await p.firefox.launch(headless=False)
+    context = await browser.new_context(
         user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:123.0) Gecko/20100101 Firefox/123.0",
         java_script_enabled=True,
         has_touch=False,
         is_mobile=False,
     )
 
-    page = context.new_page()
+    page = await context.new_page()
 
-    page.add_init_script(
+    await page.add_init_script(
         """
         // Firefox-specific 자동화 감지 방지
         Object.defineProperty(window.navigator, 'webdriver', {
@@ -41,9 +43,9 @@ def open_as_firefox(p: Playwright) -> tuple[Page, any]:
     return page, browser
 
 
-def open_as_chrome(p: Playwright) -> tuple[Page, any]:
+async def open_as_chrome(p: Playwright) -> tuple[Page, any]:
     # 크롬은 개발자 콘솔 사용이 가능하지만 동영상 컨텐츠 재생에 실패함
-    browser = p.chromium.launch(
+    browser = await p.chromium.launch(
         headless=False,
         args=[
             "--autoplay-policy=no-user-gesture-required",
@@ -58,7 +60,7 @@ def open_as_chrome(p: Playwright) -> tuple[Page, any]:
             "--enable-proprietary-codecs",
         ],
     )
-    context = browser.new_context(
+    context = await browser.new_context(
         user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Whale/4.31.304.16 Safari/537.36",
         java_script_enabled=True,
         has_touch=False,
@@ -79,8 +81,8 @@ def open_as_chrome(p: Playwright) -> tuple[Page, any]:
         }
     )
 
-    page = context.new_page()
-    page.add_init_script(
+    page = await context.new_page()
+    await page.add_init_script(
         """
         Object.defineProperty(navigator, 'webdriver', {
             get: () => undefined,
@@ -98,8 +100,8 @@ def open_as_chrome(p: Playwright) -> tuple[Page, any]:
     return page, browser
 
 
-def open_as_chrome_installed(p: Playwright) -> tuple[Page, any]:
-    browser = p.chromium.launch(
+async def open_as_chrome_installed(p: Playwright) -> tuple[Page, any]:
+    browser = await p.chromium.launch(
         headless=False,
         executable_path="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",  # macOS 기준
         args=[
@@ -111,13 +113,13 @@ def open_as_chrome_installed(p: Playwright) -> tuple[Page, any]:
         ],
     )
 
-    context = browser.new_context(
+    context = await browser.new_context(
         user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
         permissions=["camera", "microphone", "geolocation"],
     )
 
-    page = context.new_page()
-    page.add_init_script(
+    page = await context.new_page()
+    await page.add_init_script(
         """
         Object.defineProperty(navigator, 'webdriver', {
             get: () => undefined,
@@ -136,7 +138,7 @@ open_webbrowser = {
 }
 
 
-def main():
+async def async_main():
     user_setting = UserSetting()
     user_id, password = user_setting.get_user_account()
     print(f"[INFO] 사용자 계정: {user_id}, 비밀번호 유무: {password is not None}")
@@ -147,27 +149,23 @@ def main():
     urls = get_video_urls(user_setting)
     print(f"[INFO] 다운로드할 링크: {len(urls)}개")
 
-    with sync_playwright() as p:
-        page, browser = open_webbrowser["CI"](p)
+    async with async_playwright() as p:
+        page, browser = await open_webbrowser["CI"](p)
 
         try:
             for url in urls:
                 print(f"\n[INFO] 처리 중: {url}")
-                # 페이지 이동 및 로딩 대기
-                page.goto(url, wait_until="networkidle")
+                await page.goto(url, wait_until="networkidle")
                 print(f"[DEBUG] 페이지 이동 완료: {page.url}")
 
-                # 로그인 필요 여부 판단 및 처리
-                if perform_login_if_needed(page, user_id, password):
+                if await perform_login_if_needed(page, user_id, password):
                     print("[INFO] 로그인 완료 또는 유지됨.")
-                    # 로그인 후 페이지 로딩 대기
-                    page.wait_for_load_state("networkidle")
+                    await page.wait_for_load_state("networkidle")
                     print(f"[DEBUG] 로그인 후 현재 URL: {page.url}")
                 else:
                     print("[INFO] 로그인 불필요.")
 
-                # 동영상 URL 추출 시도
-                video_url = extract_video_url(page)
+                video_url = await extract_video_url(page)
 
                 if video_url:
                     print(f"[SUCCESS] 동영상 링크 추출됨: {video_url}")
@@ -176,9 +174,8 @@ def main():
                     print("[WARN] 동영상 링크를 찾지 못했습니다.")
 
         finally:
-            browser.close()
-
+            await browser.close()
 
 # 진입점
 if __name__ == "__main__":
-    main()
+    asyncio.run(async_main())
