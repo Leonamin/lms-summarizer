@@ -1,32 +1,15 @@
-import time
 from playwright.sync_api import sync_playwright, Playwright, Page
 
-from config import load_config, config
 from login import perform_login_if_needed
 from video_parser import download_video, extract_video_url
+from user_setting import UserSetting
 
 
-def get_video_urls() -> list[str]:
-    print("다운로드할 링크를 입력하세요. 0 또는 빈 줄을 입력하면 종료됩니다.")
-    urls = []
-    while True:
-        url = input("링크: ")
-        if url == "0" or url == "":
-            break
-        error = validate_url(url)
-        if error:
-            print(error)
-            continue
-        urls.append(url)
-    return urls
-
-
-def validate_url(url: str) -> str:
-    # return type: 빈문자열인 경우 통과
-    # 아닌 경우 오류 메시지 반환
-    if not url.startswith("https://canvas.ssu.ac.kr/courses/"):
-        return "올바른 링크가 아닙니다. 다시 입력해주세요."
-    return ""
+def get_video_urls(user_setting: UserSetting) -> list[str]:
+    result = user_setting.get_video_urls()
+    if result:
+        return result
+    return user_setting.input_video_urls()
 
 
 def open_as_firefox(p: Playwright) -> tuple[Page, any]:
@@ -154,9 +137,15 @@ open_webbrowser = {
 
 
 def main():
-    load_config()
-    urls = get_video_urls()
-    print(urls)
+    user_setting = UserSetting()
+    user_id, password = user_setting.get_user_account()
+    print(f"[INFO] 사용자 계정: {user_id}, 비밀번호 유무: {password is not None}")
+    if not user_id or not password:
+        print("[ERROR] 사용자 계정 또는 비밀번호가 설정되지 않았습니다.")
+        return
+
+    urls = get_video_urls(user_setting)
+    print(f"[INFO] 다운로드할 링크: {len(urls)}개")
 
     with sync_playwright() as p:
         page, browser = open_webbrowser["CI"](p)
@@ -169,7 +158,7 @@ def main():
                 print(f"[DEBUG] 페이지 이동 완료: {page.url}")
 
                 # 로그인 필요 여부 판단 및 처리
-                if perform_login_if_needed(page, config["USERID"], config["PASSWORD"]):
+                if perform_login_if_needed(page, user_id, password):
                     print("[INFO] 로그인 완료 또는 유지됨.")
                     # 로그인 후 페이지 로딩 대기
                     page.wait_for_load_state("networkidle")
@@ -190,5 +179,6 @@ def main():
             browser.close()
 
 
+# 진입점
 if __name__ == "__main__":
     main()
