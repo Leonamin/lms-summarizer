@@ -1,4 +1,4 @@
-# SSUpernova
+# LMS 요약
 
 ## 환경설정
 
