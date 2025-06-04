@@ -1,7 +1,8 @@
 import asyncio
 from playwright.async_api import async_playwright
-from playwright.sync_api import sync_playwright, Playwright, Page
+from playwright.sync_api import Playwright, Page
 
+from audio_pipeline.pipeline import AudioToTextPipeline
 from login import perform_login_if_needed
 from video_parser import download_video, extract_video_url
 from user_setting import UserSetting
@@ -149,6 +150,8 @@ async def async_main():
     urls = get_video_urls(user_setting)
     print(f"[INFO] 다운로드할 링크: {len(urls)}개")
 
+    downloaded_videos_path = []
+
     async with async_playwright() as p:
         page, browser = await open_webbrowser["CI"](p)
 
@@ -171,12 +174,24 @@ async def async_main():
                     print(f"[SUCCESS] 동영상 링크 추출됨: {video_url}, 제목: {title}")
                     filepath = download_video(video_url, filename=title)
                     print(f"[SUCCESS] 동영상 다운로드 완료: {filepath}")
+                    downloaded_videos_path.append(filepath)
                     # TODO - 여기에 영상 요약하는 코드 이어 붙이기 or 모든 동영상 다운로드 이후 동작하도록 구현
                 else:
                     print("[WARN] 동영상 링크를 찾지 못했습니다.")
 
         finally:
             await browser.close()
+
+    # TODO - 동영상 To 텍스트 변환
+    audio_pipeline = AudioToTextPipeline()
+
+    for filepath in downloaded_videos_path:
+        try:
+            print(f"[INFO] 동영상 텍스트 변환 시작: {filepath}")
+            audio_pipeline.process(filepath)
+        except Exception as e:
+            print(f"[ERROR] 동영상 텍스트 변환 실패: {e}")
+
 
 # 진입점
 if __name__ == "__main__":
