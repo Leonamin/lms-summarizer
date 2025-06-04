@@ -92,6 +92,17 @@ USERID=(아이디)학번
 PASSWORD=비밀번호
 ```
 
+### 리턴제로 API 키 설정
+그냥 whisper 사용할거면 안해도 됨
+여기에서 API 키 발급 한달 600분 무료 https://developers.rtzr.ai/
+
+.env에 다음 항목을 추가
+
+```
+RETURNZERO_CLIENT_ID=~~~~~~~~
+RETURNZERO_CLIENT_SECRET=~~~~~~~~~
+```
+
 ### user_settings.json 설정
 
 없어도 동작은 함
