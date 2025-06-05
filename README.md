@@ -93,6 +93,7 @@ PASSWORD=비밀번호
 ```
 
 ### 리턴제로 API 키 설정
+
 그냥 whisper 사용할거면 안해도 됨
 여기에서 API 키 발급 한달 600분 무료 https://developers.rtzr.ai/
 
@@ -101,6 +102,22 @@ PASSWORD=비밀번호
 ```
 RETURNZERO_CLIENT_ID=~~~~~~~~
 RETURNZERO_CLIENT_SECRET=~~~~~~~~~
+```
+
+### openai API 키 설정
+
+```
+OPENAI_API_KEY=~~~~~~~~
+```
+
+### 최종 .env 모습
+
+```
+USERID=(아이디)학번
+PASSWORD=비밀번호
+RETURNZERO_CLIENT_ID=~~~~~~~~
+RETURNZERO_CLIENT_SECRET=~~~~~~~~
+OPENAI_API_KEY=~~~~~~~~
 ```
 
 ### user_settings.json 설정

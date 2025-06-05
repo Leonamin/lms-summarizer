@@ -9,7 +9,7 @@ from user_setting import UserSetting
 # https://developers.rtzr.ai/docs/stt-file/
 
 
-def transcribe_wav_to_text(wav_path: str, txt_path: str, engine="returnzero"):
+def transcribe_wav_to_text(wav_path: str, txt_path: str, engine="whisper"):
     if engine == "whisper":
         transcriber = WhisperTranscriber()
     elif engine == "returnzero":
