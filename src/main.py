@@ -176,16 +176,14 @@ async def async_main():
                     filepath = download_video(video_url, filename=title)
                     print(f"[SUCCESS] 동영상 다운로드 완료: {filepath}")
                     downloaded_videos_path.append(filepath)
-                    # TODO - 여기에 영상 요약하는 코드 이어 붙이기 or 모든 동영상 다운로드 이후 동작하도록 구현
                 else:
                     print("[WARN] 동영상 링크를 찾지 못했습니다.")
 
         finally:
             await browser.close()
 
-    # TODO - 동영상 To 텍스트 변환
+    #  오디오 파이프라인 처리
     audio_pipeline = AudioToTextPipeline()
-
     txt_paths = []
     for filepath in downloaded_videos_path:
         try:
@@ -195,11 +193,15 @@ async def async_main():
         except Exception as e:
             print(f"[ERROR] 동영상 텍스트 변환 실패: {e}")
 
+    # 요약 파이프라인 처리
     summarized_txt_paths = []
     summarize_pipeline = SummarizePipeline()
     for txt_path in txt_paths:
-        summarized_txt_path = summarize_pipeline.process(txt_path)
-        summarized_txt_paths.append(summarized_txt_path)
+        try:
+            summarized_txt_path = summarize_pipeline.process(txt_path)
+            summarized_txt_paths.append(summarized_txt_path)
+        except Exception as e:
+            print(f"[ERROR] 요약 파이프라인 처리 실패: {e}")
 
     print("[INFO] 모든 동영상 요약 완료. 저장된 파일 경로를 출력합니다.")
     for path in summarized_txt_paths:

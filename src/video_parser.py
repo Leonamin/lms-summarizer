@@ -1,6 +1,5 @@
 import asyncio
 import os
-from urllib.parse import urlparse
 from playwright.sync_api import Page
 import requests
 
