@@ -5,8 +5,8 @@
 from PyQt5.QtWidgets import QPushButton
 from PyQt5.QtCore import pyqtSignal
 
-from config.styles import StyleSheet
-from config.constants import EMOJI_START, EMOJI_PROCESSING
+from src.gui.config.styles import StyleSheet
+from src.gui.config.constants import EMOJI_START, EMOJI_PROCESSING
 
 
 class ProcessingButton(QPushButton):

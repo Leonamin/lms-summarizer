@@ -5,8 +5,8 @@
 from PyQt5.QtWidgets import QLabel, QLineEdit, QTextEdit
 from PyQt5.QtCore import Qt
 
-from config.settings import InputFieldConfig
-from config.styles import StyleSheet
+from src.gui.config.settings import InputFieldConfig
+from src.gui.config.styles import StyleSheet
 
 
 class InputField:

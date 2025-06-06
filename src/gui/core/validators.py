@@ -6,7 +6,7 @@ import re
 from typing import Dict, List, Tuple
 from urllib.parse import urlparse
 
-from config.constants import Messages
+from src.gui.config.constants import Messages
 
 
 class InputValidator:

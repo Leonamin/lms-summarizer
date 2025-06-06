@@ -8,15 +8,15 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt
 
-from config.constants import APP_TITLE, APP_VERSION, WINDOW_WIDTH, WINDOW_HEIGHT, Messages
-from config.styles import StyleSheet
-from config.settings import INPUT_FIELD_CONFIGS
-from core.validators import InputValidator
-from core.module_loader import check_required_modules
-from ui.components.input_field import InputField
-from ui.components.log_area import LogArea
-from ui.components.buttons import ProcessingButton, ClearButton
-from workers.processing_worker import ProcessingWorker
+from src.gui.config.constants import APP_TITLE, APP_VERSION, WINDOW_WIDTH, WINDOW_HEIGHT, Messages
+from src.gui.config.styles import StyleSheet
+from src.gui.config.settings import INPUT_FIELD_CONFIGS
+from src.gui.core.validators import InputValidator
+from src.gui.core.module_loader import check_required_modules
+from src.gui.ui.components.input_field import InputField
+from src.gui.ui.components.log_area import LogArea
+from src.gui.ui.components.buttons import ProcessingButton, ClearButton
+from src.gui.workers.processing_worker import ProcessingWorker
 
 
 class MainWindow(QWidget):

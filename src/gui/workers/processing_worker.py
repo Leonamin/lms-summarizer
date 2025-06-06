@@ -7,9 +7,9 @@ from pathlib import Path
 from typing import Dict, List
 from PyQt5.QtCore import QThread, pyqtSignal
 
-from config.constants import Messages
-from core.file_manager import create_config_files, extract_urls_from_input
-from core.module_loader import check_required_modules
+from src.gui.config.constants import Messages
+from src.gui.core.file_manager import create_config_files, extract_urls_from_input
+from src.gui.core.module_loader import check_required_modules
 
 
 class ProcessingWorker(QThread):
@@ -202,7 +202,7 @@ class ProcessingWorker(QThread):
 
         # 저장 위치 안내
         if video_paths or text_paths:
-            from core.file_manager import get_resource_path
+            from src.gui.core.file_manager import get_resource_path
             downloads_dir = get_resource_path("downloads")
             self._emit_log(f"\n📁 모든 파일이 저장된 위치: {downloads_dir}")
             self._emit_log("💡 Finder에서 확인: open downloads/")

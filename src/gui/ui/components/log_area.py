@@ -5,8 +5,8 @@
 from PyQt5.QtWidgets import QTextEdit, QVBoxLayout, QLabel
 from PyQt5.QtCore import Qt
 
-from config.styles import StyleSheet
-from config.constants import Limits
+from src.gui.config.styles import StyleSheet
+from src.gui.config.constants import Limits
 
 
 class LogArea:
