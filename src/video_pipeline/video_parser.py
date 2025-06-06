@@ -63,7 +63,7 @@ async def extract_video_url(page: Page) -> tuple[str, str]:
 
     video_frame = await find_canvas_video_frame(page, shared_state)
     if not video_frame:
-        return None
+        return None, None
 
     await trigger_video_play(video_frame)
 
@@ -75,4 +75,4 @@ async def extract_video_url(page: Page) -> tuple[str, str]:
         await asyncio.sleep(0.1)
 
     print("[DEBUG] 비디오 URL을 찾지 못했습니다.")
-    return None
+    return None, None

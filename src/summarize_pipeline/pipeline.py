@@ -1,5 +1,7 @@
 import time
-from summarize_pipeline.summarizer import summarize_text
+import sys
+import os
+from .summarizer import summarize_text
 
 
 class SummarizePipeline:
@@ -12,7 +14,8 @@ class SummarizePipeline:
 
         print(f"[INFO] 요약 시작: {txt_path}")
         start_time = time.time()
-        result = summarize_text(txt_path, "test", "openai")
+        # todo 프롬프트 수정 필요
+        result = summarize_text(txt_path, "다음 강의 내용을 한국어로 자세히 요약해주세요.", "gemini")
         end_time = time.time()
         print(f"[INFO] 요약 완료: {result}")
         print(f"[INFO] 총 소요 시간: {end_time - start_time}초")
