@@ -6,7 +6,7 @@ import pyperclip
 import sys
 import os
 
-from user_setting import UserSetting
+from src.user_setting import UserSetting
 
 
 # def resource_path(relative_path):

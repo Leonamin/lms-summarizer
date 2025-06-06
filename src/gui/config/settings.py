@@ -51,18 +51,18 @@ INPUT_FIELD_CONFIGS = {
 MODULE_CONFIGS = {
     'UserSetting': ModuleConfig(
         name='UserSetting',
-        import_path='user_setting.UserSetting'
+        import_path='src.user_setting.UserSetting'
     ),
     'VideoPipeline': ModuleConfig(
         name='VideoPipeline',
-        import_path='video_pipeline.pipeline.VideoPipeline'
+        import_path='src.video_pipeline.pipeline.VideoPipeline'
     ),
     'AudioToTextPipeline': ModuleConfig(
         name='AudioToTextPipeline',
-        import_path='audio_pipeline.pipeline.AudioToTextPipeline'
+        import_path='src.audio_pipeline.pipeline.AudioToTextPipeline'
     ),
     'SummarizePipeline': ModuleConfig(
         name='SummarizePipeline',
-        import_path='summarize_pipeline.pipeline.SummarizePipeline'
+        import_path='src.summarize_pipeline.pipeline.SummarizePipeline'
     )
 }

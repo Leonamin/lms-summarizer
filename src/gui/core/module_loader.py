@@ -6,7 +6,7 @@ import sys
 import os
 from typing import Dict, List, Tuple, Optional, Any
 
-from config.settings import MODULE_CONFIGS
+from src.gui.config.settings import MODULE_CONFIGS
 
 
 def setup_python_path() -> Tuple[str, str]:

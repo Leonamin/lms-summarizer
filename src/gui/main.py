@@ -9,10 +9,9 @@ import os
 from PyQt5.QtWidgets import QApplication, QMessageBox
 from PyQt5.QtGui import QFont
 
-from config.constants import APP_TITLE, APP_VERSION
-from core.module_loader import load_required_modules, setup_python_path
-from ui.windows.main_window import MainWindow
-
+from src.gui.config.constants import APP_TITLE, APP_VERSION
+from src.gui.core.module_loader import load_required_modules, setup_python_path
+from src.gui.ui.windows.main_window import MainWindow
 
 def setup_application() -> QApplication:
     """QApplication 설정"""

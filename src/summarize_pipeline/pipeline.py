@@ -1,7 +1,7 @@
 import time
 import sys
 import os
-from .summarizer import summarize_text
+from src.summarize_pipeline.summarizer import summarize_text
 
 
 class SummarizePipeline:
