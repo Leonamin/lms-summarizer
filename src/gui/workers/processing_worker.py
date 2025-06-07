@@ -78,8 +78,8 @@ class ProcessingWorker(QThread):
         if not urls:
             raise ValueError("처리할 URL이 없습니다.")
 
-        # 사용자 설정 초기화
-        user_setting = self.modules['UserSetting']()
+        # 사용자 설정 초기화 (GUI 입력값 전달)
+        user_setting = self.modules['UserSetting'](self.user_inputs)
 
         # 1. 비디오 다운로드 파이프라인
         video_paths = self._download_videos(urls, user_setting)
@@ -171,20 +171,32 @@ class ProcessingWorker(QThread):
     def _check_ffmpeg(self):
         """ffmpeg 설치 확인"""
         import shutil
+        import sys
+        import os
 
         ffmpeg_path = shutil.which('ffmpeg')
         if ffmpeg_path:
             self._emit_log(f"🔧 ffmpeg 찾음: {ffmpeg_path}")
-        else:
-            self._emit_log("⚠️ ffmpeg를 찾을 수 없습니다. PATH를 확인해주세요.")
-            # PATH에 추가 시도
-            import os
-            possible_paths = ['/usr/local/bin', '/opt/homebrew/bin', '/usr/bin']
-            for path in possible_paths:
-                if os.path.exists(os.path.join(path, 'ffmpeg')):
-                    os.environ['PATH'] = path + ':' + os.environ.get('PATH', '')
-                    self._emit_log(f"🔧 ffmpeg PATH 추가: {path}")
-                    break
+            return
+
+        # .app 번들 내부의 ffmpeg 확인
+        if getattr(sys, 'frozen', False):
+            bundle_ffmpeg = os.path.join(sys._MEIPASS, 'ffmpeg')
+            if os.path.exists(bundle_ffmpeg):
+                os.environ['PATH'] = f"{os.path.dirname(bundle_ffmpeg)}:{os.environ.get('PATH', '')}"
+                self._emit_log(f"🔧 번들된 ffmpeg 사용: {bundle_ffmpeg}")
+                return
+
+        # 시스템 경로 확인
+        possible_paths = ['/usr/local/bin', '/opt/homebrew/bin', '/usr/bin']
+        for path in possible_paths:
+            if os.path.exists(os.path.join(path, 'ffmpeg')):
+                os.environ['PATH'] = f"{path}:{os.environ.get('PATH', '')}"
+                self._emit_log(f"🔧 ffmpeg PATH 추가: {path}")
+                return
+
+        self._emit_log("❌ ffmpeg를 찾을 수 없습니다. 설치가 필요합니다.")
+        raise RuntimeError("ffmpeg가 설치되어 있지 않습니다.")
 
     def _display_results(self, video_paths: List[str], text_paths: List[str]):
         """결과 요약 표시"""
