@@ -2,10 +2,10 @@ import asyncio
 from playwright.async_api import async_playwright, Playwright, Page
 from typing import Optional, Tuple
 
-from video_pipeline.login import perform_login_if_needed
-from video_pipeline.video_parser import extract_video_url
-from video_pipeline.download_video import download_video
-from user_setting import UserSetting
+from src.video_pipeline.login import perform_login_if_needed
+from src.video_pipeline.video_parser import extract_video_url
+from src.video_pipeline.download_video import download_video
+from src.user_setting import UserSetting
 
 
 class VideoPipeline:

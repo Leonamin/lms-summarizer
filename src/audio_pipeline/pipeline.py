@@ -1,6 +1,6 @@
 import time
-from audio_pipeline.converter import convert_mp4_to_wav
-from audio_pipeline.transcriber import transcribe_wav_to_text
+from src.audio_pipeline.converter import convert_mp4_to_wav
+from src.audio_pipeline.transcriber import transcribe_wav_to_text
 import os
 
 

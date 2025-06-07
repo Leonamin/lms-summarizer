@@ -4,7 +4,7 @@ import whisper
 from abc import ABC, abstractmethod
 import os
 import requests
-from user_setting import UserSetting
+from src.user_setting import UserSetting
 
 # https://developers.rtzr.ai/docs/stt-file/
 
