@@ -76,28 +76,25 @@ class StyleSheet:
 
     @staticmethod
     def button() -> str:
-        """버튼 스타일"""
-        return f"""
-            QPushButton {{
-                background-color: {Colors.PRIMARY};
+        """일반 버튼 스타일"""
+        return """
+            QPushButton {
+                background-color: #4a90e2;
                 color: white;
                 border: none;
-                padding: 15px 30px;
-                border-radius: 8px;
-                font-size: 16px;
+                padding: 8px 16px;
+                border-radius: 4px;
                 font-weight: bold;
-                margin-top: 20px;
-            }}
-            QPushButton:hover {{
-                background-color: {Colors.PRIMARY_HOVER};
-            }}
-            QPushButton:pressed {{
-                background-color: {Colors.PRIMARY_PRESSED};
-            }}
-            QPushButton:disabled {{
-                background-color: {Colors.DISABLED_BG};
-                color: {Colors.TEXT_LIGHT};
-            }}
+            }
+            QPushButton:hover {
+                background-color: #357abd;
+            }
+            QPushButton:pressed {
+                background-color: #2d6da3;
+            }
+            QPushButton:disabled {
+                background-color: #cccccc;
+            }
         """
 
     @staticmethod
@@ -122,4 +119,17 @@ class StyleSheet:
             QWidget {{
                 background-color: {Colors.BACKGROUND};
             }}
+        """
+
+    @staticmethod
+    def path_value() -> str:
+        """경로 표시 스타일"""
+        return """
+            QLabel {
+                color: #666;
+                padding: 5px;
+                background: #f5f5f5;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+            }
         """

@@ -9,11 +9,64 @@ from typing import Dict, List
 from pathlib import Path
 
 
+def get_app_data_dir() -> str:
+    """애플리케이션 데이터 디렉토리 경로 반환"""
+    if getattr(sys, 'frozen', False):
+        # .app 번들 내부
+        base_path = os.path.dirname(sys.executable)
+    else:
+        # 개발 환경
+        base_path = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    return base_path
+
+
+def get_user_home_dir() -> str:
+    """사용자 홈 디렉토리 경로 반환"""
+    return os.path.expanduser("~")
+
+
+def get_default_downloads_dir() -> str:
+    """기본 다운로드 디렉토리 경로 반환"""
+    return os.path.join(get_user_home_dir(), "Documents", "LMS-Summarizer")
+
+
+def get_settings_path() -> str:
+    """설정 파일 경로 반환"""
+    return os.path.join(get_app_data_dir(), "settings.json")
+
+
+def load_settings() -> Dict:
+    """설정 파일 로드"""
+    settings_path = get_settings_path()
+    if os.path.exists(settings_path):
+        try:
+            with open(settings_path, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except:
+            pass
+    return {"downloads_dir": get_default_downloads_dir()}
+
+
+def save_settings(settings: Dict) -> None:
+    """설정 파일 저장"""
+    settings_path = get_settings_path()
+    with open(settings_path, 'w', encoding='utf-8') as f:
+        json.dump(settings, f, indent=2, ensure_ascii=False)
+
+
 def get_resource_path(relative_path: str) -> str:
     """PyInstaller 환경에서도 작동하는 리소스 경로 반환"""
-    if hasattr(sys, '_MEIPASS'):
-        return os.path.join(sys._MEIPASS, relative_path)
-    return os.path.join(os.path.abspath("."), relative_path)
+    if getattr(sys, 'frozen', False):
+        # PyInstaller로 번들된 환경
+        if hasattr(sys, '_MEIPASS'):
+            # PyInstaller 임시 디렉토리
+            base_path = sys._MEIPASS
+        else:
+            # .app 번들 내부
+            base_path = os.path.dirname(sys.executable)
+        return os.path.join(base_path, relative_path)
+    # 개발 환경
+    return os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), relative_path)
 
 
 def create_env_file(user_inputs: Dict[str, str]) -> None:
@@ -46,9 +99,17 @@ def create_config_files(user_inputs: Dict[str, str]) -> None:
 
 def ensure_downloads_directory() -> str:
     """다운로드 디렉토리 생성 및 경로 반환"""
-    downloads_dir = get_resource_path("downloads")
-    Path(downloads_dir).mkdir(exist_ok=True)
+    settings = load_settings()
+    downloads_dir = settings.get("downloads_dir", get_default_downloads_dir())
+    Path(downloads_dir).mkdir(parents=True, exist_ok=True)
     return downloads_dir
+
+
+def set_downloads_directory(path: str) -> None:
+    """다운로드 디렉토리 설정"""
+    settings = load_settings()
+    settings["downloads_dir"] = path
+    save_settings(settings)
 
 
 def extract_urls_from_input(url_input: str) -> List[str]:

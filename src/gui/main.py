@@ -6,6 +6,13 @@ LMS 강의 다운로드 & 요약 GUI 애플리케이션
 
 import sys
 import os
+from pathlib import Path
+
+# 프로젝트 루트 디렉토리를 Python 경로에 추가
+project_root = str(Path(__file__).parent.parent.parent)
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
 from PyQt5.QtWidgets import QApplication, QMessageBox
 from PyQt5.QtGui import QFont
 
@@ -36,9 +43,6 @@ def main():
 
         # Python 경로 설정
         setup_python_path()
-
-        # 작업 디렉토리 설정
-        os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
         # 필수 모듈 로드
         modules, errors = load_required_modules()
