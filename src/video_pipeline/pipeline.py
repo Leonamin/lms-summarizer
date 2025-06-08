@@ -2,18 +2,18 @@ import asyncio
 from playwright.async_api import async_playwright, Playwright, Page
 from typing import Optional, Tuple
 
-from video_pipeline.login import perform_login_if_needed
-from video_pipeline.video_parser import extract_video_url
-from video_pipeline.download_video import download_video
-from user_setting import UserSetting
+from src.video_pipeline.login import perform_login_if_needed
+from src.video_pipeline.video_parser import extract_video_url
+from src.video_pipeline.download_video import download_video
+from src.user_setting import UserSetting
 
 
 class VideoPipeline:
     def __init__(self, user_setting: UserSetting):
         self.user_setting = user_setting
-        self.user_id, self.password = user_setting.get_user_account()
-        if not self.user_id or not self.password:
-            raise ValueError("사용자 계정 또는 비밀번호가 설정되지 않았습니다.")
+        self.user_id = user_setting.user_id
+        self.password = user_setting.password
+        self.downloads_dir = None  # 다운로드 경로는 나중에 설정됨
 
     async def _setup_browser(self, playwright: Playwright) -> Tuple[Page, any]:
         """브라우저 설정 및 페이지 생성"""
@@ -63,7 +63,7 @@ class VideoPipeline:
 
         if video_url:
             print(f"[SUCCESS] 동영상 링크 추출됨: {video_url}, 제목: {title}")
-            filepath = download_video(video_url, filename=title)
+            filepath = download_video(video_url, save_dir=self.downloads_dir, filename=title)
             print(f"[SUCCESS] 동영상 다운로드 완료: {filepath}")
             return filepath
         else:
