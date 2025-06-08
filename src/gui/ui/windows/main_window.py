@@ -4,7 +4,8 @@
 
 from typing import Dict, List
 from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QMessageBox
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QMessageBox,
+    QFileDialog, QPushButton
 )
 from PyQt5.QtCore import Qt
 
@@ -13,6 +14,10 @@ from src.gui.config.styles import StyleSheet
 from src.gui.config.settings import INPUT_FIELD_CONFIGS
 from src.gui.core.validators import InputValidator
 from src.gui.core.module_loader import check_required_modules
+from src.gui.core.file_manager import (
+    ensure_downloads_directory, set_downloads_directory,
+    get_default_downloads_dir
+)
 from src.gui.ui.components.input_field import InputField
 from src.gui.ui.components.log_area import LogArea
 from src.gui.ui.components.buttons import ProcessingButton, ClearButton
@@ -35,6 +40,7 @@ class MainWindow(QWidget):
         self.start_button = None
         self.clear_button = None
         self.worker = None
+        self.path_button = None
 
         # 윈도우 설정 및 UI 구성
         self._setup_window()
@@ -53,6 +59,9 @@ class MainWindow(QWidget):
 
         # 헤더 섹션
         self._create_header_section(main_layout)
+
+        # 저장 경로 섹션
+        self._create_path_section(main_layout)
 
         # 입력 필드 섹션
         self._create_input_section(main_layout)
@@ -78,6 +87,51 @@ class MainWindow(QWidget):
         description.setAlignment(Qt.AlignCenter)
         description.setStyleSheet(StyleSheet.subtitle())
         layout.addWidget(description)
+
+    def _create_path_section(self, layout: QVBoxLayout):
+        """저장 경로 설정 섹션 생성"""
+        path_layout = QHBoxLayout()
+        
+        # 라벨
+        path_label = QLabel("📁 저장 경로:")
+        path_label.setStyleSheet(StyleSheet.label())
+        path_layout.addWidget(path_label)
+        
+        # 현재 경로 표시
+        current_path = ensure_downloads_directory()
+        path_value = QLabel(current_path)
+        path_value.setStyleSheet(StyleSheet.path_value())
+        path_value.setWordWrap(True)
+        path_layout.addWidget(path_value, stretch=1)
+        
+        # 경로 변경 버튼
+        self.path_button = QPushButton("경로 변경")
+        self.path_button.setStyleSheet(StyleSheet.button())
+        self.path_button.clicked.connect(self._change_download_path)
+        path_layout.addWidget(self.path_button)
+        
+        layout.addLayout(path_layout)
+
+    def _change_download_path(self):
+        """다운로드 경로 변경"""
+        current_path = ensure_downloads_directory()
+        new_path = QFileDialog.getExistingDirectory(
+            self,
+            "저장 경로 선택",
+            current_path,
+            QFileDialog.ShowDirsOnly
+        )
+        
+        if new_path:
+            try:
+                set_downloads_directory(new_path)
+                self.log_area.append_message(f"✅ 저장 경로가 변경되었습니다: {new_path}")
+            except Exception as e:
+                QMessageBox.critical(
+                    self,
+                    "경로 변경 오류",
+                    f"저장 경로 변경 중 오류가 발생했습니다:\n{str(e)}"
+                )
 
     def _create_input_section(self, layout: QVBoxLayout):
         """입력 필드 섹션 생성"""
