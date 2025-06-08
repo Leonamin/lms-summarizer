@@ -1,21 +1,37 @@
 import json
 import os
+from pathlib import Path
+from typing import Optional
 
 from dotenv import load_dotenv
 
 
 class UserSetting:
-    def __init__(self):
-        load_dotenv()
-        self.user_id = os.getenv("USERID")
-        self.password = os.getenv("PASSWORD")
-        self.RETURNZERO_CLIENT_ID = os.getenv("RETURNZERO_CLIENT_ID")
-        self.RETURNZERO_CLIENT_SECRET = os.getenv("RETURNZERO_CLIENT_SECRET")
-        self.GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+    def __init__(self, gui_inputs: Optional[dict] = None):
+        self.gui_inputs = gui_inputs or {}
+        
+        # .env 파일이 있으면 로드, 없으면 GUI 입력값 사용
+        env_path = Path('.env')
+        if env_path.exists():
+            load_dotenv()
+            self.user_id = os.getenv("USERID")
+            self.password = os.getenv("PASSWORD")
+            self.RETURNZERO_CLIENT_ID = os.getenv("RETURNZERO_CLIENT_ID")
+            self.RETURNZERO_CLIENT_SECRET = os.getenv("RETURNZERO_CLIENT_SECRET")
+            self.GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+        else:
+            self.user_id = self.gui_inputs.get('student_id')
+            self.password = self.gui_inputs.get('password')
+            self.RETURNZERO_CLIENT_ID = self.gui_inputs.get('returnzero_client_id')
+            self.RETURNZERO_CLIENT_SECRET = self.gui_inputs.get('returnzero_client_secret')
+            self.GOOGLE_API_KEY = self.gui_inputs.get('api_key')
 
     def get_video_urls(self) -> list[str]:
-        # user_settings.json 파일에서 'video' 블록의 리스트 가져오기
-        # 파일이 없으면 빈 리스트 반환
+        # GUI 입력값이 있으면 사용
+        if self.gui_inputs.get('urls'):
+            return [url.strip() for url in self.gui_inputs['urls'].split('\n') if url.strip()]
+            
+        # 없으면 user_settings.json에서 로드
         try:
             with open("user_settings.json", "r", encoding="utf-8") as f:
                 data = json.load(f)
@@ -47,7 +63,7 @@ class UserSetting:
     def validate_url(self, url: str) -> str:
         # return type: 빈문자열인 경우 통과
         # 아닌 경우 오류 메시지 반환
-        if not url.startswith("https://canvas.ssu.ac.kr/courses/"):
+        if not url.strip().startswith("https://canvas.ssu.ac.kr/courses/"):
             return "올바른 링크가 아닙니다. 다시 입력해주세요."
         return ""
 

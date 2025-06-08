@@ -28,6 +28,19 @@ class Transcriber(ABC):
 
 class WhisperTranscriber(Transcriber):
     def __init__(self, model_name="base"):
+        import sys
+        import os
+
+        # .app 번들 내부의 모델 확인
+        if getattr(sys, 'frozen', False):
+            model_path = os.path.join(sys._MEIPASS, 'whisper_models', model_name)
+            if os.path.exists(model_path):
+                print(f"[INFO] 번들된 Whisper 모델 사용: {model_path}")
+                self.model = whisper.load_model(model_path)
+                return
+
+        # 기본 경로에서 모델 로드
+        print(f"[INFO] Whisper 모델 다운로드 중: {model_name}")
         self.model = whisper.load_model(model_name)
 
     def transcribe(self, wav_path: str, txt_path: str):

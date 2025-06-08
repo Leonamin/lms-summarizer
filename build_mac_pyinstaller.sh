@@ -26,6 +26,19 @@ pip install pyinstaller
 echo "🧹 기존 빌드 파일들을 정리합니다..."
 rm -rf build/ dist/ *.spec
 
+echo "📦 ffmpeg 복사 중..."
+if [ -f "/usr/local/bin/ffmpeg" ]; then
+    FFMPEG_PATH="/usr/local/bin/ffmpeg"
+elif [ -f "/opt/homebrew/bin/ffmpeg" ]; then
+    FFMPEG_PATH="/opt/homebrew/bin/ffmpeg"
+else
+    echo "❌ ffmpeg를 찾을 수 없습니다. 설치가 필요합니다."
+    exit 1
+fi
+
+echo "📦 Whisper 모델 다운로드 중..."
+python3 -c "import whisper; whisper.load_model('base')"
+
 echo "🔨 .app 번들을 빌드합니다..."
 
 # PyInstaller로 Mac 앱 빌드
@@ -35,6 +48,8 @@ pyinstaller \
     --onedir \
     --add-data="src:src" \
     --add-data="requirements.txt:." \
+    --add-binary="${FFMPEG_PATH}:." \
+    --add-data="$HOME/.cache/whisper:whisper_models" \
     --paths="src" \
     --paths="src/video_pipeline" \
     --paths="src/audio_pipeline" \

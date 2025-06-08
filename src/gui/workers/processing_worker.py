@@ -8,10 +8,7 @@ from typing import Dict, List
 from PyQt5.QtCore import QThread, pyqtSignal
 
 from src.gui.config.constants import Messages
-from src.gui.core.file_manager import (
-    create_config_files, extract_urls_from_input,
-    ensure_downloads_directory
-)
+from src.gui.core.file_manager import create_config_files, extract_urls_from_input
 from src.gui.core.module_loader import check_required_modules
 
 
@@ -26,7 +23,6 @@ class ProcessingWorker(QThread):
         super().__init__()
         self.user_inputs = user_inputs
         self.modules = modules
-        self.downloads_dir = ensure_downloads_directory()
 
     def run(self):
         """실제 처리 작업 실행"""
@@ -82,8 +78,8 @@ class ProcessingWorker(QThread):
         if not urls:
             raise ValueError("처리할 URL이 없습니다.")
 
-        # 사용자 설정 초기화
-        user_setting = self.modules['UserSetting']()
+        # 사용자 설정 초기화 (GUI 입력값 전달)
+        user_setting = self.modules['UserSetting'](self.user_inputs)
 
         # 1. 비디오 다운로드 파이프라인
         video_paths = self._download_videos(urls, user_setting)
@@ -103,7 +99,6 @@ class ProcessingWorker(QThread):
         self._emit_log(f"📋 다운로드할 링크: {len(urls)}개")
 
         video_pipeline = self.modules['VideoPipeline'](user_setting)
-        video_pipeline.downloads_dir = self.downloads_dir  # 다운로드 경로 설정
 
         for i, url in enumerate(urls, 1):
             self._emit_log(f"📥 ({i}/{len(urls)}) 다운로드 시작: {url}")
@@ -122,19 +117,31 @@ class ProcessingWorker(QThread):
         """오디오를 텍스트로 변환"""
         self._emit_log(Messages.AUDIO_CONVERTING)
 
+        # ffmpeg 경로 확인
+        self._check_ffmpeg()
+
         audio_pipeline = self.modules['AudioToTextPipeline']()
-        audio_pipeline.downloads_dir = self.downloads_dir  # 다운로드 경로 설정
-
         text_paths = []
-        for i, video_path in enumerate(video_paths, 1):
-            self._emit_log(f"🎤 ({i}/{len(video_paths)}) 텍스트 변환 중: {Path(video_path).name}")
-            text_path = audio_pipeline.process(video_path)
-            text_paths.append(text_path)
 
-        self._emit_log(f"{Messages.CONVERSION_COMPLETE}: {len(text_paths)}개 파일")
-        self._emit_log("📄 변환된 텍스트 파일들:")
-        for i, filepath in enumerate(text_paths, 1):
-            self._emit_log(f"   📝 ({i}) {filepath}")
+        for i, video_path in enumerate(video_paths, 1):
+            try:
+                self._emit_log(f"🎤 ({i}/{len(video_paths)}) 텍스트 변환 중: {Path(video_path).name}")
+                self._emit_log(f"📄 원본 파일: {video_path}")
+
+                text_path = audio_pipeline.process(video_path)
+                text_paths.append(text_path)
+
+                self._emit_log(f"{Messages.CONVERSION_COMPLETE}: {text_path}")
+
+            except Exception as e:
+                self._emit_log(f"{Messages.CONVERSION_FAILED} ({Path(video_path).name}): {e}")
+                self._emit_log(f"[DEBUG] 오류 상세: {str(e)}")
+
+        # 변환된 텍스트 파일 목록
+        if text_paths:
+            self._emit_log("📄 변환된 텍스트 파일들:")
+            for i, text_path in enumerate(text_paths, 1):
+                self._emit_log(f"   📝 ({i}) {text_path}")
 
         return text_paths
 
@@ -143,16 +150,53 @@ class ProcessingWorker(QThread):
         self._emit_log(Messages.TEXT_SUMMARIZING)
 
         summarize_pipeline = self.modules['SummarizePipeline']()
-        summarize_pipeline.downloads_dir = self.downloads_dir  # 다운로드 경로 설정
+        summary_paths = []
 
-        summarized_paths = []
         for i, text_path in enumerate(text_paths, 1):
-            self._emit_log(f"📝 ({i}/{len(text_paths)}) 요약 생성 중: {Path(text_path).name}")
-            summarized_path = summarize_pipeline.process(text_path)
-            summarized_paths.append(summarized_path)
+            try:
+                self._emit_log(f"📝 ({i}/{len(text_paths)}) 요약 생성 중: {Path(text_path).name}")
+                self._emit_log(f"📄 입력 파일: {text_path}")
 
-        self._emit_log(f"{Messages.SUMMARY_COMPLETE}: {len(summarized_paths)}개 파일")
-        return summarized_paths
+                summary_path = summarize_pipeline.process(text_path)
+                summary_paths.append(summary_path)
+
+                self._emit_log(f"{Messages.SUMMARY_COMPLETE}: {summary_path}")
+
+            except Exception as e:
+                self._emit_log(f"{Messages.SUMMARY_FAILED} ({Path(text_path).name}): {e}")
+                self._emit_log(f"[DEBUG] 오류 상세: {str(e)}")
+
+        return summary_paths
+
+    def _check_ffmpeg(self):
+        """ffmpeg 설치 확인"""
+        import shutil
+        import sys
+        import os
+
+        ffmpeg_path = shutil.which('ffmpeg')
+        if ffmpeg_path:
+            self._emit_log(f"🔧 ffmpeg 찾음: {ffmpeg_path}")
+            return
+
+        # .app 번들 내부의 ffmpeg 확인
+        if getattr(sys, 'frozen', False):
+            bundle_ffmpeg = os.path.join(sys._MEIPASS, 'ffmpeg')
+            if os.path.exists(bundle_ffmpeg):
+                os.environ['PATH'] = f"{os.path.dirname(bundle_ffmpeg)}:{os.environ.get('PATH', '')}"
+                self._emit_log(f"🔧 번들된 ffmpeg 사용: {bundle_ffmpeg}")
+                return
+
+        # 시스템 경로 확인
+        possible_paths = ['/usr/local/bin', '/opt/homebrew/bin', '/usr/bin']
+        for path in possible_paths:
+            if os.path.exists(os.path.join(path, 'ffmpeg')):
+                os.environ['PATH'] = f"{path}:{os.environ.get('PATH', '')}"
+                self._emit_log(f"🔧 ffmpeg PATH 추가: {path}")
+                return
+
+        self._emit_log("❌ ffmpeg를 찾을 수 없습니다. 설치가 필요합니다.")
+        raise RuntimeError("ffmpeg가 설치되어 있지 않습니다.")
 
     def _display_results(self, video_paths: List[str], text_paths: List[str]):
         """결과 요약 표시"""
@@ -170,7 +214,9 @@ class ProcessingWorker(QThread):
 
         # 저장 위치 안내
         if video_paths or text_paths:
-            self._emit_log(f"\n📁 모든 파일이 저장된 위치: {self.downloads_dir}")
+            from src.gui.core.file_manager import get_resource_path
+            downloads_dir = get_resource_path("downloads")
+            self._emit_log(f"\n📁 모든 파일이 저장된 위치: {downloads_dir}")
             self._emit_log("💡 Finder에서 확인: open downloads/")
 
         self._emit_log("="*50)
