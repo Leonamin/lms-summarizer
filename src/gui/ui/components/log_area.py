@@ -27,7 +27,7 @@ class LogArea:
         text_area = QTextEdit()
         text_area.setReadOnly(True)
         text_area.setStyleSheet(StyleSheet.log_area())
-        text_area.setMaximumHeight(Limits.LOG_AREA_MAX_HEIGHT)
+        text_area.setMinimumHeight(Limits.LOG_AREA_MIN_HEIGHT)
         text_area.setPlainText("📋 작업 로그가 여기에 표시됩니다...\n")
         return text_area
 

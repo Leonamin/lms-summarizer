@@ -24,12 +24,16 @@ class ProcessingWorker(QThread):
     # 시그널 정의
     log_message = pyqtSignal(str)
     processing_finished = pyqtSignal(bool, str)
+    step_changed = pyqtSignal(int, str)      # (단계번호 1~3, 단계명)
+    progress_updated = pyqtSignal(int, int)  # (현재 bytes, 전체 bytes)
 
-    def __init__(self, user_inputs: Dict[str, str], modules: Dict, save_video_dir: str = None):
+    def __init__(self, user_inputs: Dict[str, str], modules: Dict, save_video_dir: str = None,
+                 model_name: str = "gemini-2.5-flash"):
         super().__init__()
         self.user_inputs = user_inputs
         self.modules = modules
         self.save_video_dir = save_video_dir
+        self.model_name = model_name
         self._cancel_event = threading.Event()
 
     def request_cancel(self):
@@ -112,6 +116,7 @@ class ProcessingWorker(QThread):
 
         # 1. 비디오 다운로드 파이프라인
         self._check_cancelled()
+        self.step_changed.emit(1, "영상 다운로드")
         video_paths = self._download_videos(urls, user_setting)
 
         if not video_paths:
@@ -119,11 +124,17 @@ class ProcessingWorker(QThread):
 
         # 2. 오디오를 텍스트로 변환
         self._check_cancelled()
+        self.step_changed.emit(2, "음성 → 텍스트 변환")
         text_paths = self._convert_audio_to_text(video_paths)
 
         # 3. 텍스트 요약
         self._check_cancelled()
+        self.step_changed.emit(3, "AI 요약 생성")
         self._summarize_texts(text_paths)
+
+        # 체크박스 미선택 시 원본 영상 삭제 (강의 폴더 내 mp4만 제거)
+        if not self.save_video_dir:
+            self._delete_video_files(video_paths)
 
         # 결과 정리
         self._display_results(video_paths, text_paths)
@@ -136,6 +147,7 @@ class ProcessingWorker(QThread):
         self._last_progress_pct = -1
 
         def on_progress(downloaded, total):
+            self.progress_updated.emit(downloaded, total)
             pct = int(downloaded / total * 100)
             if pct != self._last_progress_pct and pct % 10 == 0:
                 self._last_progress_pct = pct
@@ -155,38 +167,18 @@ class ProcessingWorker(QThread):
         for i, filepath in enumerate(video_paths, 1):
             self._emit_log(f"   📹 ({i}) {filepath}")
 
-        # 원본 영상 저장 옵션
-        if self.save_video_dir and video_paths:
-            self._save_videos_to_dir(video_paths)
-
         return video_paths
 
-    def _save_videos_to_dir(self, video_paths: List[str]):
-        """원본 영상을 사용자 지정 경로에 저장"""
-        import shutil
-        self._emit_log(f"📂 원본 영상 저장 경로: {self.save_video_dir}")
-
+    def _delete_video_files(self, video_paths: List[str]):
+        """처리 완료 후 원본 영상 삭제 (원본 보관 옵션 미선택 시)"""
+        import os
         for filepath in video_paths:
-            src = Path(filepath)
-            dest = Path(self.save_video_dir) / src.name
-
-            # 이미 같은 경로면 스킵
-            if src.resolve() == dest.resolve():
-                self._emit_log(f"   ✅ 이미 저장 경로에 있음: {src.name}")
-                continue
-
-            # 파일명 충돌 시 자동 번호 추가
-            if dest.exists():
-                stem = src.stem
-                suffix = src.suffix
-                counter = 1
-                while dest.exists():
-                    dest = Path(self.save_video_dir) / f"{stem}_{counter}{suffix}"
-                    counter += 1
-                self._emit_log(f"   ⚠️ 파일명 충돌로 이름 변경: {dest.name}")
-
-            shutil.copy2(str(src), str(dest))
-            self._emit_log(f"   📹 저장 완료: {dest}")
+            try:
+                if os.path.exists(filepath):
+                    os.remove(filepath)
+                    self._emit_log(f"🗑️ 원본 영상 삭제됨: {Path(filepath).name}")
+            except Exception as e:
+                self._emit_log(f"⚠️ 영상 삭제 실패 ({Path(filepath).name}): {e}")
 
     def _convert_audio_to_text(self, video_paths: List[str]) -> List[str]:
         """오디오를 텍스트로 변환"""
@@ -229,7 +221,7 @@ class ProcessingWorker(QThread):
         """텍스트 요약"""
         self._emit_log(Messages.TEXT_SUMMARIZING)
 
-        summarize_pipeline = self.modules['SummarizePipeline']()
+        summarize_pipeline = self.modules['SummarizePipeline'](self.model_name)
         summary_paths = []
 
         for i, text_path in enumerate(text_paths, 1):

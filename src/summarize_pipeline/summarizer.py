@@ -7,11 +7,12 @@ import pyperclip
 from src.user_setting import UserSetting
 
 
-def summarize_text(txt_path: str, prompt: str, engine: str = "gemini"):
+def summarize_text(txt_path: str, prompt: str, engine: str = "gemini",
+                   model_name: str = None):
     if engine == "openai":
         summarizer = OpenAISummarizer(model_name="gpt-4o")
     elif engine == "gemini":
-        summarizer = GeminiSummarizer()
+        summarizer = GeminiSummarizer(model_name=model_name or "gemini-2.5-flash")
     elif engine == "chatgpt":
         summarizer = ChatGPTSummarizer()
     else:
@@ -66,7 +67,7 @@ class OpenAISummarizer(Summarizer):
 
 
 class GeminiSummarizer(Summarizer):
-    def __init__(self, model_name: str = "gemini-1.5-flash"):
+    def __init__(self, model_name: str = "gemini-2.5-flash"):
         user_setting = UserSetting()
         self.model_name = model_name
         genai.configure(api_key=user_setting.GOOGLE_API_KEY)
