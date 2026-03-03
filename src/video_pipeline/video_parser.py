@@ -110,7 +110,7 @@ class DomVideoExtractor(VideoUrlExtractor):
                 video_el = await video_frame.query_selector(self.VIDEO_SELECTOR)
                 if video_el:
                     src = await video_el.get_attribute("src")
-                    if src and self.VIDEO_URL_PATTERN in src:
+                    if src and src.startswith("http") and self.VIDEO_URL_PATTERN in src:
                         print(f"[DEBUG] DOM에서 비디오 URL 찾음: {src}")
                         shared_state["video_url"] = src
                         return src, shared_state["title"]
