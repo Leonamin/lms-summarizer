@@ -31,6 +31,7 @@ from src.gui.ui.components.input_field import InputField
 from src.gui.ui.components.log_area import LogArea
 from src.gui.ui.components.buttons import ProcessingButton, ClearButton, AppButton
 from src.gui.ui.components.model_selector import ModelSelector
+from src.gui.ui.components.toast import ToastMessage
 from src.gui.ui.dialogs.progress_modal import ProcessingModal
 from src.gui.workers.processing_worker import ProcessingWorker
 
@@ -53,9 +54,11 @@ class MainWindow(QWidget):
         self.modal: ProcessingModal = None
         self.path_value_label: QLabel = None
         self.model_selector: ModelSelector = None
+        self._toast: ToastMessage = None
 
         self._setup_window()
         self._setup_ui()
+        self._connect_password_toast()
         self._load_saved_inputs()
         self._check_module_status()
 
@@ -328,6 +331,20 @@ class MainWindow(QWidget):
             self.worker = None
 
     # ── 유틸리티 ───────────────────────────────────────────────────
+
+    def _connect_password_toast(self):
+        """비밀번호 필드 한글 감지 시 토스트 메시지 연결"""
+        self._toast = ToastMessage(self)
+        password_field = self.input_fields.get('password')
+        if password_field and hasattr(password_field.widget, 'korean_detected'):
+            password_field.widget.korean_detected.connect(
+                lambda: self._toast.show_message("⌨️ 영문 자판으로 전환해주세요")
+            )
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if self._toast:
+            self._toast.reposition()
 
     def _collect_input_values(self) -> Dict[str, str]:
         return {name: field.get_value() for name, field in self.input_fields.items()}
