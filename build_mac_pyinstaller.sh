@@ -13,14 +13,17 @@ if [ ! -f "src/gui/main.py" ]; then
     exit 1
 fi
 
-# 가상환경 활성화 확인
-if [ -z "$VIRTUAL_ENV" ]; then
-    echo "⚠️  가상환경이 활성화되지 않았습니다. .venv를 활성화합니다..."
-    source .venv/bin/activate
+# uv 설치 확인
+if ! command -v uv &> /dev/null; then
+    echo "❌ uv가 설치되어 있지 않습니다. https://docs.astral.sh/uv/getting-started/installation/"
+    exit 1
 fi
 
+echo "📦 의존성 설치 중..."
+uv sync
+
 echo "📦 PyInstaller를 설치합니다..."
-pip install pyinstaller
+uv pip install pyinstaller
 
 # 기존 빌드 파일들 정리
 echo "🧹 기존 빌드 파일들을 정리합니다..."

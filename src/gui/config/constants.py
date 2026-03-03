@@ -49,7 +49,7 @@ class Messages:
 
     # 에러 메시지
     MODULE_LOAD_ERROR = f"{EMOJI_ERROR} 필수 모듈들이 로드되지 않았습니다"
-    INSTALL_REQUIREMENTS = "pip install -r requirements.txt 실행 후 재시작하세요."
+    INSTALL_REQUIREMENTS = "uv sync 실행 후 재시작하세요."
 
     # 입력 검증 메시지
     STUDENT_ID_REQUIRED = "학번을 입력해주세요."
