@@ -9,11 +9,12 @@ from src.user_setting import UserSetting
 
 
 class VideoPipeline:
-    def __init__(self, user_setting: UserSetting):
+    def __init__(self, user_setting: UserSetting, extraction_timeout: float = 60):
         self.user_setting = user_setting
         self.user_id = user_setting.user_id
         self.password = user_setting.password
         self.downloads_dir = None  # 다운로드 경로는 나중에 설정됨
+        self.extraction_timeout = extraction_timeout
 
     async def _setup_browser(self, playwright: Playwright) -> Tuple[Page, any]:
         """브라우저 설정 및 페이지 생성"""
@@ -59,7 +60,7 @@ class VideoPipeline:
         else:
             print("[INFO] 로그인 불필요.")
 
-        video_url, title = await extract_video_url(page)
+        video_url, title = await extract_video_url(page, method="dom", timeout=self.extraction_timeout)
 
         if video_url:
             print(f"[SUCCESS] 동영상 링크 추출됨: {video_url}, 제목: {title}")

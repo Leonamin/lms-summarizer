@@ -5,7 +5,7 @@ import requests
 from src.gui.core.file_manager import get_downloads_dir
 
 
-def download_video(url: str, filename: str = None) -> str:
+def download_video(url: str, filename: str = None, save_dir: str = None) -> str:
     if filename is None:
         # 랜덤 알파벳 8자리
         filename = ''.join(random.choices(
@@ -16,7 +16,9 @@ def download_video(url: str, filename: str = None) -> str:
         filename += '.mp4'
 
     try:
-        save_dir = get_downloads_dir()
+        if save_dir is None:
+            save_dir = get_downloads_dir()
+        os.makedirs(save_dir, exist_ok=True)
         filepath = os.path.join(save_dir, filename)
 
         print(f"[INFO] 동영상 다운로드 중...: {url}")

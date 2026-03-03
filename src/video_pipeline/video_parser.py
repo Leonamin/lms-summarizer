@@ -1,23 +1,19 @@
 import asyncio
+from abc import ABC, abstractmethod
 from playwright.sync_api import Page
 
 
-async def on_request(event, shared_state: dict):
-    url = event["request"]["url"]
-    print(f"[CDP] 요청 감지: {url}")
-    if "ssmovie.mp4" in url and shared_state["video_url"] is None:
-        print(f"[CDP] ssmovie.mp4 요청 감지: {url}")
-        shared_state["video_url"] = url
-
-
-async def register_cdp_video_sniffer(page: Page, shared_state: dict):
-    client = await page.context.new_cdp_session(page)
-    await client.send("Network.enable")
-    client.on("Network.requestWillBeSent",
-              lambda e: asyncio.create_task(on_request(e, shared_state)))
-
+# ==============================================================
+# 공통 헬퍼
+# ==============================================================
 
 async def find_canvas_video_frame(page: Page, shared_state: dict):
+    """LMS 페이지의 중첩 iframe 구조에서 비디오 플레이어가 있는 inner iframe을 찾는다.
+
+    iframe 구조:
+    1. outer iframe (name="tool_content")
+    2. inner iframe (class="xnlailvc-commons-frame", src에 "commons.ssu.ac.kr" 포함)
+    """
     for _ in range(10):
         outer = page.frame(name="tool_content")
         if outer:
@@ -27,7 +23,7 @@ async def find_canvas_video_frame(page: Page, shared_state: dict):
                 if title_element:
                     shared_state["title"] = await title_element.text_content()
                     print(f"[DEBUG] 제목 찾음: {shared_state['title']}")
-            except:
+            except Exception:
                 print("[WARN] 제목을 찾을 수 없음")
             for frame in page.frames:
                 if frame.parent_frame == outer and "commons.ssu.ac.kr" in frame.url:
@@ -38,41 +34,184 @@ async def find_canvas_video_frame(page: Page, shared_state: dict):
     return None
 
 
-async def trigger_video_play(frame):
+async def trigger_video_play(frame, resume: bool = True):
+    """재생 버튼을 클릭하고 이어보기 다이얼로그를 처리한다.
+
+    Args:
+        frame: 비디오 컨트롤이 있는 inner iframe.
+        resume: True면 "예"(.confirm-ok-btn) 클릭, False면 "아니오"(.confirm-cancel-btn) 클릭.
+    """
     try:
         play_btn = await frame.wait_for_selector(".vc-front-screen-play-btn", timeout=5000)
         await play_btn.click()
         print("[INFO] 재생 버튼 클릭됨.")
-    except:
+    except Exception:
         print("[WARN] 재생 버튼을 찾을 수 없음.")
         return
 
     try:
         confirm_dialog = await frame.wait_for_selector("#confirm-dialog", timeout=2000)
-        cancel_btn = await confirm_dialog.query_selector(".confirm-cancel-btn.confirm-btn")
-        if cancel_btn:
-            await cancel_btn.click()
-            print("[INFO] 확인창 닫음.")
-    except:
+        if resume:
+            ok_btn = await confirm_dialog.query_selector(".confirm-ok-btn")
+            if ok_btn:
+                await ok_btn.click()
+                print("[INFO] 이어보기(예) 클릭됨.")
+        else:
+            cancel_btn = await confirm_dialog.query_selector(".confirm-cancel-btn.confirm-btn")
+            if cancel_btn:
+                await cancel_btn.click()
+                print("[INFO] 처음부터(아니오) 클릭됨.")
+    except Exception:
+        pass  # 다이얼로그가 나타나지 않은 경우 (처음 재생)
+
+
+# ==============================================================
+# 추상 베이스 클래스
+# ==============================================================
+
+class VideoUrlExtractor(ABC):
+    """비디오 URL 추출 전략의 베이스 클래스."""
+
+    @abstractmethod
+    async def extract(self, page: Page, timeout: float = 60) -> tuple[str, str]:
+        """페이지에서 비디오 URL과 제목을 추출한다.
+
+        Returns:
+            (video_url, title) 튜플. 실패 시 (None, None).
+        """
         pass
 
 
-async def extract_video_url(page: Page) -> tuple[str, str]:
-    shared_state = {"video_url": None, "title": None}
-    await register_cdp_video_sniffer(page, shared_state)
+# ==============================================================
+# DOM 기반 추출 (기본 방식)
+# ==============================================================
 
-    video_frame = await find_canvas_video_frame(page, shared_state)
-    if not video_frame:
+class DomVideoExtractor(VideoUrlExtractor):
+    """재생 후 video.vc-vplay-video1 요소의 src 속성에서 URL을 추출한다."""
+
+    VIDEO_SELECTOR = "video.vc-vplay-video1"
+    VIDEO_URL_PATTERN = ".mp4"
+
+    async def extract(self, page: Page, timeout: float = 60) -> tuple[str, str]:
+        shared_state = {"video_url": None, "title": None}
+
+        video_frame = await find_canvas_video_frame(page, shared_state)
+        if not video_frame:
+            return None, None
+
+        await trigger_video_play(video_frame, resume=True)
+
+        print("[DEBUG] DOM에서 비디오 URL 대기 시작")
+        poll_interval = 0.5
+        max_polls = int(timeout / poll_interval)
+
+        for _ in range(max_polls):
+            try:
+                video_el = await video_frame.query_selector(self.VIDEO_SELECTOR)
+                if video_el:
+                    src = await video_el.get_attribute("src")
+                    if src and self.VIDEO_URL_PATTERN in src:
+                        print(f"[DEBUG] DOM에서 비디오 URL 찾음: {src}")
+                        shared_state["video_url"] = src
+                        return src, shared_state["title"]
+            except Exception as e:
+                print(f"[WARN] DOM 폴링 중 오류: {e}")
+
+            await asyncio.sleep(poll_interval)
+
+        print("[DEBUG] DOM에서 비디오 URL을 찾지 못했습니다.")
         return None, None
 
-    await trigger_video_play(video_frame)
 
-    print("[DEBUG] 비디오 URL 대기 시작")
-    for _ in range(100):  # 최대 10초 대기 (0.1초 간격)
-        if shared_state["video_url"]:
-            print(f"[DEBUG] 비디오 URL 찾음: {shared_state['video_url']}")
-            return shared_state["video_url"], shared_state["title"]
-        await asyncio.sleep(0.1)
+# ==============================================================
+# CDP 기반 추출 (deprecated fallback)
+# ==============================================================
 
-    print("[DEBUG] 비디오 URL을 찾지 못했습니다.")
-    return None, None
+class CdpVideoExtractor(VideoUrlExtractor):
+    """CDP Network.requestWillBeSent로 ssmovie.mp4 요청을 가로채서 URL을 추출한다.
+
+    DEPRECATED: CDP 스니핑이 더 이상 안정적으로 동작하지 않는다.
+    DomVideoExtractor가 실패할 경우의 fallback으로 유지한다.
+    """
+
+    VIDEO_URL_PATTERN = "ssmovie.mp4"
+
+    async def _on_request(self, event, shared_state: dict):
+        url = event["request"]["url"]
+        if self.VIDEO_URL_PATTERN in url and shared_state["video_url"] is None:
+            print(f"[CDP] ssmovie.mp4 요청 감지: {url}")
+            shared_state["video_url"] = url
+
+    async def _register_sniffer(self, page: Page, shared_state: dict):
+        client = await page.context.new_cdp_session(page)
+        await client.send("Network.enable")
+        client.on(
+            "Network.requestWillBeSent",
+            lambda e: asyncio.create_task(self._on_request(e, shared_state)),
+        )
+
+    async def extract(self, page: Page, timeout: float = 60) -> tuple[str, str]:
+        import warnings
+        warnings.warn(
+            "CdpVideoExtractor is deprecated. Use DomVideoExtractor instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
+        shared_state = {"video_url": None, "title": None}
+        await self._register_sniffer(page, shared_state)
+
+        video_frame = await find_canvas_video_frame(page, shared_state)
+        if not video_frame:
+            return None, None
+
+        await trigger_video_play(video_frame, resume=False)
+
+        print("[DEBUG] CDP 비디오 URL 대기 시작")
+        poll_interval = 0.1
+        max_polls = int(timeout / poll_interval)
+
+        for _ in range(max_polls):
+            if shared_state["video_url"]:
+                print(f"[DEBUG] CDP 비디오 URL 찾음: {shared_state['video_url']}")
+                return shared_state["video_url"], shared_state["title"]
+            await asyncio.sleep(poll_interval)
+
+        print("[DEBUG] CDP 비디오 URL을 찾지 못했습니다.")
+        return None, None
+
+
+# ==============================================================
+# 팩토리 함수 (진입점)
+# ==============================================================
+
+_EXTRACTORS = {
+    "dom": DomVideoExtractor,
+    "cdp": CdpVideoExtractor,
+}
+
+
+async def extract_video_url(
+    page: Page,
+    method: str = "dom",
+    timeout: float = 60,
+) -> tuple[str, str]:
+    """LMS 페이지에서 비디오 URL을 추출한다.
+
+    Args:
+        page: LMS 콘텐츠가 로드된 Playwright 페이지.
+        method: "dom" (기본, 권장) 또는 "cdp" (deprecated fallback).
+        timeout: 최대 대기 시간(초). 기본 60초.
+
+    Returns:
+        (video_url, title) 튜플. 실패 시 (None, None).
+    """
+    extractor_cls = _EXTRACTORS.get(method)
+    if extractor_cls is None:
+        raise ValueError(
+            f"Unknown extraction method '{method}'. "
+            f"Supported: {list(_EXTRACTORS.keys())}"
+        )
+
+    extractor = extractor_cls()
+    return await extractor.extract(page, timeout=timeout)
