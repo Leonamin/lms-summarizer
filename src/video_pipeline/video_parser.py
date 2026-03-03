@@ -50,17 +50,18 @@ async def trigger_video_play(frame, resume: bool = True):
         return
 
     try:
-        confirm_dialog = await frame.wait_for_selector("#confirm-dialog", timeout=2000)
-        if resume:
-            ok_btn = await confirm_dialog.query_selector(".confirm-ok-btn")
-            if ok_btn:
-                await ok_btn.click()
-                print("[INFO] 이어보기(예) 클릭됨.")
-        else:
-            cancel_btn = await confirm_dialog.query_selector(".confirm-cancel-btn.confirm-btn")
-            if cancel_btn:
-                await cancel_btn.click()
-                print("[INFO] 처음부터(아니오) 클릭됨.")
+        confirm_dialog = await frame.wait_for_selector(".confirm-msg-box", timeout=5000)
+        if confirm_dialog:
+            if resume:
+                ok_btn = await frame.wait_for_selector(".confirm-ok-btn.confirm-btn", timeout=2000)
+                if ok_btn:
+                    await ok_btn.click()
+                    print("[INFO] 이어보기(예) 클릭됨.")
+            else:
+                cancel_btn = await frame.wait_for_selector(".confirm-cancel-btn.confirm-btn", timeout=2000)
+                if cancel_btn:
+                    await cancel_btn.click()
+                    print("[INFO] 처음부터(아니오) 클릭됨.")
     except Exception:
         pass  # 다이얼로그가 나타나지 않은 경우 (처음 재생)
 
