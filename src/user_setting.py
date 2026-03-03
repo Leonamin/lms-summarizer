@@ -11,7 +11,8 @@ class UserSetting:
         self.gui_inputs = gui_inputs or {}
         
         # .env 파일이 있으면 로드, 없으면 GUI 입력값 사용
-        env_path = Path('.env')
+        # 이 파일(user_setting.py)과 같은 src/ 디렉토리의 .env를 사용 (CWD 의존 방지)
+        env_path = Path(__file__).parent / '.env'
         if env_path.exists():
             load_dotenv()
             self.user_id = os.getenv("USERID")
