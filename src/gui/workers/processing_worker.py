@@ -2,6 +2,7 @@
 백그라운드에서 LMS 처리 작업을 수행하는 워커 스레드
 """
 
+import threading
 import traceback
 from pathlib import Path
 from typing import Dict, List
@@ -10,6 +11,11 @@ from PyQt5.QtCore import QThread, pyqtSignal
 from src.gui.config.constants import Messages
 from src.gui.core.file_manager import create_config_files, extract_urls_from_input
 from src.gui.core.module_loader import check_required_modules
+
+
+class CancelledException(Exception):
+    """사용자가 작업을 취소했을 때 발생하는 예외"""
+    pass
 
 
 class ProcessingWorker(QThread):
@@ -23,6 +29,20 @@ class ProcessingWorker(QThread):
         super().__init__()
         self.user_inputs = user_inputs
         self.modules = modules
+        self._cancel_event = threading.Event()
+
+    def request_cancel(self):
+        """취소 요청 (메인 스레드에서 호출)"""
+        self._cancel_event.set()
+
+    def is_cancelled(self) -> bool:
+        """취소 요청 여부 확인"""
+        return self._cancel_event.is_set()
+
+    def _check_cancelled(self):
+        """취소 요청 시 CancelledException 발생"""
+        if self._cancel_event.is_set():
+            raise CancelledException("사용자가 작업을 취소했습니다.")
 
     def run(self):
         """실제 처리 작업 실행"""
@@ -33,8 +53,12 @@ class ProcessingWorker(QThread):
             if not self._validate_modules():
                 return
 
+            self._check_cancelled()
+
             # 설정 파일 생성
             self._create_configuration()
+
+            self._check_cancelled()
 
             # 메인 처리 파이프라인 실행
             self._execute_processing_pipeline()
@@ -42,6 +66,10 @@ class ProcessingWorker(QThread):
             # 완료 메시지
             self._emit_log(Messages.PROCESSING_COMPLETE)
             self.processing_finished.emit(True, "작업이 성공적으로 완료되었습니다.")
+
+        except CancelledException:
+            self._emit_log("⚠️ 사용자에 의해 작업이 취소되었습니다.")
+            self.processing_finished.emit(False, "작업이 취소되었습니다.")
 
         except Exception as e:
             error_msg = f"작업 중 오류 발생: {str(e)}"
@@ -82,12 +110,15 @@ class ProcessingWorker(QThread):
         user_setting = self.modules['UserSetting'](self.user_inputs)
 
         # 1. 비디오 다운로드 파이프라인
+        self._check_cancelled()
         video_paths = self._download_videos(urls, user_setting)
 
         # 2. 오디오를 텍스트로 변환
+        self._check_cancelled()
         text_paths = self._convert_audio_to_text(video_paths)
 
         # 3. 텍스트 요약
+        self._check_cancelled()
         self._summarize_texts(text_paths)
 
         # 결과 정리
@@ -101,6 +132,7 @@ class ProcessingWorker(QThread):
         video_pipeline = self.modules['VideoPipeline'](user_setting)
 
         for i, url in enumerate(urls, 1):
+            self._check_cancelled()
             self._emit_log(f"📥 ({i}/{len(urls)}) 다운로드 시작: {url}")
 
         video_paths = video_pipeline.process_sync(urls)
@@ -124,6 +156,7 @@ class ProcessingWorker(QThread):
         text_paths = []
 
         for i, video_path in enumerate(video_paths, 1):
+            self._check_cancelled()
             try:
                 self._emit_log(f"🎤 ({i}/{len(video_paths)}) 텍스트 변환 중: {Path(video_path).name}")
                 self._emit_log(f"📄 원본 파일: {video_path}")
@@ -133,6 +166,8 @@ class ProcessingWorker(QThread):
 
                 self._emit_log(f"{Messages.CONVERSION_COMPLETE}: {text_path}")
 
+            except CancelledException:
+                raise
             except Exception as e:
                 self._emit_log(f"{Messages.CONVERSION_FAILED} ({Path(video_path).name}): {e}")
                 self._emit_log(f"[DEBUG] 오류 상세: {str(e)}")
@@ -153,6 +188,7 @@ class ProcessingWorker(QThread):
         summary_paths = []
 
         for i, text_path in enumerate(text_paths, 1):
+            self._check_cancelled()
             try:
                 self._emit_log(f"📝 ({i}/{len(text_paths)}) 요약 생성 중: {Path(text_path).name}")
                 self._emit_log(f"📄 입력 파일: {text_path}")
@@ -162,6 +198,8 @@ class ProcessingWorker(QThread):
 
                 self._emit_log(f"{Messages.SUMMARY_COMPLETE}: {summary_path}")
 
+            except CancelledException:
+                raise
             except Exception as e:
                 self._emit_log(f"{Messages.SUMMARY_FAILED} ({Path(text_path).name}): {e}")
                 self._emit_log(f"[DEBUG] 오류 상세: {str(e)}")

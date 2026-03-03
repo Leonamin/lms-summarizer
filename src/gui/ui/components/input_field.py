@@ -2,11 +2,49 @@
 재사용 가능한 입력 필드 컴포넌트
 """
 
-from PyQt5.QtWidgets import QLabel, QLineEdit, QTextEdit
-from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QLabel, QLineEdit, QTextEdit, QAction
+from PyQt5.QtCore import Qt, pyqtSignal
 
 from src.gui.config.settings import InputFieldConfig
 from src.gui.config.styles import StyleSheet
+
+
+class PasswordLineEdit(QLineEdit):
+    """비밀번호 입력 필드 (보이기/숨기기 토글 + Caps Lock 감지)"""
+
+    caps_lock_changed = pyqtSignal(bool)
+
+    def __init__(self, placeholder: str = ""):
+        super().__init__()
+        self.setPlaceholderText(placeholder)
+        self.setEchoMode(QLineEdit.Password)
+        self._password_visible = False
+        self._setup_toggle_action()
+
+    def _setup_toggle_action(self):
+        """보이기/숨기기 토글 액션 설정"""
+        self._toggle_action = QAction("👁", self)
+        self._toggle_action.triggered.connect(self._toggle_visibility)
+        self.addAction(self._toggle_action, QLineEdit.TrailingPosition)
+
+    def _toggle_visibility(self):
+        """비밀번호 보이기/숨기기 전환"""
+        self._password_visible = not self._password_visible
+        if self._password_visible:
+            self.setEchoMode(QLineEdit.Normal)
+            self._toggle_action.setText("🙈")
+        else:
+            self.setEchoMode(QLineEdit.Password)
+            self._toggle_action.setText("👁")
+
+    def keyPressEvent(self, event):
+        """키 입력 시 Caps Lock 상태 감지"""
+        super().keyPressEvent(event)
+        text = event.text()
+        if text and text.isalpha():
+            shift_pressed = bool(event.modifiers() & Qt.ShiftModifier)
+            caps_on = (text.isupper() and not shift_pressed) or (text.islower() and shift_pressed)
+            self.caps_lock_changed.emit(caps_on)
 
 
 class InputField:
@@ -16,6 +54,10 @@ class InputField:
         self.config = config
         self.label = self._create_label()
         self.widget = self._create_input_widget()
+        self.caps_lock_label = None
+
+        if self.config.is_password:
+            self._setup_caps_lock_label()
 
     def _create_label(self) -> QLabel:
         """라벨 생성"""
@@ -32,13 +74,13 @@ class InputField:
 
     def _create_single_line_input(self) -> QLineEdit:
         """단일 라인 입력 필드 생성"""
-        widget = QLineEdit()
-        widget.setPlaceholderText(self.config.placeholder)
-        widget.setStyleSheet(StyleSheet.input_field())
-
         if self.config.is_password:
-            widget.setEchoMode(QLineEdit.Password)
+            widget = PasswordLineEdit(self.config.placeholder)
+        else:
+            widget = QLineEdit()
+            widget.setPlaceholderText(self.config.placeholder)
 
+        widget.setStyleSheet(StyleSheet.input_field())
         return widget
 
     def _create_multiline_input(self) -> QTextEdit:
@@ -51,6 +93,13 @@ class InputField:
             widget.setMaximumHeight(self.config.max_height)
 
         return widget
+
+    def _setup_caps_lock_label(self):
+        """Caps Lock 경고 라벨 설정"""
+        self.caps_lock_label = QLabel("⚠ Caps Lock이 켜져 있습니다")
+        self.caps_lock_label.setStyleSheet(StyleSheet.caps_lock_warning())
+        self.caps_lock_label.setVisible(False)
+        self.widget.caps_lock_changed.connect(self.caps_lock_label.setVisible)
 
     def get_value(self) -> str:
         """입력값 반환"""

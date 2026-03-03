@@ -126,6 +126,21 @@ def extract_urls_from_input(url_input: str) -> List[str]:
     return urls
 
 
+_PERSISTABLE_FIELDS = ['student_id', 'api_key', 'urls']
+
+
+def save_user_inputs(inputs: Dict[str, str]) -> None:
+    """사용자 입력값을 설정 파일에 저장 (비밀번호 제외)"""
+    settings = load_settings()
+    settings['user_inputs'] = {k: inputs[k] for k in _PERSISTABLE_FIELDS if k in inputs}
+    save_settings(settings)
+
+
+def load_user_inputs() -> Dict[str, str]:
+    """저장된 사용자 입력값 로드"""
+    return load_settings().get('user_inputs', {})
+
+
 def get_downloads_dir() -> str:
     """다운로드 디렉토리 경로 반환"""
     if getattr(sys, 'frozen', False):
