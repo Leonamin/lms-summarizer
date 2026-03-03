@@ -31,7 +31,7 @@ jobs:
 
       - name: 의존성 설치
         run: |
-          uv sync
+          uv sync --frozen
           uv pip install pyinstaller
 
       - name: Whisper 모델 다운로드 (base, ~142MB)
@@ -74,10 +74,9 @@ jobs:
       - name: ffmpeg 설치
         run: choco install ffmpeg -y
 
-      - name: 의존성 설치 (torch CPU-only, 용량 절감)
+      - name: 의존성 설치
         run: |
-          uv sync
-          uv pip install torch --index-url https://download.pytorch.org/whl/cpu
+          uv sync --frozen
           uv pip install pyinstaller
 
       - name: Whisper 모델 다운로드 (base, ~142MB)

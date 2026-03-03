@@ -2,10 +2,17 @@ version = 1
 revision = 3
 requires-python = ">=3.9, <3.13"
 resolution-markers = [
-    "python_full_version >= '3.12'",
-    "python_full_version == '3.11.*'",
-    "python_full_version == '3.10.*'",
-    "python_full_version < '3.10'",
+    "(python_full_version >= '3.12' and platform_machine != 'AMD64') or (python_full_version >= '3.12' and sys_platform != 'win32')",
+    "python_full_version >= '3.12' and platform_machine == 'AMD64' and sys_platform == 'win32'",
+    "(python_full_version == '3.11.*' and platform_machine != 'AMD64') or (python_full_version == '3.11.*' and sys_platform != 'win32')",
+    "python_full_version == '3.11.*' and platform_machine == 'AMD64' and sys_platform == 'win32'",
+    "(python_full_version == '3.10.*' and platform_machine != 'AMD64') or (python_full_version == '3.10.*' and sys_platform != 'win32')",
+    "python_full_version == '3.10.*' and platform_machine == 'AMD64' and sys_platform == 'win32'",
+    "(python_full_version < '3.10' and platform_machine != 'AMD64') or (python_full_version < '3.10' and sys_platform != 'win32')",
+    "python_full_version < '3.10' and platform_machine == 'AMD64' and sys_platform == 'win32'",
+]
+required-markers = [
+    "platform_machine == 'AMD64' and sys_platform == 'win32'",
 ]
 
 [[package]]
@@ -277,7 +284,8 @@ name = "filelock"
 version = "3.19.1"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "python_full_version < '3.10'",
+    "(python_full_version < '3.10' and platform_machine != 'AMD64') or (python_full_version < '3.10' and sys_platform != 'win32')",
+    "python_full_version < '3.10' and platform_machine == 'AMD64' and sys_platform == 'win32'",
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/40/bb/0ab3e58d22305b6f5440629d20683af28959bf793d98d11950e305c1c326/filelock-3.19.1.tar.gz", hash = "sha256:66eda1888b0171c998b35be2bcc0f6d75c388a7ce20c3f3f37aa8e96c2dddf58", size = 17687, upload-time = "2025-08-14T16:56:03.016Z" }
 wheels = [
@@ -289,9 +297,12 @@ name = "filelock"
 version = "3.25.0"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "python_full_version >= '3.12'",
-    "python_full_version == '3.11.*'",
-    "python_full_version == '3.10.*'",
+    "(python_full_version >= '3.12' and platform_machine != 'AMD64') or (python_full_version >= '3.12' and sys_platform != 'win32')",
+    "python_full_version >= '3.12' and platform_machine == 'AMD64' and sys_platform == 'win32'",
+    "(python_full_version == '3.11.*' and platform_machine != 'AMD64') or (python_full_version == '3.11.*' and sys_platform != 'win32')",
+    "python_full_version == '3.11.*' and platform_machine == 'AMD64' and sys_platform == 'win32'",
+    "(python_full_version == '3.10.*' and platform_machine != 'AMD64') or (python_full_version == '3.10.*' and sys_platform != 'win32')",
+    "python_full_version == '3.10.*' and platform_machine == 'AMD64' and sys_platform == 'win32'",
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/77/18/a1fd2231c679dcb9726204645721b12498aeac28e1ad0601038f94b42556/filelock-3.25.0.tar.gz", hash = "sha256:8f00faf3abf9dc730a1ffe9c354ae5c04e079ab7d3a683b7c32da5dd05f26af3", size = 40158, upload-time = "2026-03-01T15:08:45.916Z" }
 wheels = [
@@ -303,7 +314,8 @@ name = "fsspec"
 version = "2025.10.0"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "python_full_version < '3.10'",
+    "(python_full_version < '3.10' and platform_machine != 'AMD64') or (python_full_version < '3.10' and sys_platform != 'win32')",
+    "python_full_version < '3.10' and platform_machine == 'AMD64' and sys_platform == 'win32'",
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/24/7f/2747c0d332b9acfa75dc84447a066fdf812b5a6b8d30472b74d309bfe8cb/fsspec-2025.10.0.tar.gz", hash = "sha256:b6789427626f068f9a83ca4e8a3cc050850b6c0f71f99ddb4f542b8266a26a59", size = 309285, upload-time = "2025-10-30T14:58:44.036Z" }
 wheels = [
@@ -315,9 +327,12 @@ name = "fsspec"
 version = "2026.2.0"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "python_full_version >= '3.12'",
-    "python_full_version == '3.11.*'",
-    "python_full_version == '3.10.*'",
+    "(python_full_version >= '3.12' and platform_machine != 'AMD64') or (python_full_version >= '3.12' and sys_platform != 'win32')",
+    "python_full_version >= '3.12' and platform_machine == 'AMD64' and sys_platform == 'win32'",
+    "(python_full_version == '3.11.*' and platform_machine != 'AMD64') or (python_full_version == '3.11.*' and sys_platform != 'win32')",
+    "python_full_version == '3.11.*' and platform_machine == 'AMD64' and sys_platform == 'win32'",
+    "(python_full_version == '3.10.*' and platform_machine != 'AMD64') or (python_full_version == '3.10.*' and sys_platform != 'win32')",
+    "python_full_version == '3.10.*' and platform_machine == 'AMD64' and sys_platform == 'win32'",
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/51/7c/f60c259dcbf4f0c47cc4ddb8f7720d2dcdc8888c8e5ad84c73ea4531cc5b/fsspec-2026.2.0.tar.gz", hash = "sha256:6544e34b16869f5aacd5b90bdf1a71acb37792ea3ddf6125ee69a22a53fb8bff", size = 313441, upload-time = "2026-02-05T21:50:53.743Z" }
 wheels = [
@@ -439,7 +454,8 @@ name = "greenlet"
 version = "3.2.5"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "python_full_version < '3.10'",
+    "(python_full_version < '3.10' and platform_machine != 'AMD64') or (python_full_version < '3.10' and sys_platform != 'win32')",
+    "python_full_version < '3.10' and platform_machine == 'AMD64' and sys_platform == 'win32'",
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/b0/f5/3e9eafb4030588337b2a2ae4df46212956854e9069c07b53aa3caabafd47/greenlet-3.2.5.tar.gz", hash = "sha256:c816554eb33e7ecf9ba4defcb1fd8c994e59be6b4110da15480b3e7447ea4286", size = 191501, upload-time = "2026-02-20T20:08:51.539Z" }
 wheels = [
@@ -482,9 +498,12 @@ name = "greenlet"
 version = "3.3.2"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "python_full_version >= '3.12'",
-    "python_full_version == '3.11.*'",
-    "python_full_version == '3.10.*'",
+    "(python_full_version >= '3.12' and platform_machine != 'AMD64') or (python_full_version >= '3.12' and sys_platform != 'win32')",
+    "python_full_version >= '3.12' and platform_machine == 'AMD64' and sys_platform == 'win32'",
+    "(python_full_version == '3.11.*' and platform_machine != 'AMD64') or (python_full_version == '3.11.*' and sys_platform != 'win32')",
+    "python_full_version == '3.11.*' and platform_machine == 'AMD64' and sys_platform == 'win32'",
+    "(python_full_version == '3.10.*' and platform_machine != 'AMD64') or (python_full_version == '3.10.*' and sys_platform != 'win32')",
+    "python_full_version == '3.10.*' and platform_machine == 'AMD64' and sys_platform == 'win32'",
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/a3/51/1664f6b78fc6ebbd98019a1fd730e83fa78f2db7058f72b1463d3612b8db/greenlet-3.3.2.tar.gz", hash = "sha256:2eaf067fc6d886931c7962e8c6bede15d2f01965560f3359b27c80bde2d151f2", size = 188267, upload-time = "2026-02-20T20:54:15.531Z" }
 wheels = [
@@ -734,7 +753,8 @@ name = "llvmlite"
 version = "0.43.0"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "python_full_version < '3.10'",
+    "(python_full_version < '3.10' and platform_machine != 'AMD64') or (python_full_version < '3.10' and sys_platform != 'win32')",
+    "python_full_version < '3.10' and platform_machine == 'AMD64' and sys_platform == 'win32'",
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/9f/3d/f513755f285db51ab363a53e898b85562e950f79a2e6767a364530c2f645/llvmlite-0.43.0.tar.gz", hash = "sha256:ae2b5b5c3ef67354824fb75517c8db5fbe93bc02cd9671f3c62271626bc041d5", size = 157069, upload-time = "2024-06-13T18:09:32.641Z" }
 wheels = [
@@ -765,9 +785,12 @@ name = "llvmlite"
 version = "0.46.0"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "python_full_version >= '3.12'",
-    "python_full_version == '3.11.*'",
-    "python_full_version == '3.10.*'",
+    "(python_full_version >= '3.12' and platform_machine != 'AMD64') or (python_full_version >= '3.12' and sys_platform != 'win32')",
+    "python_full_version >= '3.12' and platform_machine == 'AMD64' and sys_platform == 'win32'",
+    "(python_full_version == '3.11.*' and platform_machine != 'AMD64') or (python_full_version == '3.11.*' and sys_platform != 'win32')",
+    "python_full_version == '3.11.*' and platform_machine == 'AMD64' and sys_platform == 'win32'",
+    "(python_full_version == '3.10.*' and platform_machine != 'AMD64') or (python_full_version == '3.10.*' and sys_platform != 'win32')",
+    "python_full_version == '3.10.*' and platform_machine == 'AMD64' and sys_platform == 'win32'",
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/74/cd/08ae687ba099c7e3d21fe2ea536500563ef1943c5105bf6ab4ee3829f68e/llvmlite-0.46.0.tar.gz", hash = "sha256:227c9fd6d09dce2783c18b754b7cd9d9b3b3515210c46acc2d3c5badd9870ceb", size = 193456, upload-time = "2025-12-08T18:15:36.295Z" }
 wheels = [
@@ -787,7 +810,7 @@ wheels = [
 
 [[package]]
 name = "lms-summarizer"
-version = "1.0.0"
+version = "0.1.0b0"
 source = { editable = "." }
 dependencies = [
     { name = "google-generativeai" },
@@ -891,7 +914,8 @@ name = "networkx"
 version = "3.2.1"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "python_full_version < '3.10'",
+    "(python_full_version < '3.10' and platform_machine != 'AMD64') or (python_full_version < '3.10' and sys_platform != 'win32')",
+    "python_full_version < '3.10' and platform_machine == 'AMD64' and sys_platform == 'win32'",
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/c4/80/a84676339aaae2f1cfdf9f418701dd634aef9cc76f708ef55c36ff39c3ca/networkx-3.2.1.tar.gz", hash = "sha256:9f1bb5cf3409bf324e0a722c20bdb4c20ee39bf1c30ce8ae499c8502b0b5e0c6", size = 2073928, upload-time = "2023-10-28T08:41:39.364Z" }
 wheels = [
@@ -903,7 +927,8 @@ name = "networkx"
 version = "3.4.2"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "python_full_version == '3.10.*'",
+    "(python_full_version == '3.10.*' and platform_machine != 'AMD64') or (python_full_version == '3.10.*' and sys_platform != 'win32')",
+    "python_full_version == '3.10.*' and platform_machine == 'AMD64' and sys_platform == 'win32'",
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/fd/1d/06475e1cd5264c0b870ea2cc6fdb3e37177c1e565c43f56ff17a10e3937f/networkx-3.4.2.tar.gz", hash = "sha256:307c3669428c5362aab27c8a1260aa8f47c4e91d3891f48be0141738d8d053e1", size = 2151368, upload-time = "2024-10-21T12:39:38.695Z" }
 wheels = [
@@ -915,8 +940,10 @@ name = "networkx"
 version = "3.6.1"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "python_full_version >= '3.12'",
-    "python_full_version == '3.11.*'",
+    "(python_full_version >= '3.12' and platform_machine != 'AMD64') or (python_full_version >= '3.12' and sys_platform != 'win32')",
+    "python_full_version >= '3.12' and platform_machine == 'AMD64' and sys_platform == 'win32'",
+    "(python_full_version == '3.11.*' and platform_machine != 'AMD64') or (python_full_version == '3.11.*' and sys_platform != 'win32')",
+    "python_full_version == '3.11.*' and platform_machine == 'AMD64' and sys_platform == 'win32'",
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/6a/51/63fe664f3908c97be9d2e4f1158eb633317598cfa6e1fc14af5383f17512/networkx-3.6.1.tar.gz", hash = "sha256:26b7c357accc0c8cde558ad486283728b65b6a95d85ee1cd66bafab4c8168509", size = 2517025, upload-time = "2025-12-08T17:02:39.908Z" }
 wheels = [
@@ -928,7 +955,8 @@ name = "numba"
 version = "0.60.0"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "python_full_version < '3.10'",
+    "(python_full_version < '3.10' and platform_machine != 'AMD64') or (python_full_version < '3.10' and sys_platform != 'win32')",
+    "python_full_version < '3.10' and platform_machine == 'AMD64' and sys_platform == 'win32'",
 ]
 dependencies = [
     { name = "llvmlite", version = "0.43.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
@@ -963,9 +991,12 @@ name = "numba"
 version = "0.64.0"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "python_full_version >= '3.12'",
-    "python_full_version == '3.11.*'",
-    "python_full_version == '3.10.*'",
+    "(python_full_version >= '3.12' and platform_machine != 'AMD64') or (python_full_version >= '3.12' and sys_platform != 'win32')",
+    "python_full_version >= '3.12' and platform_machine == 'AMD64' and sys_platform == 'win32'",
+    "(python_full_version == '3.11.*' and platform_machine != 'AMD64') or (python_full_version == '3.11.*' and sys_platform != 'win32')",
+    "python_full_version == '3.11.*' and platform_machine == 'AMD64' and sys_platform == 'win32'",
+    "(python_full_version == '3.10.*' and platform_machine != 'AMD64') or (python_full_version == '3.10.*' and sys_platform != 'win32')",
+    "python_full_version == '3.10.*' and platform_machine == 'AMD64' and sys_platform == 'win32'",
 ]
 dependencies = [
     { name = "llvmlite", version = "0.46.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
@@ -993,7 +1024,8 @@ name = "numpy"
 version = "2.0.2"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "python_full_version < '3.10'",
+    "(python_full_version < '3.10' and platform_machine != 'AMD64') or (python_full_version < '3.10' and sys_platform != 'win32')",
+    "python_full_version < '3.10' and platform_machine == 'AMD64' and sys_platform == 'win32'",
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/a9/75/10dd1f8116a8b796cb2c737b674e02d02e80454bda953fa7e65d8c12b016/numpy-2.0.2.tar.gz", hash = "sha256:883c987dee1880e2a864ab0dc9892292582510604156762362d9326444636e78", size = 18902015, upload-time = "2024-08-26T20:19:40.945Z" }
 wheels = [
@@ -1048,7 +1080,8 @@ name = "numpy"
 version = "2.2.6"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "python_full_version == '3.10.*'",
+    "(python_full_version == '3.10.*' and platform_machine != 'AMD64') or (python_full_version == '3.10.*' and sys_platform != 'win32')",
+    "python_full_version == '3.10.*' and platform_machine == 'AMD64' and sys_platform == 'win32'",
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/76/21/7d2a95e4bba9dc13d043ee156a356c0a8f0c6309dff6b21b4d71a073b8a8/numpy-2.2.6.tar.gz", hash = "sha256:e29554e2bef54a90aa5cc07da6ce955accb83f21ab5de01a62c8478897b264fd", size = 20276440, upload-time = "2025-05-17T22:38:04.611Z" }
 wheels = [
@@ -1093,8 +1126,10 @@ name = "numpy"
 version = "2.4.2"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "python_full_version >= '3.12'",
-    "python_full_version == '3.11.*'",
+    "(python_full_version >= '3.12' and platform_machine != 'AMD64') or (python_full_version >= '3.12' and sys_platform != 'win32')",
+    "python_full_version >= '3.12' and platform_machine == 'AMD64' and sys_platform == 'win32'",
+    "(python_full_version == '3.11.*' and platform_machine != 'AMD64') or (python_full_version == '3.11.*' and sys_platform != 'win32')",
+    "python_full_version == '3.11.*' and platform_machine == 'AMD64' and sys_platform == 'win32'",
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/57/fd/0005efbd0af48e55eb3c7208af93f2862d4b1a56cd78e84309a2d959208d/numpy-2.4.2.tar.gz", hash = "sha256:659a6107e31a83c4e33f763942275fd278b21d095094044eb35569e86a21ddae", size = 20723651, upload-time = "2026-01-31T23:13:10.135Z" }
 wheels = [
@@ -1236,7 +1271,7 @@ name = "nvidia-nccl-cu12"
 version = "2.27.3"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "python_full_version < '3.10'",
+    "(python_full_version < '3.10' and platform_machine != 'AMD64') or (python_full_version < '3.10' and sys_platform != 'win32')",
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/5c/5b/4e4fff7bad39adf89f735f2bc87248c81db71205b62bcc0d5ca5b606b3c3/nvidia_nccl_cu12-2.27.3-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:adf27ccf4238253e0b826bce3ff5fa532d65fc42322c8bfdfaf28024c0fbe039", size = 322364134, upload-time = "2025-06-03T21:58:04.013Z" },
@@ -1247,9 +1282,9 @@ name = "nvidia-nccl-cu12"
 version = "2.27.5"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "python_full_version >= '3.12'",
-    "python_full_version == '3.11.*'",
-    "python_full_version == '3.10.*'",
+    "(python_full_version >= '3.12' and platform_machine != 'AMD64') or (python_full_version >= '3.12' and sys_platform != 'win32')",
+    "(python_full_version == '3.11.*' and platform_machine != 'AMD64') or (python_full_version == '3.11.*' and sys_platform != 'win32')",
+    "(python_full_version == '3.10.*' and platform_machine != 'AMD64') or (python_full_version == '3.10.*' and sys_platform != 'win32')",
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/6e/89/f7a07dc961b60645dbbf42e80f2bc85ade7feb9a491b11a1e973aa00071f/nvidia_nccl_cu12-2.27.5-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:ad730cf15cb5d25fe849c6e6ca9eb5b76db16a80f13f425ac68d8e2e55624457", size = 322348229, upload-time = "2025-06-26T04:11:28.385Z" },
@@ -1392,7 +1427,8 @@ name = "pycparser"
 version = "2.23"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "python_full_version < '3.10'",
+    "(python_full_version < '3.10' and platform_machine != 'AMD64') or (python_full_version < '3.10' and sys_platform != 'win32')",
+    "python_full_version < '3.10' and platform_machine == 'AMD64' and sys_platform == 'win32'",
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/fe/cf/d2d3b9f5699fb1e4615c8e32ff220203e43b248e1dfcc6736ad9057731ca/pycparser-2.23.tar.gz", hash = "sha256:78816d4f24add8f10a06d6f05b4d424ad9e96cfebf68a4ddc99c65c0720d00c2", size = 173734, upload-time = "2025-09-09T13:23:47.91Z" }
 wheels = [
@@ -1404,9 +1440,12 @@ name = "pycparser"
 version = "3.0"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "python_full_version >= '3.12'",
-    "python_full_version == '3.11.*'",
-    "python_full_version == '3.10.*'",
+    "(python_full_version >= '3.12' and platform_machine != 'AMD64') or (python_full_version >= '3.12' and sys_platform != 'win32')",
+    "python_full_version >= '3.12' and platform_machine == 'AMD64' and sys_platform == 'win32'",
+    "(python_full_version == '3.11.*' and platform_machine != 'AMD64') or (python_full_version == '3.11.*' and sys_platform != 'win32')",
+    "python_full_version == '3.11.*' and platform_machine == 'AMD64' and sys_platform == 'win32'",
+    "(python_full_version == '3.10.*' and platform_machine != 'AMD64') or (python_full_version == '3.10.*' and sys_platform != 'win32')",
+    "python_full_version == '3.10.*' and platform_machine == 'AMD64' and sys_platform == 'win32'",
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/1b/7d/92392ff7815c21062bea51aa7b87d45576f649f16458d78b7cf94b9ab2e6/pycparser-3.0.tar.gz", hash = "sha256:600f49d217304a5902ac3c37e1281c9fe94e4d0489de643a9504c5cdfdfc6b29", size = 103492, upload-time = "2026-01-21T14:26:51.89Z" }
 wheels = [
@@ -1552,7 +1591,8 @@ name = "pyqt5"
 version = "5.15.11"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "pyqt5-qt5" },
+    { name = "pyqt5-qt5", version = "5.15.2", source = { registry = "https://pypi.org/simple" }, marker = "platform_machine == 'AMD64' and sys_platform == 'win32'" },
+    { name = "pyqt5-qt5", version = "5.15.18", source = { registry = "https://pypi.org/simple" }, marker = "platform_machine != 'AMD64' or sys_platform != 'win32'" },
     { name = "pyqt5-sip", version = "12.17.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
     { name = "pyqt5-sip", version = "12.18.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
 ]
@@ -1567,8 +1607,28 @@ wheels = [
 
 [[package]]
 name = "pyqt5-qt5"
+version = "5.15.2"
+source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "python_full_version >= '3.12' and platform_machine == 'AMD64' and sys_platform == 'win32'",
+    "python_full_version == '3.11.*' and platform_machine == 'AMD64' and sys_platform == 'win32'",
+    "python_full_version == '3.10.*' and platform_machine == 'AMD64' and sys_platform == 'win32'",
+    "python_full_version < '3.10' and platform_machine == 'AMD64' and sys_platform == 'win32'",
+]
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/37/97/5d3b222b924fa2ed4c2488925155cd0b03fd5d09ee1cfcf7c553c11c9f66/PyQt5_Qt5-5.15.2-py3-none-win_amd64.whl", hash = "sha256:750b78e4dba6bdf1607febedc08738e318ea09e9b10aea9ff0d73073f11f6962", size = 50075158, upload-time = "2021-03-10T14:05:20.868Z" },
+]
+
+[[package]]
+name = "pyqt5-qt5"
 version = "5.15.18"
 source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "(python_full_version >= '3.12' and platform_machine != 'AMD64') or (python_full_version >= '3.12' and sys_platform != 'win32')",
+    "(python_full_version == '3.11.*' and platform_machine != 'AMD64') or (python_full_version == '3.11.*' and sys_platform != 'win32')",
+    "(python_full_version == '3.10.*' and platform_machine != 'AMD64') or (python_full_version == '3.10.*' and sys_platform != 'win32')",
+    "(python_full_version < '3.10' and platform_machine != 'AMD64') or (python_full_version < '3.10' and sys_platform != 'win32')",
+]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/46/90/bf01ac2132400997a3474051dd680a583381ebf98b2f5d64d4e54138dc42/pyqt5_qt5-5.15.18-py3-none-macosx_10_13_x86_64.whl", hash = "sha256:8bb997eb903afa9da3221a0c9e6eaa00413bbeb4394d5706118ad05375684767", size = 39715743, upload-time = "2025-11-09T12:56:42.936Z" },
     { url = "https://files.pythonhosted.org/packages/24/8e/76366484d9f9dbe28e3bdfc688183433a7b82e314216e9b14c89e5fab690/pyqt5_qt5-5.15.18-py3-none-macosx_11_0_arm64.whl", hash = "sha256:c656af9c1e6aaa7f59bf3d8995f2fa09adbf6762b470ed284c31dca80d686a26", size = 36798484, upload-time = "2025-11-09T12:56:59.998Z" },
@@ -1580,7 +1640,8 @@ name = "pyqt5-sip"
 version = "12.17.1"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "python_full_version < '3.10'",
+    "(python_full_version < '3.10' and platform_machine != 'AMD64') or (python_full_version < '3.10' and sys_platform != 'win32')",
+    "python_full_version < '3.10' and platform_machine == 'AMD64' and sys_platform == 'win32'",
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/ea/08/88a20c862f40b5c178c517cdc7e93767967dec5ac1b994e226d517991c9b/pyqt5_sip-12.17.1.tar.gz", hash = "sha256:0eab72bcb628f1926bf5b9ac51259d4fa18e8b2a81d199071135458f7d087ea8", size = 104136, upload-time = "2025-10-08T09:04:19.893Z" }
 wheels = [
@@ -1607,9 +1668,12 @@ name = "pyqt5-sip"
 version = "12.18.0"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "python_full_version >= '3.12'",
-    "python_full_version == '3.11.*'",
-    "python_full_version == '3.10.*'",
+    "(python_full_version >= '3.12' and platform_machine != 'AMD64') or (python_full_version >= '3.12' and sys_platform != 'win32')",
+    "python_full_version >= '3.12' and platform_machine == 'AMD64' and sys_platform == 'win32'",
+    "(python_full_version == '3.11.*' and platform_machine != 'AMD64') or (python_full_version == '3.11.*' and sys_platform != 'win32')",
+    "python_full_version == '3.11.*' and platform_machine == 'AMD64' and sys_platform == 'win32'",
+    "(python_full_version == '3.10.*' and platform_machine != 'AMD64') or (python_full_version == '3.10.*' and sys_platform != 'win32')",
+    "python_full_version == '3.10.*' and platform_machine == 'AMD64' and sys_platform == 'win32'",
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/f3/31/5ef342de9faee0f3801088946ae103db9b9eaeba3d6a64fefd5ce74df244/pyqt5_sip-12.18.0.tar.gz", hash = "sha256:71c37db75a0664325de149f43e2a712ec5fa1f90429a21dafbca005cb6767f94", size = 104143, upload-time = "2026-01-13T15:53:19.576Z" }
 wheels = [
@@ -1635,7 +1699,8 @@ name = "python-dotenv"
 version = "1.2.1"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "python_full_version < '3.10'",
+    "(python_full_version < '3.10' and platform_machine != 'AMD64') or (python_full_version < '3.10' and sys_platform != 'win32')",
+    "python_full_version < '3.10' and platform_machine == 'AMD64' and sys_platform == 'win32'",
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/f0/26/19cadc79a718c5edbec86fd4919a6b6d3f681039a2f6d66d14be94e75fb9/python_dotenv-1.2.1.tar.gz", hash = "sha256:42667e897e16ab0d66954af0e60a9caa94f0fd4ecf3aaf6d2d260eec1aa36ad6", size = 44221, upload-time = "2025-10-26T15:12:10.434Z" }
 wheels = [
@@ -1647,9 +1712,12 @@ name = "python-dotenv"
 version = "1.2.2"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "python_full_version >= '3.12'",
-    "python_full_version == '3.11.*'",
-    "python_full_version == '3.10.*'",
+    "(python_full_version >= '3.12' and platform_machine != 'AMD64') or (python_full_version >= '3.12' and sys_platform != 'win32')",
+    "python_full_version >= '3.12' and platform_machine == 'AMD64' and sys_platform == 'win32'",
+    "(python_full_version == '3.11.*' and platform_machine != 'AMD64') or (python_full_version == '3.11.*' and sys_platform != 'win32')",
+    "python_full_version == '3.11.*' and platform_machine == 'AMD64' and sys_platform == 'win32'",
+    "(python_full_version == '3.10.*' and platform_machine != 'AMD64') or (python_full_version == '3.10.*' and sys_platform != 'win32')",
+    "python_full_version == '3.10.*' and platform_machine == 'AMD64' and sys_platform == 'win32'",
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/82/ed/0301aeeac3e5353ef3d94b6ec08bbcabd04a72018415dcb29e588514bba8/python_dotenv-1.2.2.tar.gz", hash = "sha256:2c371a91fbd7ba082c2c1dc1f8bf89ca22564a087c2c287cd9b662adde799cf3", size = 50135, upload-time = "2026-03-01T16:00:26.196Z" }
 wheels = [
@@ -1661,7 +1729,8 @@ name = "regex"
 version = "2026.1.15"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "python_full_version < '3.10'",
+    "(python_full_version < '3.10' and platform_machine != 'AMD64') or (python_full_version < '3.10' and sys_platform != 'win32')",
+    "python_full_version < '3.10' and platform_machine == 'AMD64' and sys_platform == 'win32'",
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/0b/86/07d5056945f9ec4590b518171c4254a5925832eb727b56d3c38a7476f316/regex-2026.1.15.tar.gz", hash = "sha256:164759aa25575cbc0651bef59a0b18353e54300d79ace8084c818ad8ac72b7d5", size = 414811, upload-time = "2026-01-14T23:18:02.775Z" }
 wheels = [
@@ -1738,9 +1807,12 @@ name = "regex"
 version = "2026.2.28"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "python_full_version >= '3.12'",
-    "python_full_version == '3.11.*'",
-    "python_full_version == '3.10.*'",
+    "(python_full_version >= '3.12' and platform_machine != 'AMD64') or (python_full_version >= '3.12' and sys_platform != 'win32')",
+    "python_full_version >= '3.12' and platform_machine == 'AMD64' and sys_platform == 'win32'",
+    "(python_full_version == '3.11.*' and platform_machine != 'AMD64') or (python_full_version == '3.11.*' and sys_platform != 'win32')",
+    "python_full_version == '3.11.*' and platform_machine == 'AMD64' and sys_platform == 'win32'",
+    "(python_full_version == '3.10.*' and platform_machine != 'AMD64') or (python_full_version == '3.10.*' and sys_platform != 'win32')",
+    "python_full_version == '3.10.*' and platform_machine == 'AMD64' and sys_platform == 'win32'",
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/8b/71/41455aa99a5a5ac1eaf311f5d8efd9ce6433c03ac1e0962de163350d0d97/regex-2026.2.28.tar.gz", hash = "sha256:a729e47d418ea11d03469f321aaf67cdee8954cde3ff2cf8403ab87951ad10f2", size = 415184, upload-time = "2026-02-28T02:19:42.792Z" }
 wheels = [
@@ -1898,7 +1970,8 @@ name = "torch"
 version = "2.8.0"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "python_full_version < '3.10'",
+    "(python_full_version < '3.10' and platform_machine != 'AMD64') or (python_full_version < '3.10' and sys_platform != 'win32')",
+    "python_full_version < '3.10' and platform_machine == 'AMD64' and sys_platform == 'win32'",
 ]
 dependencies = [
     { name = "filelock", version = "3.19.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
@@ -1947,9 +2020,12 @@ name = "torch"
 version = "2.10.0"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "python_full_version >= '3.12'",
-    "python_full_version == '3.11.*'",
-    "python_full_version == '3.10.*'",
+    "(python_full_version >= '3.12' and platform_machine != 'AMD64') or (python_full_version >= '3.12' and sys_platform != 'win32')",
+    "python_full_version >= '3.12' and platform_machine == 'AMD64' and sys_platform == 'win32'",
+    "(python_full_version == '3.11.*' and platform_machine != 'AMD64') or (python_full_version == '3.11.*' and sys_platform != 'win32')",
+    "python_full_version == '3.11.*' and platform_machine == 'AMD64' and sys_platform == 'win32'",
+    "(python_full_version == '3.10.*' and platform_machine != 'AMD64') or (python_full_version == '3.10.*' and sys_platform != 'win32')",
+    "python_full_version == '3.10.*' and platform_machine == 'AMD64' and sys_platform == 'win32'",
 ]
 dependencies = [
     { name = "cuda-bindings", marker = "python_full_version >= '3.10' and platform_machine == 'x86_64' and sys_platform == 'linux'" },
@@ -2013,7 +2089,7 @@ name = "triton"
 version = "3.4.0"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "python_full_version < '3.10'",
+    "(python_full_version < '3.10' and platform_machine != 'AMD64') or (python_full_version < '3.10' and sys_platform != 'win32')",
 ]
 dependencies = [
     { name = "importlib-metadata", marker = "python_full_version < '3.10'" },
@@ -2031,9 +2107,9 @@ name = "triton"
 version = "3.6.0"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "python_full_version >= '3.12'",
-    "python_full_version == '3.11.*'",
-    "python_full_version == '3.10.*'",
+    "(python_full_version >= '3.12' and platform_machine != 'AMD64') or (python_full_version >= '3.12' and sys_platform != 'win32')",
+    "(python_full_version == '3.11.*' and platform_machine != 'AMD64') or (python_full_version == '3.11.*' and sys_platform != 'win32')",
+    "(python_full_version == '3.10.*' and platform_machine != 'AMD64') or (python_full_version == '3.10.*' and sys_platform != 'win32')",
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/8c/f7/f1c9d3424ab199ac53c2da567b859bcddbb9c9e7154805119f8bd95ec36f/triton-3.6.0-cp310-cp310-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:a6550fae429e0667e397e5de64b332d1e5695b73650ee75a6146e2e902770bea", size = 188105201, upload-time = "2026-01-20T16:00:29.272Z" },
