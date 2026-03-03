@@ -31,6 +31,11 @@ MANIFEST
 #  before PyInstaller builds the exe, so as to inject date/other infos into it.
 *.manifest
 *.spec
+!lms-summarizer.spec
+
+# 사용자 설정 파일 (로컬 전용)
+src/settings.json
+settings.json
 
 # Installer logs
 pip-log.txt
