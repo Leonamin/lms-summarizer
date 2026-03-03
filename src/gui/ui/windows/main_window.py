@@ -5,7 +5,7 @@
 from typing import Dict, List
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QMessageBox,
-    QFileDialog, QPushButton
+    QFileDialog, QPushButton, QCheckBox
 )
 from PyQt5.QtCore import Qt
 
@@ -39,6 +39,7 @@ class MainWindow(QWidget):
         self.log_area = None
         self.start_button = None
         self.clear_button = None
+        self.save_video_checkbox = None
         self.worker = None
         self.path_button = None
 
@@ -66,6 +67,9 @@ class MainWindow(QWidget):
 
         # 입력 필드 섹션
         self._create_input_section(main_layout)
+
+        # 옵션 섹션
+        self._create_options_section(main_layout)
 
         # 버튼 섹션
         self._create_button_section(main_layout)
@@ -146,6 +150,13 @@ class MainWindow(QWidget):
             # Caps Lock 경고 라벨 (비밀번호 필드)
             if field.caps_lock_label is not None:
                 layout.addWidget(field.caps_lock_label)
+
+    def _create_options_section(self, layout: QVBoxLayout):
+        """옵션 섹션 생성"""
+        self.save_video_checkbox = QCheckBox("📹 원본 동영상을 저장 경로에 보관")
+        self.save_video_checkbox.setStyleSheet(StyleSheet.label())
+        self.save_video_checkbox.setChecked(False)
+        layout.addWidget(self.save_video_checkbox)
 
     def _create_button_section(self, layout: QVBoxLayout):
         """버튼 섹션 생성"""
@@ -276,8 +287,13 @@ class MainWindow(QWidget):
         # 로그 초기화
         self.log_area.clear()
 
+        # 원본 영상 저장 옵션
+        save_video_dir = None
+        if self.save_video_checkbox.isChecked():
+            save_video_dir = ensure_downloads_directory()
+
         # 워커 스레드 시작
-        self.worker = ProcessingWorker(inputs, self.modules)
+        self.worker = ProcessingWorker(inputs, self.modules, save_video_dir=save_video_dir)
         self.worker.log_message.connect(self.log_area.append_message)
         self.worker.processing_finished.connect(self._on_processing_finished)
         self.worker.start()

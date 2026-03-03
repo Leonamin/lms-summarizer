@@ -1,6 +1,6 @@
 import asyncio
 from playwright.async_api import async_playwright, Playwright, Page
-from typing import Optional, Tuple
+from typing import Callable, Optional, Tuple
 
 from src.video_pipeline.login import perform_login_if_needed
 from src.video_pipeline.video_parser import extract_video_url
@@ -9,12 +9,14 @@ from src.user_setting import UserSetting
 
 
 class VideoPipeline:
-    def __init__(self, user_setting: UserSetting, extraction_timeout: float = 60):
+    def __init__(self, user_setting: UserSetting, extraction_timeout: float = 60,
+                 progress_callback: Optional[Callable[[int, int], None]] = None):
         self.user_setting = user_setting
         self.user_id = user_setting.user_id
         self.password = user_setting.password
         self.downloads_dir = None  # 다운로드 경로는 나중에 설정됨
         self.extraction_timeout = extraction_timeout
+        self.progress_callback = progress_callback
 
     async def _setup_browser(self, playwright: Playwright) -> Tuple[Page, any]:
         """브라우저 설정 및 페이지 생성"""
@@ -64,7 +66,8 @@ class VideoPipeline:
 
         if video_url:
             print(f"[SUCCESS] 동영상 링크 추출됨: {video_url}, 제목: {title}")
-            filepath = download_video(video_url, save_dir=self.downloads_dir, filename=title)
+            filepath = download_video(video_url, save_dir=self.downloads_dir, filename=title,
+                                     progress_callback=self.progress_callback)
             print(f"[SUCCESS] 동영상 다운로드 완료: {filepath}")
             return filepath
         else:

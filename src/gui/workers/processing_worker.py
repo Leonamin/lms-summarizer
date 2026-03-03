@@ -25,10 +25,11 @@ class ProcessingWorker(QThread):
     log_message = pyqtSignal(str)
     processing_finished = pyqtSignal(bool, str)
 
-    def __init__(self, user_inputs: Dict[str, str], modules: Dict):
+    def __init__(self, user_inputs: Dict[str, str], modules: Dict, save_video_dir: str = None):
         super().__init__()
         self.user_inputs = user_inputs
         self.modules = modules
+        self.save_video_dir = save_video_dir
         self._cancel_event = threading.Event()
 
     def request_cancel(self):
@@ -132,11 +133,22 @@ class ProcessingWorker(QThread):
         self._emit_log(f"{Messages.VIDEO_DOWNLOADING}")
         self._emit_log(f"📋 다운로드할 링크: {len(urls)}개")
 
-        video_pipeline = self.modules['VideoPipeline'](user_setting)
+        self._last_progress_pct = -1
+
+        def on_progress(downloaded, total):
+            pct = int(downloaded / total * 100)
+            if pct != self._last_progress_pct and pct % 10 == 0:
+                self._last_progress_pct = pct
+                mb_down = downloaded / (1024 * 1024)
+                mb_total = total / (1024 * 1024)
+                self._emit_log(f"   📊 다운로드 진행: {pct}% ({mb_down:.1f}/{mb_total:.1f} MB)")
+
+        video_pipeline = self.modules['VideoPipeline'](user_setting, progress_callback=on_progress)
 
         for i, url in enumerate(urls, 1):
             self._check_cancelled()
             self._emit_log(f"📥 ({i}/{len(urls)}) 다운로드 시작: {url}")
+            self._last_progress_pct = -1
 
         video_paths = video_pipeline.process_sync(urls)
         self._emit_log(f"{Messages.DOWNLOAD_COMPLETE}: {len(video_paths)}개 파일")
@@ -146,7 +158,38 @@ class ProcessingWorker(QThread):
         for i, filepath in enumerate(video_paths, 1):
             self._emit_log(f"   📹 ({i}) {filepath}")
 
+        # 원본 영상 저장 옵션
+        if self.save_video_dir and video_paths:
+            self._save_videos_to_dir(video_paths)
+
         return video_paths
+
+    def _save_videos_to_dir(self, video_paths: List[str]):
+        """원본 영상을 사용자 지정 경로에 저장"""
+        import shutil
+        self._emit_log(f"📂 원본 영상 저장 경로: {self.save_video_dir}")
+
+        for filepath in video_paths:
+            src = Path(filepath)
+            dest = Path(self.save_video_dir) / src.name
+
+            # 이미 같은 경로면 스킵
+            if src.resolve() == dest.resolve():
+                self._emit_log(f"   ✅ 이미 저장 경로에 있음: {src.name}")
+                continue
+
+            # 파일명 충돌 시 자동 번호 추가
+            if dest.exists():
+                stem = src.stem
+                suffix = src.suffix
+                counter = 1
+                while dest.exists():
+                    dest = Path(self.save_video_dir) / f"{stem}_{counter}{suffix}"
+                    counter += 1
+                self._emit_log(f"   ⚠️ 파일명 충돌로 이름 변경: {dest.name}")
+
+            shutil.copy2(str(src), str(dest))
+            self._emit_log(f"   📹 저장 완료: {dest}")
 
     def _convert_audio_to_text(self, video_paths: List[str]) -> List[str]:
         """오디오를 텍스트로 변환"""
@@ -156,6 +199,7 @@ class ProcessingWorker(QThread):
         self._check_ffmpeg()
 
         audio_pipeline = self.modules['AudioToTextPipeline']()
+        audio_pipeline.downloads_dir = str(Path(video_paths[0]).parent)
         text_paths = []
 
         for i, video_path in enumerate(video_paths, 1):
@@ -188,6 +232,8 @@ class ProcessingWorker(QThread):
         self._emit_log(Messages.TEXT_SUMMARIZING)
 
         summarize_pipeline = self.modules['SummarizePipeline']()
+        if text_paths:
+            summarize_pipeline.downloads_dir = str(Path(text_paths[0]).parent)
         summary_paths = []
 
         for i, text_path in enumerate(text_paths, 1):
