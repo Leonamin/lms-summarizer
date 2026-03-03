@@ -3,6 +3,9 @@
 """
 
 from typing import Dict, List
+import subprocess
+import sys
+
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QMessageBox,
     QFileDialog, QPushButton, QCheckBox
@@ -42,6 +45,7 @@ class MainWindow(QWidget):
         self.save_video_checkbox = None
         self.worker = None
         self.path_button = None
+        self.path_value_label = None
 
         # 윈도우 설정 및 UI 구성
         self._setup_window()
@@ -104,10 +108,16 @@ class MainWindow(QWidget):
 
         # 현재 경로 표시
         current_path = ensure_downloads_directory()
-        path_value = QLabel(current_path)
-        path_value.setStyleSheet(StyleSheet.path_value())
-        path_value.setWordWrap(True)
-        path_layout.addWidget(path_value, stretch=1)
+        self.path_value_label = QLabel(current_path)
+        self.path_value_label.setStyleSheet(StyleSheet.path_value())
+        self.path_value_label.setWordWrap(True)
+        path_layout.addWidget(self.path_value_label, stretch=1)
+
+        # Finder에서 열기 버튼
+        open_finder_btn = QPushButton("📂 열기")
+        open_finder_btn.setStyleSheet(StyleSheet.button())
+        open_finder_btn.clicked.connect(self._open_in_finder)
+        path_layout.addWidget(open_finder_btn)
 
         # 경로 변경 버튼
         self.path_button = QPushButton("경로 변경")
@@ -130,6 +140,7 @@ class MainWindow(QWidget):
         if new_path:
             try:
                 set_downloads_directory(new_path)
+                self.path_value_label.setText(new_path)
                 self.log_area.append_message(f"✅ 저장 경로가 변경되었습니다: {new_path}")
             except Exception as e:
                 QMessageBox.critical(
@@ -137,6 +148,16 @@ class MainWindow(QWidget):
                     "경로 변경 오류",
                     f"저장 경로 변경 중 오류가 발생했습니다:\n{str(e)}"
                 )
+
+    def _open_in_finder(self):
+        """저장 경로를 Finder(macOS) / 파일 탐색기(Windows)에서 열기"""
+        path = ensure_downloads_directory()
+        if sys.platform == 'darwin':
+            subprocess.Popen(['open', path])
+        elif sys.platform == 'win32':
+            subprocess.Popen(['explorer', path])
+        else:
+            subprocess.Popen(['xdg-open', path])
 
     def _create_input_section(self, layout: QVBoxLayout):
         """입력 필드 섹션 생성"""

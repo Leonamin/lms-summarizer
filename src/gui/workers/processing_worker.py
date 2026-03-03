@@ -9,7 +9,7 @@ from typing import Dict, List
 from PyQt5.QtCore import QThread, pyqtSignal
 
 from src.gui.config.constants import Messages
-from src.gui.core.file_manager import create_config_files, extract_urls_from_input
+from src.gui.core.file_manager import create_config_files, extract_urls_from_input, ensure_downloads_directory
 from src.gui.core.module_loader import check_required_modules
 
 
@@ -144,6 +144,7 @@ class ProcessingWorker(QThread):
                 self._emit_log(f"   📊 다운로드 진행: {pct}% ({mb_down:.1f}/{mb_total:.1f} MB)")
 
         video_pipeline = self.modules['VideoPipeline'](user_setting, progress_callback=on_progress)
+        video_pipeline.downloads_dir = ensure_downloads_directory()
 
         for i, url in enumerate(urls, 1):
             self._check_cancelled()
@@ -199,12 +200,13 @@ class ProcessingWorker(QThread):
         self._check_ffmpeg()
 
         audio_pipeline = self.modules['AudioToTextPipeline']()
-        audio_pipeline.downloads_dir = str(Path(video_paths[0]).parent)
         text_paths = []
 
         for i, video_path in enumerate(video_paths, 1):
             self._check_cancelled()
             try:
+                # 각 비디오 파일의 디렉토리에 텍스트 저장
+                audio_pipeline.downloads_dir = str(Path(video_path).parent)
                 self._emit_log(f"🎤 ({i}/{len(video_paths)}) 텍스트 변환 중: {Path(video_path).name}")
                 self._emit_log(f"📄 원본 파일: {video_path}")
 
@@ -232,13 +234,13 @@ class ProcessingWorker(QThread):
         self._emit_log(Messages.TEXT_SUMMARIZING)
 
         summarize_pipeline = self.modules['SummarizePipeline']()
-        if text_paths:
-            summarize_pipeline.downloads_dir = str(Path(text_paths[0]).parent)
         summary_paths = []
 
         for i, text_path in enumerate(text_paths, 1):
             self._check_cancelled()
             try:
+                # 각 텍스트 파일의 디렉토리에 요약 저장
+                summarize_pipeline.downloads_dir = str(Path(text_path).parent)
                 self._emit_log(f"📝 ({i}/{len(text_paths)}) 요약 생성 중: {Path(text_path).name}")
                 self._emit_log(f"📄 입력 파일: {text_path}")
 
@@ -301,9 +303,7 @@ class ProcessingWorker(QThread):
 
         # 저장 위치 안내
         if video_paths or text_paths:
-            from src.gui.core.file_manager import get_resource_path
-            downloads_dir = get_resource_path("downloads")
+            downloads_dir = ensure_downloads_directory()
             self._emit_log(f"\n📁 모든 파일이 저장된 위치: {downloads_dir}")
-            self._emit_log("💡 Finder에서 확인: open downloads/")
 
         self._emit_log("="*50)
