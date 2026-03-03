@@ -1,8 +1,9 @@
+import os
 import time
+from pathlib import Path
+
 from src.audio_pipeline.converter import convert_mp4_to_wav
 from src.audio_pipeline.transcriber import transcribe_wav_to_text
-import os
-from pathlib import Path
 
 
 class AudioToTextPipeline:

@@ -146,11 +146,7 @@ class ProcessingWorker(QThread):
         video_pipeline = self.modules['VideoPipeline'](user_setting, progress_callback=on_progress)
         video_pipeline.downloads_dir = ensure_downloads_directory()
 
-        for i, url in enumerate(urls, 1):
-            self._check_cancelled()
-            self._emit_log(f"📥 ({i}/{len(urls)}) 다운로드 시작: {url}")
-            self._last_progress_pct = -1
-
+        self._check_cancelled()
         video_paths = video_pipeline.process_sync(urls)
         self._emit_log(f"{Messages.DOWNLOAD_COMPLETE}: {len(video_paths)}개 파일")
 
