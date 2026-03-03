@@ -113,6 +113,9 @@ class ProcessingWorker(QThread):
         self._check_cancelled()
         video_paths = self._download_videos(urls, user_setting)
 
+        if not video_paths:
+            raise ValueError(f"다운로드된 영상이 없습니다. ({len(urls)}개 URL 중 0개 성공)")
+
         # 2. 오디오를 텍스트로 변환
         self._check_cancelled()
         text_paths = self._convert_audio_to_text(video_paths)

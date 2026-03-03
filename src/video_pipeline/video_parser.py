@@ -34,36 +34,42 @@ async def find_canvas_video_frame(page: Page, shared_state: dict):
     return None
 
 
-async def trigger_video_play(frame, resume: bool = True):
-    """재생 버튼을 클릭하고 이어보기 다이얼로그를 처리한다.
-
-    Args:
-        frame: 비디오 컨트롤이 있는 inner iframe.
-        resume: True면 "예"(.confirm-ok-btn) 클릭, False면 "아니오"(.confirm-cancel-btn) 클릭.
-    """
+async def trigger_video_play(frame):
+    """재생 버튼을 클릭한다."""
     try:
         play_btn = await frame.wait_for_selector(".vc-front-screen-play-btn", timeout=5000)
         await play_btn.click()
         print("[INFO] 재생 버튼 클릭됨.")
     except Exception:
         print("[WARN] 재생 버튼을 찾을 수 없음.")
-        return
 
+
+async def try_dismiss_confirm_dialog(frame, resume: bool = True) -> bool:
+    """이어보기 다이얼로그가 보이면 클릭한다. 클릭했으면 True.
+
+    매 폴링마다 호출되므로 query_selector(비대기)를 사용한다.
+    """
     try:
-        confirm_dialog = await frame.wait_for_selector(".confirm-msg-box", timeout=5000)
-        if confirm_dialog:
-            if resume:
-                ok_btn = await frame.wait_for_selector(".confirm-ok-btn.confirm-btn", timeout=2000)
-                if ok_btn:
-                    await ok_btn.click()
-                    print("[INFO] 이어보기(예) 클릭됨.")
-            else:
-                cancel_btn = await frame.wait_for_selector(".confirm-cancel-btn.confirm-btn", timeout=2000)
-                if cancel_btn:
-                    await cancel_btn.click()
-                    print("[INFO] 처음부터(아니오) 클릭됨.")
-    except Exception:
-        pass  # 다이얼로그가 나타나지 않은 경우 (처음 재생)
+        dialog = await frame.query_selector(".confirm-msg-box")
+        if not dialog:
+            return False
+        if not await dialog.is_visible():
+            return False
+
+        if resume:
+            btn = await frame.query_selector(".confirm-ok-btn")
+        else:
+            btn = await frame.query_selector(".confirm-cancel-btn")
+
+        if btn:
+            await btn.click()
+            label = "이어보기(예)" if resume else "처음부터(아니오)"
+            print(f"[INFO] {label} 클릭됨.")
+            return True
+    except Exception as e:
+        print(f"[DEBUG] 다이얼로그 처리 중 오류: {e}")
+
+    return False
 
 
 # ==============================================================
@@ -100,13 +106,18 @@ class DomVideoExtractor(VideoUrlExtractor):
         if not video_frame:
             return None, None
 
-        await trigger_video_play(video_frame, resume=True)
+        await trigger_video_play(video_frame)
 
         print("[DEBUG] DOM에서 비디오 URL 대기 시작")
         poll_interval = 0.5
         max_polls = int(timeout / poll_interval)
+        dialog_dismissed = False
 
         for _ in range(max_polls):
+            # 매 폴링마다 이어보기 다이얼로그 체크
+            if not dialog_dismissed:
+                dialog_dismissed = await try_dismiss_confirm_dialog(video_frame, resume=True)
+
             try:
                 video_el = await video_frame.query_selector(self.VIDEO_SELECTOR)
                 if video_el:
@@ -166,7 +177,8 @@ class CdpVideoExtractor(VideoUrlExtractor):
         if not video_frame:
             return None, None
 
-        await trigger_video_play(video_frame, resume=False)
+        await trigger_video_play(video_frame)
+        await try_dismiss_confirm_dialog(video_frame, resume=False)
 
         print("[DEBUG] CDP 비디오 URL 대기 시작")
         poll_interval = 0.1
