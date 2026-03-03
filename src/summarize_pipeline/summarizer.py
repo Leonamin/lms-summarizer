@@ -66,7 +66,7 @@ class OpenAISummarizer(Summarizer):
 
 
 class GeminiSummarizer(Summarizer):
-    def __init__(self, model_name: str = "gemini-1.5-flash"):
+    def __init__(self, model_name: str = "gemini-2.0-flash"):
         user_setting = UserSetting()
         self.model_name = model_name
         genai.configure(api_key=user_setting.GOOGLE_API_KEY)

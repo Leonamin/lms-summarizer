@@ -4,9 +4,52 @@
 
 from PyQt5.QtWidgets import QLabel, QLineEdit, QTextEdit, QPushButton, QHBoxLayout, QWidget, QVBoxLayout
 from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtGui import QInputMethodEvent
 
 from src.gui.config.settings import InputFieldConfig
 from src.gui.config.styles import StyleSheet
+
+
+class PasswordToggleButton(QPushButton):
+    """비밀번호 보이기/숨기기 토글 버튼"""
+
+    def __init__(self):
+        super().__init__()
+        self.setCheckable(True)
+        self.setCursor(Qt.PointingHandCursor)
+        self.setFixedWidth(38)
+        self.setToolTip("비밀번호 표시/숨기기")
+        self._update_icon(False)
+        self.setStyleSheet(self._style())
+        self.toggled.connect(self._update_icon)
+
+    def _update_icon(self, checked: bool):
+        self.setText("👁" if not checked else "🙈")
+
+    @staticmethod
+    def _style() -> str:
+        return """
+            QPushButton {
+                border: 1.5px solid #D1D5DB;
+                border-radius: 6px;
+                background-color: white;
+                font-size: 15px;
+                padding: 0px;
+            }
+            QPushButton:hover {
+                background-color: #F9FAFB;
+                border-color: #9CA3AF;
+            }
+            QPushButton:checked {
+                background-color: #EFF6FF;
+                border-color: #1976D2;
+            }
+            QPushButton:disabled {
+                background-color: #F5F5F5;
+                border-color: #E5E7EB;
+                color: #D1D5DB;
+            }
+        """
 
 
 class PasswordLineEdit(QWidget):
@@ -29,47 +72,54 @@ class PasswordLineEdit(QWidget):
         layout.addWidget(self._input)
 
         # 보이기/숨기기 토글 버튼
-        self._toggle_btn = QPushButton("👁")
-        self._toggle_btn.setFixedSize(36, 36)
-        self._toggle_btn.setCursor(Qt.PointingHandCursor)
-        self._toggle_btn.setStyleSheet("""
-            QPushButton {
-                border: 1px solid #ddd;
-                border-radius: 4px;
-                background-color: white;
-                font-size: 16px;
-                padding: 0px;
-            }
-            QPushButton:hover {
-                background-color: #f0f0f0;
-            }
-        """)
-        self._toggle_btn.clicked.connect(self._toggle_visibility)
+        self._toggle_btn = PasswordToggleButton()
+        self._toggle_btn.toggled.connect(self._toggle_visibility)
         layout.addWidget(self._toggle_btn)
 
         self.setLayout(layout)
 
-        # QLineEdit의 keyPressEvent를 가로채서 Caps Lock 감지
+        # keyPressEvent: Caps Lock 감지 + 비ASCII 차단
         self._input.keyPressEvent = self._wrapped_key_press
+        # inputMethodEvent: 한글 IME 차단
+        self._input.inputMethodEvent = self._block_korean_ime
+        # textChanged: 붙여넣기 등으로 유입된 비ASCII 제거
+        self._input.textChanged.connect(self._filter_non_ascii)
 
     def _wrapped_key_press(self, event):
-        """키 입력 시 Caps Lock 상태 감지"""
-        QLineEdit.keyPressEvent(self._input, event)
+        """키 입력 시 Caps Lock 상태 감지 + 비ASCII 차단"""
         text = event.text()
+        if text and not text.isascii():
+            return  # 한글 등 비ASCII 직접 입력 차단
+        QLineEdit.keyPressEvent(self._input, event)
         if text and text.isalpha():
             shift_pressed = bool(event.modifiers() & Qt.ShiftModifier)
             caps_on = (text.isupper() and not shift_pressed) or (text.islower() and shift_pressed)
             self.caps_lock_changed.emit(caps_on)
 
-    def _toggle_visibility(self):
+    def _block_korean_ime(self, event):
+        """한글 IME 입력 차단"""
+        if event.preeditString():
+            QLineEdit.inputMethodEvent(self._input, QInputMethodEvent())
+            return
+        committed = event.commitString()
+        if committed and not committed.isascii():
+            return
+        QLineEdit.inputMethodEvent(self._input, event)
+
+    def _filter_non_ascii(self, text: str):
+        """붙여넣기 등으로 유입된 비ASCII 문자 제거"""
+        filtered = ''.join(c for c in text if 32 <= ord(c) <= 126)
+        if filtered != text:
+            pos = self._input.cursorPosition()
+            self._input.blockSignals(True)
+            self._input.setText(filtered)
+            self._input.blockSignals(False)
+            self._input.setCursorPosition(min(pos, len(filtered)))
+
+    def _toggle_visibility(self, checked: bool):
         """비밀번호 보이기/숨기기 전환"""
-        self._password_visible = not self._password_visible
-        if self._password_visible:
-            self._input.setEchoMode(QLineEdit.Normal)
-            self._toggle_btn.setText("🙈")
-        else:
-            self._input.setEchoMode(QLineEdit.Password)
-            self._toggle_btn.setText("👁")
+        self._password_visible = checked
+        self._input.setEchoMode(QLineEdit.Normal if checked else QLineEdit.Password)
 
     # QLineEdit 호환 인터페이스
     def text(self) -> str:

@@ -13,11 +13,46 @@ class StyleSheet:
         return f"""
             QWidget {{
                 background-color: {Colors.BACKGROUND};
-                font-family: 'Helvetica Neue', Arial, sans-serif;
             }}
             QSplitter::handle {{
                 background-color: {Colors.BORDER};
                 height: 1px;
+            }}
+            QScrollBar:vertical {{
+                border: none;
+                background: transparent;
+                width: 8px;
+                border-radius: 4px;
+            }}
+            QScrollBar::handle:vertical {{
+                background: #C1C9D4;
+                border-radius: 4px;
+                min-height: 30px;
+            }}
+            QScrollBar::handle:vertical:hover {{
+                background: #9AA3AF;
+            }}
+            QScrollBar::add-line:vertical,
+            QScrollBar::sub-line:vertical {{
+                height: 0px;
+            }}
+            QScrollBar:horizontal {{
+                border: none;
+                background: transparent;
+                height: 8px;
+                border-radius: 4px;
+            }}
+            QScrollBar::handle:horizontal {{
+                background: #C1C9D4;
+                border-radius: 4px;
+                min-width: 30px;
+            }}
+            QScrollBar::handle:horizontal:hover {{
+                background: #9AA3AF;
+            }}
+            QScrollBar::add-line:horizontal,
+            QScrollBar::sub-line:horizontal {{
+                width: 0px;
             }}
         """
 
@@ -313,3 +348,59 @@ class StyleSheet:
     @staticmethod
     def divider() -> str:
         return f"QFrame {{ color: {Colors.BORDER}; }}"
+
+    @staticmethod
+    def app_button(variant: str = "filled") -> str:
+        """범용 버튼 스타일 - filled/outline/text/danger 변형"""
+        common = "border-radius: 6px; font-size: 13px; font-weight: 600; padding: 8px 16px;"
+        if variant == "filled":
+            return f"""
+                QPushButton {{
+                    {common}
+                    border: none;
+                    background-color: {Colors.PRIMARY};
+                    color: white;
+                }}
+                QPushButton:hover {{ background-color: {Colors.PRIMARY_HOVER}; }}
+                QPushButton:pressed {{ background-color: {Colors.PRIMARY_PRESSED}; }}
+                QPushButton:disabled {{ background-color: {Colors.DISABLED_BG}; color: white; }}
+            """
+        elif variant == "outline":
+            return f"""
+                QPushButton {{
+                    {common}
+                    background-color: transparent;
+                    color: {Colors.PRIMARY};
+                    border: 1.5px solid {Colors.PRIMARY};
+                }}
+                QPushButton:hover {{ background-color: #E3F2FD; }}
+                QPushButton:pressed {{ background-color: #BBDEFB; }}
+                QPushButton:disabled {{
+                    color: {Colors.DISABLED_BG};
+                    border-color: {Colors.DISABLED_BG};
+                }}
+            """
+        elif variant == "text":
+            return f"""
+                QPushButton {{
+                    {common}
+                    border: none;
+                    background-color: transparent;
+                    color: {Colors.PRIMARY};
+                }}
+                QPushButton:hover {{ background-color: #E3F2FD; }}
+                QPushButton:disabled {{ color: {Colors.DISABLED_BG}; }}
+            """
+        elif variant == "danger":
+            return f"""
+                QPushButton {{
+                    {common}
+                    border: none;
+                    background-color: {Colors.ERROR};
+                    color: white;
+                }}
+                QPushButton:hover {{ background-color: #B71C1C; }}
+                QPushButton:pressed {{ background-color: #7F0000; }}
+                QPushButton:disabled {{ background-color: {Colors.DISABLED_BG}; color: white; }}
+            """
+        return f"QPushButton {{ {common} border: none; }}"

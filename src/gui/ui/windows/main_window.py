@@ -8,7 +8,7 @@ from typing import Dict, List
 
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QMessageBox,
-    QFileDialog, QPushButton, QCheckBox, QSplitter,
+    QFileDialog, QCheckBox, QSplitter,
     QScrollArea, QFrame, QSizePolicy
 )
 from PyQt5.QtCore import Qt
@@ -29,7 +29,7 @@ from src.gui.core.file_manager import (
 )
 from src.gui.ui.components.input_field import InputField
 from src.gui.ui.components.log_area import LogArea
-from src.gui.ui.components.buttons import ProcessingButton, ClearButton
+from src.gui.ui.components.buttons import ProcessingButton, ClearButton, AppButton
 from src.gui.ui.dialogs.progress_modal import ProcessingModal
 from src.gui.workers.processing_worker import ProcessingWorker
 
@@ -114,15 +114,11 @@ class MainWindow(QWidget):
         self.path_value_label.setWordWrap(True)
         path_layout.addWidget(self.path_value_label, stretch=1)
 
-        open_btn = QPushButton("📂 열기")
-        open_btn.setStyleSheet(StyleSheet.outline_button())
-        open_btn.setFixedWidth(72)
+        open_btn = AppButton("📂 열기", "outline")
         open_btn.clicked.connect(self._open_in_finder)
         path_layout.addWidget(open_btn)
 
-        change_btn = QPushButton("경로 변경")
-        change_btn.setStyleSheet(StyleSheet.outline_button())
-        change_btn.setFixedWidth(80)
+        change_btn = AppButton("경로 변경", "outline")
         change_btn.clicked.connect(self._change_download_path)
         path_layout.addWidget(change_btn)
 
