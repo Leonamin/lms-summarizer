@@ -24,6 +24,8 @@ class ProcessingWorker(QThread):
     # 시그널 정의
     log_message = pyqtSignal(str)
     processing_finished = pyqtSignal(bool, str)
+    step_changed = pyqtSignal(int, str)      # (단계번호 1~3, 단계명)
+    progress_updated = pyqtSignal(int, int)  # (현재 bytes, 전체 bytes)
 
     def __init__(self, user_inputs: Dict[str, str], modules: Dict, save_video_dir: str = None):
         super().__init__()
@@ -112,6 +114,7 @@ class ProcessingWorker(QThread):
 
         # 1. 비디오 다운로드 파이프라인
         self._check_cancelled()
+        self.step_changed.emit(1, "영상 다운로드")
         video_paths = self._download_videos(urls, user_setting)
 
         if not video_paths:
@@ -119,10 +122,12 @@ class ProcessingWorker(QThread):
 
         # 2. 오디오를 텍스트로 변환
         self._check_cancelled()
+        self.step_changed.emit(2, "음성 → 텍스트 변환")
         text_paths = self._convert_audio_to_text(video_paths)
 
         # 3. 텍스트 요약
         self._check_cancelled()
+        self.step_changed.emit(3, "AI 요약 생성")
         self._summarize_texts(text_paths)
 
         # 체크박스 미선택 시 원본 영상 삭제 (강의 폴더 내 mp4만 제거)
@@ -140,6 +145,7 @@ class ProcessingWorker(QThread):
         self._last_progress_pct = -1
 
         def on_progress(downloaded, total):
+            self.progress_updated.emit(downloaded, total)
             pct = int(downloaded / total * 100)
             if pct != self._last_progress_pct and pct % 10 == 0:
                 self._last_progress_pct = pct

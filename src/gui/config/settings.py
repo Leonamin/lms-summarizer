@@ -43,7 +43,6 @@ INPUT_FIELD_CONFIGS = {
         label="🎬 강의 URL 목록:",
         placeholder="https://canvas.ssu.ac.kr/courses/...\n(여러 URL은 각각 새 줄에 입력)",
         is_multiline=True,
-        max_height=120
     )
 }
 

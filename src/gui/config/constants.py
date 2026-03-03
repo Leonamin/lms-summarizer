@@ -7,8 +7,10 @@ from dataclasses import dataclass
 # 앱 기본 정보
 APP_TITLE = "LMS 강의 다운로드 & 요약"
 APP_VERSION = "v1.0"
-WINDOW_WIDTH = 700
-WINDOW_HEIGHT = 800
+WINDOW_WIDTH = 660
+WINDOW_HEIGHT = 600
+MIN_WINDOW_WIDTH = 580
+MIN_WINDOW_HEIGHT = 450
 
 # 로그 메시지에 사용할 이모지
 EMOJI_START = "🚀"
@@ -22,23 +24,24 @@ EMOJI_STOP = "⏹"
 
 @dataclass(frozen=True)
 class Colors:
-    """UI에서 사용하는 색상 정의"""
-    PRIMARY = "#3498db"
-    PRIMARY_HOVER = "#2980b9"
-    PRIMARY_PRESSED = "#1f648f"
-    BACKGROUND = "#ecf0f1"
-    TEXT_DARK = "#2c3e50"
-    TEXT_SECONDARY = "#34495e"
-    TEXT_LIGHT = "#7f8c8d"
-    LOG_BG = "#2c3e50"
-    LOG_TEXT = "#ecf0f1"
-    SUCCESS = "#27ae60"
-    WARNING = "#f39c12"
-    ERROR = "#e74c3c"
-    WHITE = "white"
-    BORDER = "#ddd"
-    BORDER_FOCUS = "#3498db"
-    DISABLED_BG = "#bdc3c7"
+    """UI에서 사용하는 색상 정의 (밝은 테마)"""
+    PRIMARY = "#1976D2"
+    PRIMARY_HOVER = "#1565C0"
+    PRIMARY_PRESSED = "#0D47A1"
+    BACKGROUND = "#F5F5F5"
+    CARD_BG = "#FFFFFF"
+    TEXT_DARK = "#212121"
+    TEXT_SECONDARY = "#424242"
+    TEXT_LIGHT = "#757575"
+    LOG_BG = "#F8F9FA"
+    LOG_TEXT = "#333333"
+    SUCCESS = "#388E3C"
+    WARNING = "#F57C00"
+    ERROR = "#D32F2F"
+    WHITE = "#FFFFFF"
+    BORDER = "#E0E0E0"
+    BORDER_FOCUS = "#1976D2"
+    DISABLED_BG = "#BDBDBD"
 
 
 @dataclass(frozen=True)
@@ -87,7 +90,7 @@ class FileExtensions:
 class Limits:
     """제한값들"""
     MAX_TEXT_LENGTH = 8000
-    LOG_AREA_MAX_HEIGHT = 300
-    URL_INPUT_MAX_HEIGHT = 120
-    MIN_INPUT_WIDTH = 500
-    MIN_INPUT_HEIGHT = 100
+    LOG_AREA_MIN_HEIGHT = 80
+    URL_INPUT_MIN_HEIGHT = 80
+    MIN_INPUT_WIDTH = 400
+    MIN_INPUT_HEIGHT = 80
