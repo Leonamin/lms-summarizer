@@ -122,6 +122,40 @@ class StyleSheet:
         """
 
     @staticmethod
+    def caps_lock_warning() -> str:
+        """Caps Lock 경고 라벨 스타일"""
+        return f"""
+            QLabel {{
+                color: {Colors.WARNING};
+                font-size: 11px;
+                margin-top: 0px;
+                margin-bottom: 5px;
+                padding-left: 12px;
+            }}
+        """
+
+    @staticmethod
+    def stop_button() -> str:
+        """중지 버튼 스타일"""
+        return f"""
+            QPushButton {{
+                background-color: {Colors.ERROR};
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 6px;
+                font-size: 14px;
+                font-weight: bold;
+            }}
+            QPushButton:hover {{
+                background-color: #c0392b;
+            }}
+            QPushButton:pressed {{
+                background-color: #a93226;
+            }}
+        """
+
+    @staticmethod
     def path_value() -> str:
         """경로 표시 스타일"""
         return """

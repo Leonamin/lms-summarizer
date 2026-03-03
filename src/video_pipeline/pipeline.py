@@ -1,6 +1,8 @@
 import asyncio
+import re
+from pathlib import Path
 from playwright.async_api import async_playwright, Playwright, Page
-from typing import Optional, Tuple
+from typing import Callable, Optional, Tuple
 
 from src.video_pipeline.login import perform_login_if_needed
 from src.video_pipeline.video_parser import extract_video_url
@@ -8,12 +10,23 @@ from src.video_pipeline.download_video import download_video
 from src.user_setting import UserSetting
 
 
+def sanitize_dirname(name: str) -> str:
+    """디렉토리명에 사용할 수 없는 문자 제거"""
+    sanitized = re.sub(r'[<>:"/\\|?*]', '', name)
+    sanitized = sanitized.strip(' .')
+    sanitized = re.sub(r'\s+', ' ', sanitized)
+    return sanitized or 'untitled'
+
+
 class VideoPipeline:
-    def __init__(self, user_setting: UserSetting):
+    def __init__(self, user_setting: UserSetting, extraction_timeout: float = 60,
+                 progress_callback: Optional[Callable[[int, int], None]] = None):
         self.user_setting = user_setting
         self.user_id = user_setting.user_id
         self.password = user_setting.password
         self.downloads_dir = None  # 다운로드 경로는 나중에 설정됨
+        self.extraction_timeout = extraction_timeout
+        self.progress_callback = progress_callback
 
     async def _setup_browser(self, playwright: Playwright) -> Tuple[Page, any]:
         """브라우저 설정 및 페이지 생성"""
@@ -59,11 +72,21 @@ class VideoPipeline:
         else:
             print("[INFO] 로그인 불필요.")
 
-        video_url, title = await extract_video_url(page)
+        video_url, title = await extract_video_url(page, method="dom", timeout=self.extraction_timeout)
 
         if video_url:
             print(f"[SUCCESS] 동영상 링크 추출됨: {video_url}, 제목: {title}")
-            filepath = download_video(video_url, save_dir=self.downloads_dir, filename=title)
+
+            # 강의 이름으로 하위 디렉토리 생성
+            save_dir = self.downloads_dir
+            if title and save_dir:
+                lecture_dir = Path(save_dir) / sanitize_dirname(title)
+                lecture_dir.mkdir(parents=True, exist_ok=True)
+                save_dir = str(lecture_dir)
+                print(f"[INFO] 강의 폴더: {save_dir}")
+
+            filepath = download_video(video_url, save_dir=save_dir, filename=title,
+                                     progress_callback=self.progress_callback)
             print(f"[SUCCESS] 동영상 다운로드 완료: {filepath}")
             return filepath
         else:

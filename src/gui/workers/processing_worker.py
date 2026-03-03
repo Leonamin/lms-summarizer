@@ -2,14 +2,20 @@
 백그라운드에서 LMS 처리 작업을 수행하는 워커 스레드
 """
 
+import threading
 import traceback
 from pathlib import Path
 from typing import Dict, List
 from PyQt5.QtCore import QThread, pyqtSignal
 
 from src.gui.config.constants import Messages
-from src.gui.core.file_manager import create_config_files, extract_urls_from_input
+from src.gui.core.file_manager import create_config_files, extract_urls_from_input, ensure_downloads_directory
 from src.gui.core.module_loader import check_required_modules
+
+
+class CancelledException(Exception):
+    """사용자가 작업을 취소했을 때 발생하는 예외"""
+    pass
 
 
 class ProcessingWorker(QThread):
@@ -19,10 +25,25 @@ class ProcessingWorker(QThread):
     log_message = pyqtSignal(str)
     processing_finished = pyqtSignal(bool, str)
 
-    def __init__(self, user_inputs: Dict[str, str], modules: Dict):
+    def __init__(self, user_inputs: Dict[str, str], modules: Dict, save_video_dir: str = None):
         super().__init__()
         self.user_inputs = user_inputs
         self.modules = modules
+        self.save_video_dir = save_video_dir
+        self._cancel_event = threading.Event()
+
+    def request_cancel(self):
+        """취소 요청 (메인 스레드에서 호출)"""
+        self._cancel_event.set()
+
+    def is_cancelled(self) -> bool:
+        """취소 요청 여부 확인"""
+        return self._cancel_event.is_set()
+
+    def _check_cancelled(self):
+        """취소 요청 시 CancelledException 발생"""
+        if self._cancel_event.is_set():
+            raise CancelledException("사용자가 작업을 취소했습니다.")
 
     def run(self):
         """실제 처리 작업 실행"""
@@ -33,8 +54,12 @@ class ProcessingWorker(QThread):
             if not self._validate_modules():
                 return
 
+            self._check_cancelled()
+
             # 설정 파일 생성
             self._create_configuration()
+
+            self._check_cancelled()
 
             # 메인 처리 파이프라인 실행
             self._execute_processing_pipeline()
@@ -42,6 +67,10 @@ class ProcessingWorker(QThread):
             # 완료 메시지
             self._emit_log(Messages.PROCESSING_COMPLETE)
             self.processing_finished.emit(True, "작업이 성공적으로 완료되었습니다.")
+
+        except CancelledException:
+            self._emit_log("⚠️ 사용자에 의해 작업이 취소되었습니다.")
+            self.processing_finished.emit(False, "작업이 취소되었습니다.")
 
         except Exception as e:
             error_msg = f"작업 중 오류 발생: {str(e)}"
@@ -82,12 +111,18 @@ class ProcessingWorker(QThread):
         user_setting = self.modules['UserSetting'](self.user_inputs)
 
         # 1. 비디오 다운로드 파이프라인
+        self._check_cancelled()
         video_paths = self._download_videos(urls, user_setting)
 
+        if not video_paths:
+            raise ValueError(f"다운로드된 영상이 없습니다. ({len(urls)}개 URL 중 0개 성공)")
+
         # 2. 오디오를 텍스트로 변환
+        self._check_cancelled()
         text_paths = self._convert_audio_to_text(video_paths)
 
         # 3. 텍스트 요약
+        self._check_cancelled()
         self._summarize_texts(text_paths)
 
         # 결과 정리
@@ -98,10 +133,23 @@ class ProcessingWorker(QThread):
         self._emit_log(f"{Messages.VIDEO_DOWNLOADING}")
         self._emit_log(f"📋 다운로드할 링크: {len(urls)}개")
 
-        video_pipeline = self.modules['VideoPipeline'](user_setting)
+        self._last_progress_pct = -1
+
+        def on_progress(downloaded, total):
+            pct = int(downloaded / total * 100)
+            if pct != self._last_progress_pct and pct % 10 == 0:
+                self._last_progress_pct = pct
+                mb_down = downloaded / (1024 * 1024)
+                mb_total = total / (1024 * 1024)
+                self._emit_log(f"   📊 다운로드 진행: {pct}% ({mb_down:.1f}/{mb_total:.1f} MB)")
+
+        video_pipeline = self.modules['VideoPipeline'](user_setting, progress_callback=on_progress)
+        video_pipeline.downloads_dir = ensure_downloads_directory()
 
         for i, url in enumerate(urls, 1):
+            self._check_cancelled()
             self._emit_log(f"📥 ({i}/{len(urls)}) 다운로드 시작: {url}")
+            self._last_progress_pct = -1
 
         video_paths = video_pipeline.process_sync(urls)
         self._emit_log(f"{Messages.DOWNLOAD_COMPLETE}: {len(video_paths)}개 파일")
@@ -111,7 +159,38 @@ class ProcessingWorker(QThread):
         for i, filepath in enumerate(video_paths, 1):
             self._emit_log(f"   📹 ({i}) {filepath}")
 
+        # 원본 영상 저장 옵션
+        if self.save_video_dir and video_paths:
+            self._save_videos_to_dir(video_paths)
+
         return video_paths
+
+    def _save_videos_to_dir(self, video_paths: List[str]):
+        """원본 영상을 사용자 지정 경로에 저장"""
+        import shutil
+        self._emit_log(f"📂 원본 영상 저장 경로: {self.save_video_dir}")
+
+        for filepath in video_paths:
+            src = Path(filepath)
+            dest = Path(self.save_video_dir) / src.name
+
+            # 이미 같은 경로면 스킵
+            if src.resolve() == dest.resolve():
+                self._emit_log(f"   ✅ 이미 저장 경로에 있음: {src.name}")
+                continue
+
+            # 파일명 충돌 시 자동 번호 추가
+            if dest.exists():
+                stem = src.stem
+                suffix = src.suffix
+                counter = 1
+                while dest.exists():
+                    dest = Path(self.save_video_dir) / f"{stem}_{counter}{suffix}"
+                    counter += 1
+                self._emit_log(f"   ⚠️ 파일명 충돌로 이름 변경: {dest.name}")
+
+            shutil.copy2(str(src), str(dest))
+            self._emit_log(f"   📹 저장 완료: {dest}")
 
     def _convert_audio_to_text(self, video_paths: List[str]) -> List[str]:
         """오디오를 텍스트로 변환"""
@@ -124,7 +203,10 @@ class ProcessingWorker(QThread):
         text_paths = []
 
         for i, video_path in enumerate(video_paths, 1):
+            self._check_cancelled()
             try:
+                # 각 비디오 파일의 디렉토리에 텍스트 저장
+                audio_pipeline.downloads_dir = str(Path(video_path).parent)
                 self._emit_log(f"🎤 ({i}/{len(video_paths)}) 텍스트 변환 중: {Path(video_path).name}")
                 self._emit_log(f"📄 원본 파일: {video_path}")
 
@@ -133,6 +215,8 @@ class ProcessingWorker(QThread):
 
                 self._emit_log(f"{Messages.CONVERSION_COMPLETE}: {text_path}")
 
+            except CancelledException:
+                raise
             except Exception as e:
                 self._emit_log(f"{Messages.CONVERSION_FAILED} ({Path(video_path).name}): {e}")
                 self._emit_log(f"[DEBUG] 오류 상세: {str(e)}")
@@ -153,7 +237,10 @@ class ProcessingWorker(QThread):
         summary_paths = []
 
         for i, text_path in enumerate(text_paths, 1):
+            self._check_cancelled()
             try:
+                # 각 텍스트 파일의 디렉토리에 요약 저장
+                summarize_pipeline.downloads_dir = str(Path(text_path).parent)
                 self._emit_log(f"📝 ({i}/{len(text_paths)}) 요약 생성 중: {Path(text_path).name}")
                 self._emit_log(f"📄 입력 파일: {text_path}")
 
@@ -162,6 +249,8 @@ class ProcessingWorker(QThread):
 
                 self._emit_log(f"{Messages.SUMMARY_COMPLETE}: {summary_path}")
 
+            except CancelledException:
+                raise
             except Exception as e:
                 self._emit_log(f"{Messages.SUMMARY_FAILED} ({Path(text_path).name}): {e}")
                 self._emit_log(f"[DEBUG] 오류 상세: {str(e)}")
@@ -214,9 +303,7 @@ class ProcessingWorker(QThread):
 
         # 저장 위치 안내
         if video_paths or text_paths:
-            from src.gui.core.file_manager import get_resource_path
-            downloads_dir = get_resource_path("downloads")
+            downloads_dir = ensure_downloads_directory()
             self._emit_log(f"\n📁 모든 파일이 저장된 위치: {downloads_dir}")
-            self._emit_log("💡 Finder에서 확인: open downloads/")
 
         self._emit_log("="*50)

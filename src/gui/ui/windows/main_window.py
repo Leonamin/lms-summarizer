@@ -3,20 +3,23 @@
 """
 
 from typing import Dict, List
+import subprocess
+import sys
+
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QMessageBox,
-    QFileDialog, QPushButton
+    QFileDialog, QPushButton, QCheckBox
 )
 from PyQt5.QtCore import Qt
 
-from src.gui.config.constants import APP_TITLE, APP_VERSION, WINDOW_WIDTH, WINDOW_HEIGHT, Messages
+from src.gui.config.constants import APP_TITLE, APP_VERSION, WINDOW_WIDTH, WINDOW_HEIGHT, Messages, EMOJI_PROCESSING
 from src.gui.config.styles import StyleSheet
 from src.gui.config.settings import INPUT_FIELD_CONFIGS
 from src.gui.core.validators import InputValidator
 from src.gui.core.module_loader import check_required_modules
 from src.gui.core.file_manager import (
     ensure_downloads_directory, set_downloads_directory,
-    get_default_downloads_dir
+    get_default_downloads_dir, save_user_inputs, load_user_inputs
 )
 from src.gui.ui.components.input_field import InputField
 from src.gui.ui.components.log_area import LogArea
@@ -39,12 +42,15 @@ class MainWindow(QWidget):
         self.log_area = None
         self.start_button = None
         self.clear_button = None
+        self.save_video_checkbox = None
         self.worker = None
         self.path_button = None
+        self.path_value_label = None
 
         # 윈도우 설정 및 UI 구성
         self._setup_window()
         self._setup_ui()
+        self._load_saved_inputs()
         self._check_module_status()
 
     def _setup_window(self):
@@ -65,6 +71,9 @@ class MainWindow(QWidget):
 
         # 입력 필드 섹션
         self._create_input_section(main_layout)
+
+        # 옵션 섹션
+        self._create_options_section(main_layout)
 
         # 버튼 섹션
         self._create_button_section(main_layout)
@@ -91,25 +100,31 @@ class MainWindow(QWidget):
     def _create_path_section(self, layout: QVBoxLayout):
         """저장 경로 설정 섹션 생성"""
         path_layout = QHBoxLayout()
-        
+
         # 라벨
         path_label = QLabel("📁 저장 경로:")
         path_label.setStyleSheet(StyleSheet.label())
         path_layout.addWidget(path_label)
-        
+
         # 현재 경로 표시
         current_path = ensure_downloads_directory()
-        path_value = QLabel(current_path)
-        path_value.setStyleSheet(StyleSheet.path_value())
-        path_value.setWordWrap(True)
-        path_layout.addWidget(path_value, stretch=1)
-        
+        self.path_value_label = QLabel(current_path)
+        self.path_value_label.setStyleSheet(StyleSheet.path_value())
+        self.path_value_label.setWordWrap(True)
+        path_layout.addWidget(self.path_value_label, stretch=1)
+
+        # Finder에서 열기 버튼
+        open_finder_btn = QPushButton("📂 열기")
+        open_finder_btn.setStyleSheet(StyleSheet.button())
+        open_finder_btn.clicked.connect(self._open_in_finder)
+        path_layout.addWidget(open_finder_btn)
+
         # 경로 변경 버튼
         self.path_button = QPushButton("경로 변경")
         self.path_button.setStyleSheet(StyleSheet.button())
         self.path_button.clicked.connect(self._change_download_path)
         path_layout.addWidget(self.path_button)
-        
+
         layout.addLayout(path_layout)
 
     def _change_download_path(self):
@@ -121,10 +136,11 @@ class MainWindow(QWidget):
             current_path,
             QFileDialog.ShowDirsOnly
         )
-        
+
         if new_path:
             try:
                 set_downloads_directory(new_path)
+                self.path_value_label.setText(new_path)
                 self.log_area.append_message(f"✅ 저장 경로가 변경되었습니다: {new_path}")
             except Exception as e:
                 QMessageBox.critical(
@@ -132,6 +148,16 @@ class MainWindow(QWidget):
                     "경로 변경 오류",
                     f"저장 경로 변경 중 오류가 발생했습니다:\n{str(e)}"
                 )
+
+    def _open_in_finder(self):
+        """저장 경로를 Finder(macOS) / 파일 탐색기(Windows)에서 열기"""
+        path = ensure_downloads_directory()
+        if sys.platform == 'darwin':
+            subprocess.Popen(['open', path])
+        elif sys.platform == 'win32':
+            subprocess.Popen(['explorer', path])
+        else:
+            subprocess.Popen(['xdg-open', path])
 
     def _create_input_section(self, layout: QVBoxLayout):
         """입력 필드 섹션 생성"""
@@ -142,11 +168,22 @@ class MainWindow(QWidget):
             layout.addWidget(field.label)
             layout.addWidget(field.widget)
 
+            # Caps Lock 경고 라벨 (비밀번호 필드)
+            if field.caps_lock_label is not None:
+                layout.addWidget(field.caps_lock_label)
+
+    def _create_options_section(self, layout: QVBoxLayout):
+        """옵션 섹션 생성"""
+        self.save_video_checkbox = QCheckBox("📹 원본 동영상을 저장 경로에 보관")
+        self.save_video_checkbox.setStyleSheet(StyleSheet.label())
+        self.save_video_checkbox.setChecked(False)
+        layout.addWidget(self.save_video_checkbox)
+
     def _create_button_section(self, layout: QVBoxLayout):
         """버튼 섹션 생성"""
         button_layout = QHBoxLayout()
 
-        # 시작 버튼
+        # 시작/중지 버튼
         self.start_button = ProcessingButton()
         self.start_button.clicked.connect(self._handle_start_processing)
         button_layout.addWidget(self.start_button)
@@ -172,8 +209,19 @@ class MainWindow(QWidget):
                 self.log_area.append_message(f"   - {error}")
             self.log_area.append_message(Messages.INSTALL_REQUIREMENTS)
 
+    def _load_saved_inputs(self):
+        """저장된 입력값 복원"""
+        saved = load_user_inputs()
+        for field_name, value in saved.items():
+            if field_name in self.input_fields and value:
+                self.input_fields[field_name].set_value(value)
+
     def _handle_start_processing(self):
-        """처리 시작 버튼 클릭 핸들러"""
+        """시작/중지 버튼 클릭 핸들러"""
+        if self.start_button.is_processing:
+            self._handle_stop_processing()
+            return
+
         # 입력값 수집
         inputs = self._collect_input_values()
 
@@ -187,6 +235,20 @@ class MainWindow(QWidget):
 
         # 처리 시작
         self._start_background_processing(inputs)
+
+    def _handle_stop_processing(self):
+        """중지 버튼 클릭 핸들러"""
+        reply = QMessageBox.question(
+            self, "확인",
+            "진행 중인 작업을 중지하시겠습니까?",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+        if reply == QMessageBox.Yes and self.worker:
+            self.worker.request_cancel()
+            self.log_area.append_message("⚠️ 작업 중지를 요청했습니다. 현재 단계가 끝나면 중지됩니다...")
+            self.start_button.setEnabled(False)
+            self.start_button.setText(f"{EMOJI_PROCESSING} 중지 중...")
 
     def _handle_clear_inputs(self):
         """입력 필드 초기화 버튼 클릭 핸들러"""
@@ -235,6 +297,9 @@ class MainWindow(QWidget):
 
     def _start_background_processing(self, inputs: Dict[str, str]):
         """백그라운드 처리 시작"""
+        # 입력값 저장 (다음 세션을 위해)
+        save_user_inputs(inputs)
+
         # UI 상태 변경
         self.start_button.start_processing()
         self.clear_button.setEnabled(False)
@@ -243,8 +308,13 @@ class MainWindow(QWidget):
         # 로그 초기화
         self.log_area.clear()
 
+        # 원본 영상 저장 옵션
+        save_video_dir = None
+        if self.save_video_checkbox.isChecked():
+            save_video_dir = ensure_downloads_directory()
+
         # 워커 스레드 시작
-        self.worker = ProcessingWorker(inputs, self.modules)
+        self.worker = ProcessingWorker(inputs, self.modules, save_video_dir=save_video_dir)
         self.worker.log_message.connect(self.log_area.append_message)
         self.worker.processing_finished.connect(self._on_processing_finished)
         self.worker.start()
@@ -289,8 +359,11 @@ class MainWindow(QWidget):
             )
 
             if reply == QMessageBox.Yes:
-                self.worker.terminate()
-                self.worker.wait()
+                self.worker.request_cancel()
+                self.worker.wait(5000)
+                if self.worker.isRunning():
+                    self.worker.terminate()
+                    self.worker.wait()
                 event.accept()
             else:
                 event.ignore()

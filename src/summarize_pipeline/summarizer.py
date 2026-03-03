@@ -87,11 +87,6 @@ class GeminiSummarizer(Summarizer):
 
         print(f"[DEBUG] 텍스트 길이: {len(content)}자")
 
-        # 텍스트가 너무 길면 자르기 (Gemini 토큰 제한 고려)
-        if len(content) > 8000:
-            print(f"[WARNING] 텍스트가 너무 깁니다 ({len(content)}자). 8000자로 제한합니다.")
-            content = content[:8000] + "..."
-
         full_prompt = f"{prompt}\n\n다음은 전체 텍스트입니다:\n{content}"
 
         print("[DEBUG] Google Gemini API 호출 시작...")

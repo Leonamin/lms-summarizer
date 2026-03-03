@@ -4,6 +4,7 @@ LMS 강의 다운로드 & 요약 GUI 애플리케이션
 메인 진입점 파일
 """
 
+import signal
 import sys
 import os
 
@@ -68,6 +69,9 @@ def main():
         # 메인 윈도우 생성 및 실행
         window = MainWindow(modules, errors)
         window.show()
+
+        # Ctrl+C로 종료 가능하도록 SIGINT 핸들러 설정
+        signal.signal(signal.SIGINT, signal.SIG_DFL)
 
         sys.exit(app.exec_())
 

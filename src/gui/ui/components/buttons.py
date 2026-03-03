@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import QPushButton
 from PyQt5.QtCore import pyqtSignal
 
 from src.gui.config.styles import StyleSheet
-from src.gui.config.constants import EMOJI_START, EMOJI_PROCESSING
+from src.gui.config.constants import EMOJI_START, EMOJI_PROCESSING, EMOJI_STOP
 
 
 class ProcessingButton(QPushButton):
@@ -15,20 +15,22 @@ class ProcessingButton(QPushButton):
     def __init__(self, text: str = f"{EMOJI_START} 요약 시작"):
         super().__init__(text)
         self.default_text = text
-        self.processing_text = f"{EMOJI_PROCESSING} 처리 중..."
+        self.stop_text = f"{EMOJI_STOP} 중지"
         self.setStyleSheet(StyleSheet.button())
         self.is_processing = False
 
     def start_processing(self):
-        """처리 시작 상태로 변경"""
+        """처리 시작 → 중지 버튼으로 변경"""
         self.is_processing = True
-        self.setText(self.processing_text)
-        self.setEnabled(False)
+        self.setText(self.stop_text)
+        self.setStyleSheet(StyleSheet.stop_button())
+        self.setEnabled(True)
 
     def stop_processing(self):
-        """처리 완료 상태로 변경"""
+        """처리 완료 → 시작 버튼으로 복원"""
         self.is_processing = False
         self.setText(self.default_text)
+        self.setStyleSheet(StyleSheet.button())
         self.setEnabled(True)
 
     def set_enabled_with_text(self, enabled: bool, text: str = None):

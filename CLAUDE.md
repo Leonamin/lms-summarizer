@@ -4,7 +4,7 @@
 
 - **headless=False 유지**: 내장 Chromium에서는 LMS 영상 재생이 실패한다. 반드시 시스템 Chrome + headless=False 조합을 유지할 것.
 - **로그인 플로우 순서 고정**: `login.py`의 SSO 버튼 클릭 → 폼 입력 → 로그인 버튼 클릭 순서는 LMS에 맞춰져 있다. 순서를 바꾸면 로그인이 깨진다.
-- **CDP 스니핑 방식 필수**: `video_parser.py`에서 CDP `Network.requestWillBeSent`로 영상 URL을 가로채는 것이 유일한 방법이다. DOM에서 video src를 직접 추출하는 방식은 동작하지 않는다.
+- **DOM 추출 방식 기본**: `video_parser.py`에서 `video.vc-vplay-video1` 요소의 `src` 속성으로 영상 URL을 추출한다. CDP 스니핑(`CdpVideoExtractor`)은 deprecated fallback으로 유지된다.
 - **`ssmovie.mp4` 패턴**: LMS 서버가 하드코딩한 영상 경로 패턴이다. LMS가 변경하면 같이 바뀌어야 하므로 향후 추상화 대상.
 
 ## 설계 의도
@@ -16,7 +16,6 @@
 
 ## 알려진 버그 (미수정)
 
-- `video_pipeline/pipeline.py`에서 `download_video(save_dir=...)`로 호출하지만, `download_video()` 함수에 `save_dir` 파라미터가 없다.
 - `summarizer.py`에서 `user_setting.OPENAI_API_KEY`를 참조하지만, `UserSetting` 클래스에 해당 속성이 정의되지 않았다.
 - CLI(`src/main.py`)는 상대 import, GUI(`src/gui/`)는 `src.` prefix import를 사용한다. 경로 불일치 주의.
 

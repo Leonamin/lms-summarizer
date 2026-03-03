@@ -17,6 +17,7 @@ EMOJI_ERROR = "❌"
 EMOJI_WARNING = "⚠️"
 EMOJI_INFO = "📋"
 EMOJI_PROCESSING = "⏳"
+EMOJI_STOP = "⏹"
 
 
 @dataclass(frozen=True)
