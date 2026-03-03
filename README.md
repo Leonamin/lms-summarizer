@@ -1,151 +1,122 @@
 # LMS 요약
 
+숭실대학교 LMS 강의 동영상을 다운로드하고 AI로 요약하는 도구입니다.
+
 ## 환경설정
 
-### 파이썬 버전 설정
+### 1. uv 설치
 
-whisper를 사용하기 때문에 적정 버전인 3.9.9 사용(3.13은 openai-whisper 다운로드가 안될거임)
+[uv](https://docs.astral.sh/uv/getting-started/installation/)를 설치합니다.
 
-직접 설치 또는 pyenv 사용하여 파이썬 버전 관리
+```bash
+# macOS / Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
 
-### Mac OS pyenv 설정
-
-pyenv 설치
-
-```
-brew install pyenv
+# Windows
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
 
-.zshrc에 아래 내용 작성
+### 2. 의존성 설치
 
-```
-# [pyenv]
-export PYENV_ROOT="$HOME/.pyenv"
-export PATH="$PYENV_ROOT/bin:$PATH"
-eval "$(pyenv init --path)"
-```
+프로젝트 루트에서 아래 명령어를 실행하면 Python 설치, 가상환경 생성, 패키지 설치가 한번에 처리됩니다.
 
-```
-source ~/.zshrc
+```bash
+uv sync
 ```
 
-3.9.9 버전 설치 및 사용
+새 패키지를 추가할 때:
 
-```
-pyenv install 3.9.9
-
-pyenv local 3.9.9
+```bash
+uv add <패키지명>
 ```
 
-현재 폴더에 .python-version 생기면 성공!
+### 3. Playwright 브라우저 설치
 
-### venv 설정
-
-```
-python3 -m venv .venv
+```bash
+uv run playwright install
 ```
 
-1. Mac OS
+### 4. ffmpeg 설치
 
-```
-source .venv/bin/activate
-```
+동영상 파일을 wav로 변환하기 위해 ffmpeg이 필요합니다.
 
-2. Windows
-
-```
-.venv/bin/Activate.ps1
-```
-
-### 라이브러리 설치
-
-아래 명령어를 실행해서 라이브러리 설치
-
-```
-pip3 install -r requirements.txt
-```
-
-라이브러리를 설치하면 매번 꼭 업데이트 해주자
-
-```
-pip3 freeze >> requirements.txt
-```
-
-playwright 용 특별 설치
-
-```
-playwright install
-```
-
-### ffmpeg 설치
-
-동영상 파일을 wav로 바꾸어야하기 때문에 ffmpeg을 설치한다
-
-```
+```bash
+# macOS
 brew install ffmpeg
+
+# Windows
+# https://ffmpeg.org/download.html 에서 다운로드
 ```
 
-### .env 설정
+### 5. .env 설정
+
+프로젝트 루트에 `.env` 파일을 생성합니다.
 
 ```
-USERID=(아이디)학번
+USERID=학번
 PASSWORD=비밀번호
+GOOGLE_API_KEY=구글_제미나이_API_키
 ```
 
-### 리턴제로 API 키 설정
-
-그냥 whisper 사용할거면 안해도 됨
-여기에서 API 키 발급 한달 600분 무료 https://developers.rtzr.ai/
-
-.env에 다음 항목을 추가
+선택 사항:
 
 ```
-RETURNZERO_CLIENT_ID=~~~~~~~~
-RETURNZERO_CLIENT_SECRET=~~~~~~~~~
+RETURNZERO_CLIENT_ID=리턴제로_클라이언트_ID
+RETURNZERO_CLIENT_SECRET=리턴제로_클라이언트_시크릿
+OPENAI_API_KEY=OpenAI_API_키
 ```
 
-### openai API 키 설정
+- **Gemini API 키**: 요약 기능에 사용 (기본 엔진)
+- **ReturnZero API 키**: STT 대안 엔진. 미설정 시 Whisper(로컬) 사용. [API 키 발급](https://developers.rtzr.ai/) (월 600분 무료)
+- **OpenAI API 키**: 요약 대안 엔진
 
-```
-OPENAI_API_KEY=~~~~~~~~
-```
+### 6. user_settings.json 설정 (선택)
 
-### 최종 .env 모습
+GUI를 사용하지 않고 CLI로 실행할 때 URL 목록을 미리 지정할 수 있습니다.
 
-```
-USERID=(아이디)학번
-PASSWORD=비밀번호
-RETURNZERO_CLIENT_ID=~~~~~~~~
-RETURNZERO_CLIENT_SECRET=~~~~~~~~
-OPENAI_API_KEY=~~~~~~~~
-```
-
-### user_settings.json 설정
-
-없어도 동작은 함
-
-```
+```json
 {
   "video": [
-    "https://canvas.ssu.ac.kr/courses/35082/modules/items/3160477?return_url=/courses/35082/external_tools/71",
-    "https://canvas.ssu.ac.kr/courses/35082/modules/items/3160478?return_url=/courses/35082/external_tools/71",
-    "https://canvas.ssu.ac.kr/courses/35082/modules/items/3160479?return_url=/courses/35082/external_tools/71"
+    "https://canvas.ssu.ac.kr/courses/xxxxx/modules/items/xxxxxxx?return_url=..."
   ]
 }
 ```
 
-## 예시
+## 실행
 
+```bash
+# GUI 실행
+uv run python src/gui/main.py
 ```
-https://canvas.ssu.ac.kr/courses/35082/modules/items/3149344?return_url=/courses/35082/external_tools/71
+
+## 빌드 (macOS)
+
+```bash
+./build_mac_pyinstaller.sh
 ```
 
-## 에러 발생의 경우
+## 에러 발생 시
 
-### 단위 테스트 파일 실행 실패 시 PYTHONPATH 설정
+### ModuleNotFoundError
 
-예 ModuleNotFoundError: No module named 'audio_pipeline' 같은 에러 발생 시 파이썬 상대경로 문제(파이썬은 엄밀히 따지면 루트가 되는 프로젝트 시작점이 따로 없음 그래서 PYTHONPATH로 설정해야함)
+단위 테스트 파일 실행 시 `ModuleNotFoundError: No module named 'audio_pipeline'` 같은 에러가 발생하면:
 
+```bash
+export PYTHONPATH="${PYTHONPATH}:$(pwd)/src"
 ```
-export PYTHONPATH="${PYTHONPATH}:/Users/lsm/dev/project/lms-summarizer/src"
-```
+
+## 커밋 메시지 규칙
+
+| 타입 | 설명 | 예시 |
+|------|------|------|
+| `feat` | 새로운 기능 추가 | `feat: 사용자 로그인 기능 추가` |
+| `fix` | 버그 수정 | `fix: 로그인 페이지 오류 수정` |
+| `docs` | 문서 수정 | `docs: README.md 업데이트` |
+| `style` | 코드 스타일 수정 | `style: 들여쓰기 통일` |
+| `refactor` | 코드 리팩토링 | `refactor: 로그인 기능 리팩토링` |
+| `test` | 테스트 코드 추가 | `test: 로그인 기능 테스트 추가` |
+| `chore` | 보조 도구/설정 변경 | `chore: 의존성 업데이트` |
+| `build` | 빌드 시스템/외부 의존성 변경 | `build: uv로 패키지 매니저 전환` |
+| `ci` | CI/CD 설정 변경 | `ci: Github Actions 설정 수정` |
+| `perf` | 성능 개선 | `perf: 다운로드 속도 개선` |
+| `release` | 릴리즈 | `release: v1.0.0` (버전 태깅 포함) |

@@ -12,7 +12,7 @@
 - **GUI 중심 개발**: CLI(`src/main.py`)는 폐기 예정. 단, 각 파이프라인 모듈은 독립 실행/테스트 가능하도록 추상화를 유지한다.
 - **기본 엔진**: STT는 Whisper(로컬), 요약은 Gemini. 나머지(ReturnZero, OpenAI, ChatGPT)는 대안 옵션이다.
 - **ChatGPTSummarizer**: API 호출이 아니라 클립보드 복사 + 브라우저 열기 방식이다. 의도된 동작이다.
-- **Python 3.9.9**: Whisper 호환성 때문. Whisper가 상위 버전을 지원한다면 업그레이드 가능.
+- **Python >=3.9,<3.13**: Whisper 호환성 때문. `.python-version`에 `3.9`로 설정되어 있고 uv가 자동 관리한다.
 
 ## 알려진 버그 (미수정)
 
@@ -22,9 +22,25 @@
 
 ## 배포
 
+- **패키지 매니저**: uv 사용. 의존성 추가는 `uv add`, 설치는 `uv sync`.
 - PyInstaller 빌드 시 torch 포함으로 ~1GB. 해결 방안 미정.
-- 패키지 매니저를 uv로 전환 예정.
 - Chrome 경로가 Mac용(`/Applications/Google Chrome.app/...`)으로 하드코딩되어 있다. Windows 배포 시 경로 분기 필요.
+
+## 커밋 메시지 컨벤션
+
+`type: 설명` 형식을 사용한다.
+
+- `feat`: 새로운 기능 추가
+- `fix`: 버그 수정
+- `docs`: 문서 수정
+- `style`: 코드 스타일 수정 (formatting 등)
+- `refactor`: 코드 리팩토링
+- `test`: 테스트 코드 추가
+- `chore`: 빌드 프로세스/보조 도구 변경
+- `build`: 빌드 시스템/외부 의존성 변경
+- `ci`: CI/CD 설정 변경
+- `perf`: 성능 개선
+- `release`: 릴리즈 (버전 태깅 포함)
 
 ## 외부 의존성 (시스템 설치 필수)
 
