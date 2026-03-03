@@ -30,6 +30,7 @@ from src.gui.core.file_manager import (
 from src.gui.ui.components.input_field import InputField
 from src.gui.ui.components.log_area import LogArea
 from src.gui.ui.components.buttons import ProcessingButton, ClearButton, AppButton
+from src.gui.ui.components.model_selector import ModelSelector
 from src.gui.ui.dialogs.progress_modal import ProcessingModal
 from src.gui.workers.processing_worker import ProcessingWorker
 
@@ -51,6 +52,7 @@ class MainWindow(QWidget):
         self.worker: ProcessingWorker = None
         self.modal: ProcessingModal = None
         self.path_value_label: QLabel = None
+        self.model_selector: ModelSelector = None
 
         self._setup_window()
         self._setup_ui()
@@ -115,10 +117,12 @@ class MainWindow(QWidget):
         path_layout.addWidget(self.path_value_label, stretch=1)
 
         open_btn = AppButton("📂 열기", "outline")
+        open_btn.setFixedWidth(90)
         open_btn.clicked.connect(self._open_in_finder)
         path_layout.addWidget(open_btn)
 
         change_btn = AppButton("경로 변경", "outline")
+        change_btn.setFixedWidth(90)
         change_btn.clicked.connect(self._change_download_path)
         path_layout.addWidget(change_btn)
 
@@ -135,7 +139,7 @@ class MainWindow(QWidget):
         card.setStyleSheet(StyleSheet.card())
         card_layout = QVBoxLayout(card)
         card_layout.setContentsMargins(16, 14, 16, 14)
-        card_layout.setSpacing(4)
+        card_layout.setSpacing(2)
 
         # 입력 필드 생성
         for field_name, config in INPUT_FIELD_CONFIGS.items():
@@ -147,6 +151,15 @@ class MainWindow(QWidget):
 
             if field.caps_lock_label is not None:
                 card_layout.addWidget(field.caps_lock_label)
+
+            # API 키 필드 다음에 AI 모델 선택기 추가
+            if field_name == 'api_key':
+                model_label = QLabel("🤖 AI 모델:")
+                model_label.setStyleSheet(StyleSheet.label())
+                card_layout.addWidget(model_label)
+
+                self.model_selector = ModelSelector()
+                card_layout.addWidget(self.model_selector)
 
         # URL 입력창이 세로 방향으로 늘어나도록 설정
         urls_widget = self.input_fields['urls'].widget
@@ -254,16 +267,20 @@ class MainWindow(QWidget):
     # ── 처리 시작 / 완료 ───────────────────────────────────────────
 
     def _start_background_processing(self, inputs: Dict[str, str]):
-        save_user_inputs(inputs)
+        model_name = self.model_selector.get_model() if self.model_selector else "gemini-2.5-flash"
+        save_user_inputs({**inputs, 'ai_model': model_name})
 
         self.start_button.start_processing()
         self.clear_button.setEnabled(False)
         self._set_input_fields_enabled(False)
+        if self.model_selector:
+            self.model_selector.setEnabled(False)
         self.log_area.clear()
 
         save_video_dir = ensure_downloads_directory() if self.save_video_checkbox.isChecked() else None
 
-        self.worker = ProcessingWorker(inputs, self.modules, save_video_dir=save_video_dir)
+        self.worker = ProcessingWorker(inputs, self.modules, save_video_dir=save_video_dir,
+                                       model_name=model_name)
         self.worker.log_message.connect(self.log_area.append_message)
         self.worker.processing_finished.connect(self._on_processing_finished)
 
@@ -288,6 +305,8 @@ class MainWindow(QWidget):
         self.start_button.stop_processing()
         self.clear_button.setEnabled(True)
         self._set_input_fields_enabled(True)
+        if self.model_selector:
+            self.model_selector.setEnabled(True)
 
         # 모달 상태 업데이트
         if self.modal:
@@ -346,6 +365,8 @@ class MainWindow(QWidget):
         for field_name, value in saved.items():
             if field_name in self.input_fields and value:
                 self.input_fields[field_name].set_value(value)
+        if 'ai_model' in saved and self.model_selector:
+            self.model_selector.set_model(saved['ai_model'])
 
     def closeEvent(self, event):
         if self.worker and self.worker.isRunning():

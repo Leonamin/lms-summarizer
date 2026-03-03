@@ -89,7 +89,7 @@ class StyleSheet:
             color: {Colors.TEXT_SECONDARY};
             font-size: 13px;
             font-weight: 600;
-            margin-top: 4px;
+            margin-top: 10px;
         """
 
     @staticmethod

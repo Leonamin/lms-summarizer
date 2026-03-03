@@ -27,11 +27,13 @@ class ProcessingWorker(QThread):
     step_changed = pyqtSignal(int, str)      # (단계번호 1~3, 단계명)
     progress_updated = pyqtSignal(int, int)  # (현재 bytes, 전체 bytes)
 
-    def __init__(self, user_inputs: Dict[str, str], modules: Dict, save_video_dir: str = None):
+    def __init__(self, user_inputs: Dict[str, str], modules: Dict, save_video_dir: str = None,
+                 model_name: str = "gemini-2.5-flash"):
         super().__init__()
         self.user_inputs = user_inputs
         self.modules = modules
         self.save_video_dir = save_video_dir
+        self.model_name = model_name
         self._cancel_event = threading.Event()
 
     def request_cancel(self):
@@ -219,7 +221,7 @@ class ProcessingWorker(QThread):
         """텍스트 요약"""
         self._emit_log(Messages.TEXT_SUMMARIZING)
 
-        summarize_pipeline = self.modules['SummarizePipeline']()
+        summarize_pipeline = self.modules['SummarizePipeline'](self.model_name)
         summary_paths = []
 
         for i, text_path in enumerate(text_paths, 1):

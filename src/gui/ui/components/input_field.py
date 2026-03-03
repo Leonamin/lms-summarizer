@@ -9,6 +9,47 @@ from PyQt5.QtGui import QInputMethodEvent
 from src.gui.config.settings import InputFieldConfig
 from src.gui.config.styles import StyleSheet
 
+# ── 한글 두벌식 → QWERTY 역매핑 ───────────────────────────────────
+_KOREAN_TO_QWERTY = {
+    # 자음
+    'ㄱ': 'r', 'ㄲ': 'R', 'ㄴ': 's', 'ㄷ': 'e', 'ㄸ': 'E',
+    'ㄹ': 'f', 'ㅁ': 'a', 'ㅂ': 'q', 'ㅃ': 'Q', 'ㅅ': 't',
+    'ㅆ': 'T', 'ㅇ': 'd', 'ㅈ': 'w', 'ㅉ': 'W', 'ㅊ': 'c',
+    'ㅋ': 'z', 'ㅌ': 'x', 'ㅍ': 'v', 'ㅎ': 'g',
+    # 단모음
+    'ㅏ': 'k', 'ㅐ': 'o', 'ㅑ': 'i', 'ㅒ': 'O', 'ㅓ': 'j',
+    'ㅔ': 'p', 'ㅕ': 'u', 'ㅖ': 'P', 'ㅗ': 'h', 'ㅛ': 'y',
+    'ㅜ': 'n', 'ㅠ': 'b', 'ㅡ': 'm', 'ㅣ': 'l',
+    # 복합모음 (두 키 조합)
+    'ㅘ': 'hk', 'ㅙ': 'ho', 'ㅚ': 'hl',
+    'ㅝ': 'nj', 'ㅞ': 'np', 'ㅟ': 'nl', 'ㅢ': 'ml',
+    # 겹받침
+    'ㄳ': 'rt', 'ㄵ': 'sw', 'ㄶ': 'sg', 'ㄺ': 'fr', 'ㄻ': 'fa',
+    'ㄼ': 'fq', 'ㄽ': 'ft', 'ㄾ': 'fx', 'ㄿ': 'fv', 'ㅀ': 'fg', 'ㅄ': 'qt',
+}
+
+_CHO = ['ㄱ', 'ㄲ', 'ㄴ', 'ㄷ', 'ㄸ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅃ',
+        'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅉ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ']
+_JUNG = ['ㅏ', 'ㅐ', 'ㅑ', 'ㅒ', 'ㅓ', 'ㅔ', 'ㅕ', 'ㅖ', 'ㅗ', 'ㅘ', 'ㅙ',
+         'ㅚ', 'ㅛ', 'ㅜ', 'ㅝ', 'ㅞ', 'ㅟ', 'ㅠ', 'ㅡ', 'ㅢ', 'ㅣ']
+_JONG = ['', 'ㄱ', 'ㄲ', 'ㄳ', 'ㄴ', 'ㄵ', 'ㄶ', 'ㄷ', 'ㄹ', 'ㄺ', 'ㄻ',
+         'ㄼ', 'ㄽ', 'ㄾ', 'ㄿ', 'ㅀ', 'ㅁ', 'ㅂ', 'ㅄ', 'ㅅ', 'ㅆ', 'ㅇ',
+         'ㅈ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ']
+
+
+def _decompose_syllable(char: str) -> list:
+    """완성형 한글 음절을 낱자(자모)로 분리"""
+    code = ord(char) - 0xAC00
+    if code < 0 or code > 11171:
+        return [char]
+    cho_idx = code // 588
+    jung_idx = (code % 588) // 28
+    jong_idx = code % 28
+    result = [_CHO[cho_idx], _JUNG[jung_idx]]
+    if jong_idx:
+        result.append(_JONG[jong_idx])
+    return result
+
 
 class PasswordToggleButton(QPushButton):
     """비밀번호 보이기/숨기기 토글 버튼"""
@@ -86,35 +127,70 @@ class PasswordLineEdit(QWidget):
         self._input.textChanged.connect(self._filter_non_ascii)
 
     def _wrapped_key_press(self, event):
-        """키 입력 시 Caps Lock 상태 감지 + 비ASCII 차단"""
-        text = event.text()
-        if text and not text.isascii():
-            return  # 한글 등 비ASCII 직접 입력 차단
+        """키 입력 시 Caps Lock 상태 감지"""
         QLineEdit.keyPressEvent(self._input, event)
-        if text and text.isalpha():
+        text = event.text()
+        if text and text.isalpha() and text.isascii():
             shift_pressed = bool(event.modifiers() & Qt.ShiftModifier)
             caps_on = (text.isupper() and not shift_pressed) or (text.islower() and shift_pressed)
             self.caps_lock_changed.emit(caps_on)
 
     def _block_korean_ime(self, event):
-        """한글 IME 입력 차단"""
-        if event.preeditString():
+        """한글 IME 입력: preedit 차단, 커밋은 QWERTY 영문으로 변환"""
+        preedit = event.preeditString()
+        committed = event.commitString()
+
+        if committed and not committed.isascii():
+            english = self._convert_hangul(committed)
+            QLineEdit.inputMethodEvent(self._input, QInputMethodEvent())
+            if english:
+                self._input.insert(english)
+            return
+
+        if preedit and not preedit.isascii():
             QLineEdit.inputMethodEvent(self._input, QInputMethodEvent())
             return
-        committed = event.commitString()
-        if committed and not committed.isascii():
-            return
+
         QLineEdit.inputMethodEvent(self._input, event)
 
+    def _convert_hangul(self, text: str) -> str:
+        """한글 문자열을 QWERTY 영문으로 변환"""
+        result = []
+        for char in text:
+            if 0xAC00 <= ord(char) <= 0xD7A3:
+                for jamo in _decompose_syllable(char):
+                    result.append(_KOREAN_TO_QWERTY.get(jamo, ''))
+            elif 0x3131 <= ord(char) <= 0x3163:
+                result.append(_KOREAN_TO_QWERTY.get(char, ''))
+            elif 32 <= ord(char) <= 126:
+                result.append(char)
+        return ''.join(result)
+
     def _filter_non_ascii(self, text: str):
-        """붙여넣기 등으로 유입된 비ASCII 문자 제거"""
-        filtered = ''.join(c for c in text if 32 <= ord(c) <= 126)
-        if filtered != text:
+        """비ASCII 처리: 한글은 QWERTY로 변환, 나머지는 제거"""
+        result = []
+        changed = False
+        for char in text:
+            if 32 <= ord(char) <= 126:
+                result.append(char)
+            elif 0xAC00 <= ord(char) <= 0xD7A3:
+                for jamo in _decompose_syllable(char):
+                    result.append(_KOREAN_TO_QWERTY.get(jamo, ''))
+                changed = True
+            elif 0x3131 <= ord(char) <= 0x3163:
+                mapped = _KOREAN_TO_QWERTY.get(char, '')
+                if mapped:
+                    result.append(mapped)
+                changed = True
+            else:
+                changed = True
+        if changed:
+            new_text = ''.join(result)
             pos = self._input.cursorPosition()
             self._input.blockSignals(True)
-            self._input.setText(filtered)
+            self._input.setText(new_text)
             self._input.blockSignals(False)
-            self._input.setCursorPosition(min(pos, len(filtered)))
+            self._input.setCursorPosition(min(pos, len(new_text)))
 
     def _toggle_visibility(self, checked: bool):
         """비밀번호 보이기/숨기기 전환"""
