@@ -1,3 +1,7 @@
+"""
+DEPRECATED: CLI 진입점. GUI(src/gui/main.py)로 대체 예정.
+개발/디버깅 목적으로만 사용할 것.
+"""
 from audio_pipeline.pipeline import AudioToTextPipeline
 from summarize_pipeline.pipeline import SummarizePipeline
 from user_setting import UserSetting

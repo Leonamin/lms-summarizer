@@ -19,12 +19,14 @@ class UserSetting:
             self.RETURNZERO_CLIENT_ID = os.getenv("RETURNZERO_CLIENT_ID")
             self.RETURNZERO_CLIENT_SECRET = os.getenv("RETURNZERO_CLIENT_SECRET")
             self.GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+            self.OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
         else:
             self.user_id = self.gui_inputs.get('student_id')
             self.password = self.gui_inputs.get('password')
             self.RETURNZERO_CLIENT_ID = self.gui_inputs.get('returnzero_client_id')
             self.RETURNZERO_CLIENT_SECRET = self.gui_inputs.get('returnzero_client_secret')
             self.GOOGLE_API_KEY = self.gui_inputs.get('api_key')
+            self.OPENAI_API_KEY = self.gui_inputs.get('openai_api_key')
 
     def get_video_urls(self) -> list[str]:
         # GUI 입력값이 있으면 사용

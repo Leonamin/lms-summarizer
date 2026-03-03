@@ -1,8 +1,8 @@
-import time
-import sys
 import os
-from src.summarize_pipeline.summarizer import summarize_text
+import time
 from pathlib import Path
+
+from src.summarize_pipeline.summarizer import summarize_text
 
 
 class SummarizePipeline:

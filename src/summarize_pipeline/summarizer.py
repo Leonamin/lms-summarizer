@@ -3,16 +3,8 @@ import google.generativeai as genai
 import webbrowser
 from openai import OpenAI
 import pyperclip
-import sys
-import os
 
 from src.user_setting import UserSetting
-
-
-# def resource_path(relative_path):
-#     if hasattr(sys, '_MEIPASS'):
-#         return os.path.join(sys._MEIPASS, relative_path)
-#     return os.path.join(os.path.abspath("."), relative_path)
 
 
 def summarize_text(txt_path: str, prompt: str, engine: str = "gemini"):
