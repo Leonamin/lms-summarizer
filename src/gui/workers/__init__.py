@@ -3,5 +3,6 @@
 """
 
 from .processing_worker import ProcessingWorker
+from .course_list_worker import CourseListWorker
 
-__all__ = ['ProcessingWorker']
+__all__ = ['ProcessingWorker', 'CourseListWorker']
