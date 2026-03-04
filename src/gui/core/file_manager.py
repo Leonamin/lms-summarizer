@@ -205,3 +205,39 @@ def set_chrome_path(path: str) -> None:
     settings = load_settings()
     settings["chrome_path"] = path
     save_settings(settings)
+
+
+# ── 과목 캐시 ─────────────────────────────────────────────
+
+def save_course_cache(courses_data: list) -> None:
+    """과목 목록 캐시를 settings.json에 저장"""
+    from datetime import datetime
+    settings = load_settings()
+    settings["course_cache"] = {
+        "courses": courses_data,
+        "cached_at": datetime.now().isoformat(),
+    }
+    save_settings(settings)
+
+
+def load_course_cache(max_age_hours: int = 24) -> list:
+    """캐시된 과목 목록 반환. 만료 시 빈 리스트."""
+    from datetime import datetime
+    settings = load_settings()
+    cache = settings.get("course_cache")
+    if not cache:
+        return []
+    try:
+        cached_at = datetime.fromisoformat(cache["cached_at"])
+        if (datetime.now() - cached_at).total_seconds() > max_age_hours * 3600:
+            return []
+    except (KeyError, ValueError):
+        return []
+    return cache.get("courses", [])
+
+
+def clear_course_cache() -> None:
+    """과목 목록 캐시 삭제"""
+    settings = load_settings()
+    settings.pop("course_cache", None)
+    save_settings(settings)

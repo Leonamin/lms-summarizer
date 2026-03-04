@@ -8,7 +8,7 @@ from typing import Dict, List
 
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QMessageBox,
-    QFileDialog, QCheckBox, QSplitter,
+    QDialog, QFileDialog, QCheckBox, QSplitter,
     QScrollArea, QFrame, QSizePolicy
 )
 from PyQt5.QtCore import Qt
@@ -35,6 +35,7 @@ from src.gui.ui.components.model_selector import ModelSelector
 from src.gui.ui.components.toast import ToastMessage
 from src.gui.ui.dialogs.progress_modal import ProcessingModal
 from src.gui.ui.dialogs.settings_dialog import SettingsDialog
+from src.gui.ui.dialogs.course_list_dialog import CourseListDialog
 from src.gui.workers.processing_worker import ProcessingWorker
 
 
@@ -161,6 +162,22 @@ class MainWindow(QWidget):
             field = InputField(config)
             self.input_fields[field_name] = field
 
+            # URL 필드: 라벨 옆에 "강의 목록에서 선택" 버튼 추가
+            if field_name == 'urls':
+                url_header = QHBoxLayout()
+                url_header.addWidget(field.label)
+                url_header.addStretch()
+
+                self.browse_courses_btn = AppButton("강의 목록에서 선택", "outline")
+                self.browse_courses_btn.setIcon(AppIcons.icon('book'))
+                self.browse_courses_btn.setFixedWidth(170)
+                self.browse_courses_btn.clicked.connect(self._open_course_list_dialog)
+                url_header.addWidget(self.browse_courses_btn)
+
+                card_layout.addLayout(url_header)
+                card_layout.addWidget(field.widget)
+                continue
+
             card_layout.addWidget(field.label)
             card_layout.addWidget(field.widget)
 
@@ -240,6 +257,35 @@ class MainWindow(QWidget):
     def _open_settings_dialog(self):
         dialog = SettingsDialog(self)
         dialog.exec_()
+
+    def _open_course_list_dialog(self):
+        """강의 목록 다이얼로그를 열어 URL을 선택한다."""
+        student_id = self.input_fields['student_id'].get_value().strip()
+        password = self.input_fields['password'].get_value().strip()
+
+        if not student_id or not password:
+            QMessageBox.warning(
+                self, "입력 필요",
+                "학번과 비밀번호를 먼저 입력해주세요."
+            )
+            return
+
+        dialog = CourseListDialog(
+            self, username=student_id, password=password
+        )
+        if dialog.exec_() == QDialog.Accepted:
+            selected_urls = dialog.get_selected_urls()
+            if selected_urls:
+                current = self.input_fields['urls'].get_value().strip()
+                new_urls = '\n'.join(selected_urls)
+                if current:
+                    combined = current + '\n' + new_urls
+                else:
+                    combined = new_urls
+                self.input_fields['urls'].set_value(combined)
+                self.log_area.append_message(
+                    f"강의 목록에서 {len(selected_urls)}개 URL이 추가되었습니다."
+                )
 
     def _open_in_finder(self):
         path = ensure_downloads_directory()
@@ -391,6 +437,8 @@ class MainWindow(QWidget):
     def _set_input_fields_enabled(self, enabled: bool):
         for field in self.input_fields.values():
             field.set_enabled(enabled)
+        if hasattr(self, 'browse_courses_btn'):
+            self.browse_courses_btn.setEnabled(enabled)
 
     def _check_module_status(self):
         if self.module_errors:

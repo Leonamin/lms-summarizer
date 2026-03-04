@@ -421,3 +421,67 @@ class StyleSheet:
                 text-decoration: underline;
             }}
         """
+
+    # ── 강의 목록 다이얼로그 ────────────────────────────────────
+
+    @staticmethod
+    def course_list_widget() -> str:
+        return f"""
+            QListWidget {{
+                border: 1px solid {Colors.BORDER};
+                border-radius: 6px;
+                background-color: {Colors.WHITE};
+                padding: 4px;
+                outline: none;
+            }}
+            QListWidget::item {{
+                padding: 10px 12px;
+                border-radius: 4px;
+            }}
+            QListWidget::item:hover {{
+                background-color: #E3F2FD;
+            }}
+            QListWidget::item:selected {{
+                background-color: {Colors.PRIMARY};
+                color: white;
+            }}
+        """
+
+    @staticmethod
+    def lecture_tree_widget() -> str:
+        return f"""
+            QTreeWidget {{
+                border: 1px solid {Colors.BORDER};
+                border-radius: 6px;
+                background-color: {Colors.WHITE};
+                padding: 4px;
+                outline: none;
+            }}
+            QTreeWidget::item {{
+                padding: 4px 8px;
+            }}
+            QTreeWidget::item:hover {{
+                background-color: #E3F2FD;
+            }}
+            QTreeWidget::branch {{
+                background: transparent;
+            }}
+            QTreeWidget::indicator {{
+                width: 16px;
+                height: 16px;
+            }}
+            QTreeWidget::indicator:unchecked {{
+                border: 1.5px solid {Colors.BORDER};
+                border-radius: 3px;
+                background-color: {Colors.WHITE};
+            }}
+            QTreeWidget::indicator:checked {{
+                background-color: {Colors.PRIMARY};
+                border-color: {Colors.PRIMARY};
+                border-radius: 3px;
+            }}
+        """
+
+    @staticmethod
+    def status_label() -> str:
+        return f"color: {Colors.TEXT_LIGHT}; font-size: 12px;"
