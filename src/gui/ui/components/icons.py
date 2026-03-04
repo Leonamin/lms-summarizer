@@ -95,23 +95,41 @@ class IconLabel(QWidget):
     def __init__(self, icon_name: str, text: str, icon_size: int = 16,
                  icon_color: str = None, parent: QWidget = None):
         super().__init__(parent)
+
+        # 투명 배경 - 부모 위젯의 스타일이 투과되어 outline이 생기지 않도록
+        super().setStyleSheet("background: transparent; border: none;")
+
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(4)
 
         self._icon_label = QLabel()
         self._icon_label.setPixmap(AppIcons.pixmap(icon_name, icon_size, icon_color))
-        self._icon_label.setFixedSize(icon_size + 2, icon_size + 2)
+        self._icon_label.setFixedSize(icon_size, icon_size)
         self._icon_label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(self._icon_label)
+        self._icon_label.setStyleSheet("background: transparent; border: none;")
+        layout.addWidget(self._icon_label, alignment=Qt.AlignVCenter)
 
         self._text_label = QLabel(text)
-        layout.addWidget(self._text_label)
+        self._text_label.setStyleSheet("background: transparent; border: none;")
+        layout.addWidget(self._text_label, alignment=Qt.AlignVCenter)
         layout.addStretch()
 
     def setStyleSheet(self, style: str):
-        """텍스트 라벨에 스타일시트 적용"""
-        self._text_label.setStyleSheet(style)
+        """텍스트 라벨에 스타일시트 적용 (배경 투명, margin은 위젯 레벨로 이동)"""
+        # margin-top은 위젯 자체에 적용하여 아이콘-텍스트가 정렬되도록
+        import re
+        margin_match = re.search(r'margin-top:\s*(\d+)px', style)
+        if margin_match:
+            margin_val = margin_match.group(1)
+            super().setStyleSheet(
+                f"background: transparent; border: none; margin-top: {margin_val}px;"
+            )
+            # 텍스트 라벨에서는 margin-top 제거
+            cleaned = re.sub(r'margin-top:\s*\d+px;?\s*', '', style)
+            self._text_label.setStyleSheet(cleaned + " background: transparent; border: none;")
+        else:
+            self._text_label.setStyleSheet(style + " background: transparent; border: none;")
 
     def setAlignment(self, alignment):
         """텍스트 정렬"""

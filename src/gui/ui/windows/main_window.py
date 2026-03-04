@@ -154,7 +154,7 @@ class MainWindow(QWidget):
         card.setStyleSheet(StyleSheet.card())
         card_layout = QVBoxLayout(card)
         card_layout.setContentsMargins(16, 14, 16, 14)
-        card_layout.setSpacing(2)
+        card_layout.setSpacing(4)
 
         # 입력 필드 생성
         for field_name, config in INPUT_FIELD_CONFIGS.items():
@@ -181,11 +181,16 @@ class MainWindow(QWidget):
         urls_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         urls_widget.setMinimumHeight(80)
 
+        # 체크박스/버튼 영역과 입력 필드 사이 간격
+        card_layout.addSpacing(8)
+
         # 옵션 체크박스
         self.save_video_checkbox = QCheckBox("처리 완료 후 원본 동영상 보관 (미선택 시 자동 삭제)")
         self.save_video_checkbox.setStyleSheet(StyleSheet.checkbox())
         self.save_video_checkbox.setChecked(False)
         card_layout.addWidget(self.save_video_checkbox)
+
+        card_layout.addSpacing(4)
 
         # 버튼 영역
         btn_layout = QHBoxLayout()
