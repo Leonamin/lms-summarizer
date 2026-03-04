@@ -232,7 +232,7 @@ class CourseListView:
         return ft.Column(
             controls=[
                 ft.TextButton(
-                    "< 과목 목록으로",
+                    "과목 목록으로",
                     icon=ft.Icons.ARROW_BACK,
                     style=ft.ButtonStyle(color=Colors.PRIMARY),
                     on_click=lambda e: self._go_back_to_courses(),

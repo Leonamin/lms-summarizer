@@ -238,7 +238,7 @@ class MainView:
                     )
                 )
 
-            form_controls.append(field.control)
+            form_controls.append(field.container)
 
             # API 키 다음에 모델 선택기
             if name == 'api_key':
