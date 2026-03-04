@@ -14,6 +14,7 @@ class InputFieldConfig:
     is_password: bool = False
     is_multiline: bool = False
     max_height: Optional[int] = None
+    icon: Optional[str] = None
 
 
 @dataclass
@@ -27,22 +28,26 @@ class ModuleConfig:
 # 입력 필드 설정들
 INPUT_FIELD_CONFIGS = {
     'student_id': InputFieldConfig(
-        label="📚 학번:",
-        placeholder="예: 20201234"
+        label="학번:",
+        placeholder="예: 20201234",
+        icon="school",
     ),
     'password': InputFieldConfig(
-        label="🔒 비밀번호:",
+        label="비밀번호:",
         placeholder="LMS 비밀번호",
-        is_password=True
+        is_password=True,
+        icon="lock",
     ),
     'api_key': InputFieldConfig(
-        label="🔑 Gemini API 키:",
-        placeholder="sk-... (Gemini API 키를 입력하세요)"
+        label="Gemini API 키:",
+        placeholder="sk-... (Gemini API 키를 입력하세요)",
+        icon="key",
     ),
     'urls': InputFieldConfig(
-        label="🎬 강의 URL 목록:",
+        label="강의 URL 목록:",
         placeholder="https://canvas.ssu.ac.kr/courses/...\n(여러 URL은 각각 새 줄에 입력)",
         is_multiline=True,
+        icon="movie",
     )
 }
 

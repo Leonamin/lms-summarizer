@@ -13,6 +13,7 @@ from PyQt5.QtCore import Qt
 from src.gui.config.constants import Colors
 from src.gui.config.styles import StyleSheet
 from src.gui.ui.components.buttons import AppButton
+from src.gui.ui.components.icons import AppIcons
 from src.gui.core.file_manager import (
     DEFAULT_PROMPT,
     get_summary_prompt, set_summary_prompt,
@@ -40,7 +41,7 @@ class SettingsDialog(QDialog):
         layout.setContentsMargins(24, 20, 24, 20)
 
         # 제목
-        title = QLabel("⚙️ 설정")
+        title = AppIcons.label('settings', '설정', icon_size=18)
         title.setStyleSheet(StyleSheet.modal_title())
         layout.addWidget(title)
         layout.addWidget(self._make_divider())
@@ -59,7 +60,7 @@ class SettingsDialog(QDialog):
         self.setLayout(layout)
 
     def _build_prompt_section(self, layout: QVBoxLayout):
-        label = QLabel("📝 요약 프롬프트:")
+        label = AppIcons.label('prompt', '요약 프롬프트:')
         label.setStyleSheet(StyleSheet.label())
         layout.addWidget(label)
 
@@ -74,11 +75,12 @@ class SettingsDialog(QDialog):
         layout.addWidget(self._prompt_edit)
 
         reset_btn = AppButton("기본값 복원", "text")
+        reset_btn.setIcon(AppIcons.icon('reset'))
         reset_btn.clicked.connect(self._reset_prompt)
         layout.addWidget(reset_btn, alignment=Qt.AlignLeft)
 
     def _build_chrome_section(self, layout: QVBoxLayout):
-        label = QLabel("🌐 Chrome 브라우저 경로:")
+        label = AppIcons.label('chrome', 'Chrome 브라우저 경로:')
         label.setStyleSheet(StyleSheet.label())
         layout.addWidget(label)
 
@@ -94,7 +96,8 @@ class SettingsDialog(QDialog):
         path_row.addWidget(self._chrome_path_edit)
 
         browse_btn = AppButton("찾아보기...", "outline")
-        browse_btn.setFixedWidth(110)
+        browse_btn.setIcon(AppIcons.icon('browse'))
+        browse_btn.setFixedWidth(120)
         browse_btn.clicked.connect(self._browse_chrome)
         path_row.addWidget(browse_btn)
         layout.addLayout(path_row)
@@ -117,10 +120,12 @@ class SettingsDialog(QDialog):
         btn_layout.addStretch()
 
         cancel_btn = AppButton("취소", "outline")
+        cancel_btn.setIcon(AppIcons.icon('cancel'))
         cancel_btn.clicked.connect(self.reject)
         btn_layout.addWidget(cancel_btn)
 
         save_btn = AppButton("저장", "filled")
+        save_btn.setIcon(AppIcons.icon('save', color='white'))
         save_btn.clicked.connect(self._save_and_close)
         btn_layout.addWidget(save_btn)
 

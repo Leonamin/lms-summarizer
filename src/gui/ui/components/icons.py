@@ -1,0 +1,132 @@
+"""
+Material Design Icons 제공 모듈 (qtawesome 기반)
+
+사용법:
+    from src.gui.ui.components.icons import AppIcons
+
+    # 버튼에 아이콘 추가
+    button.setIcon(AppIcons.icon('settings'))
+
+    # 아이콘 + 텍스트 복합 라벨 생성
+    label = AppIcons.label('folder', '저장 경로:')
+"""
+
+import qtawesome as qta
+from PyQt5.QtGui import QIcon, QPixmap
+from PyQt5.QtWidgets import QWidget, QHBoxLayout, QLabel
+from PyQt5.QtCore import QSize, Qt
+
+from src.gui.config.constants import Colors
+
+
+# 아이콘 이름 매핑 (앱 내부 → Material Design Icons 6)
+_ICON_MAP = {
+    # 버튼
+    'start': 'mdi6.play',
+    'stop': 'mdi6.stop',
+    'delete': 'mdi6.delete',
+    'settings': 'mdi6.cog',
+    'folder_open': 'mdi6.folder-open',
+    'save': 'mdi6.content-save',
+    'cancel': 'mdi6.close',
+    'reset': 'mdi6.restore',
+    'browse': 'mdi6.folder-search',
+
+    # 비밀번호 토글
+    'visibility': 'mdi6.eye-outline',
+    'visibility_off': 'mdi6.eye-off-outline',
+
+    # 입력 필드 라벨
+    'school': 'mdi6.school',
+    'lock': 'mdi6.lock',
+    'key': 'mdi6.key-variant',
+    'movie': 'mdi6.movie-open',
+
+    # 섹션 헤더
+    'graduation': 'mdi6.school',
+    'book': 'mdi6.book-open-variant',
+    'folder': 'mdi6.folder',
+    'robot': 'mdi6.robot',
+    'video': 'mdi6.video',
+    'log': 'mdi6.clipboard-text-outline',
+    'prompt': 'mdi6.text-box-edit-outline',
+    'chrome': 'mdi6.google-chrome',
+
+    # 진행 상태
+    'check_circle': 'mdi6.check-circle',
+    'circle_outline': 'mdi6.circle-outline',
+    'record_circle': 'mdi6.record-circle',
+    'chevron_down': 'mdi6.chevron-down',
+    'chevron_up': 'mdi6.chevron-up',
+
+    # 기타
+    'warning': 'mdi6.alert-outline',
+    'processing': 'mdi6.timer-sand',
+}
+
+_DEFAULT_COLOR = Colors.TEXT_SECONDARY
+
+
+class AppIcons:
+    """앱 전체에서 사용하는 아이콘 관리 클래스"""
+
+    @staticmethod
+    def icon(name: str, color: str = None) -> QIcon:
+        """QIcon 반환 (QPushButton.setIcon 등에 사용)"""
+        qta_name = _ICON_MAP.get(name, name)
+        return qta.icon(qta_name, color=color or _DEFAULT_COLOR)
+
+    @staticmethod
+    def pixmap(name: str, size: int = 16, color: str = None) -> QPixmap:
+        """QPixmap 반환 (QLabel.setPixmap 등에 사용)"""
+        ic = AppIcons.icon(name, color=color)
+        return ic.pixmap(QSize(size, size))
+
+    @staticmethod
+    def label(icon_name: str, text: str, icon_size: int = 16,
+              icon_color: str = None, parent: QWidget = None) -> 'IconLabel':
+        """아이콘 + 텍스트 복합 라벨 생성"""
+        return IconLabel(icon_name, text, icon_size, icon_color, parent)
+
+
+class IconLabel(QWidget):
+    """아이콘 + 텍스트가 결합된 라벨 위젯"""
+
+    def __init__(self, icon_name: str, text: str, icon_size: int = 16,
+                 icon_color: str = None, parent: QWidget = None):
+        super().__init__(parent)
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(4)
+
+        self._icon_label = QLabel()
+        self._icon_label.setPixmap(AppIcons.pixmap(icon_name, icon_size, icon_color))
+        self._icon_label.setFixedSize(icon_size + 2, icon_size + 2)
+        self._icon_label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(self._icon_label)
+
+        self._text_label = QLabel(text)
+        layout.addWidget(self._text_label)
+        layout.addStretch()
+
+    def setStyleSheet(self, style: str):
+        """텍스트 라벨에 스타일시트 적용"""
+        self._text_label.setStyleSheet(style)
+
+    def setAlignment(self, alignment):
+        """텍스트 정렬"""
+        self._text_label.setAlignment(alignment)
+
+    def setEnabled(self, enabled: bool):
+        """활성화 상태 설정"""
+        super().setEnabled(enabled)
+        self._text_label.setEnabled(enabled)
+        self._icon_label.setEnabled(enabled)
+
+    def setVisible(self, visible: bool):
+        """표시 상태 설정"""
+        super().setVisible(visible)
+
+    def setWordWrap(self, wrap: bool):
+        """줄바꿈 설정"""
+        self._text_label.setWordWrap(wrap)

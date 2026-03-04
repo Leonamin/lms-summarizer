@@ -7,6 +7,7 @@ from PyQt5.QtCore import Qt
 
 from src.gui.config.styles import StyleSheet
 from src.gui.config.constants import Limits
+from src.gui.ui.components.icons import AppIcons
 
 
 class LogArea:
@@ -16,9 +17,9 @@ class LogArea:
         self.label = self._create_label()
         self.text_area = self._create_text_area()
 
-    def _create_label(self) -> QLabel:
+    def _create_label(self):
         """로그 라벨 생성"""
-        label = QLabel("📋 작업 로그:")
+        label = AppIcons.label('log', '작업 로그:')
         label.setStyleSheet(StyleSheet.label())
         return label
 
@@ -28,7 +29,7 @@ class LogArea:
         text_area.setReadOnly(True)
         text_area.setStyleSheet(StyleSheet.log_area())
         text_area.setMinimumHeight(Limits.LOG_AREA_MIN_HEIGHT)
-        text_area.setPlainText("📋 작업 로그가 여기에 표시됩니다...\n")
+        text_area.setPlainText("작업 로그가 여기에 표시됩니다...\n")
         return text_area
 
     def append_message(self, message: str):
@@ -39,7 +40,7 @@ class LogArea:
     def clear(self):
         """로그 초기화"""
         self.text_area.clear()
-        self.text_area.setPlainText("📋 작업 로그가 여기에 표시됩니다...\n")
+        self.text_area.setPlainText("작업 로그가 여기에 표시됩니다...\n")
 
     def _auto_scroll(self):
         """자동 스크롤"""
