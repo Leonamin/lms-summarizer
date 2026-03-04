@@ -101,17 +101,28 @@ class VideoPipeline:
     async def process(self, urls: list[str]) -> list[str]:
         """비디오 다운로드 파이프라인 실행"""
         downloaded_videos_path = []
+        failed_urls = []
 
         async with async_playwright() as p:
             page, browser = await self._setup_browser(p)
 
             try:
-                for url in urls:
-                    filepath = await self._process_single_url(page, url)
-                    if filepath:
-                        downloaded_videos_path.append(filepath)
+                for i, url in enumerate(urls, 1):
+                    try:
+                        filepath = await self._process_single_url(page, url)
+                        if filepath:
+                            downloaded_videos_path.append(filepath)
+                    except Exception as e:
+                        print(f"[ERROR] ({i}/{len(urls)}) 다운로드 실패, 다음 영상으로 진행: {url}")
+                        print(f"[ERROR] 원인: {e}")
+                        failed_urls.append((url, str(e)))
             finally:
                 await browser.close()
+
+        if failed_urls:
+            print(f"\n[WARN] {len(failed_urls)}개 영상 다운로드 실패:")
+            for url, err in failed_urls:
+                print(f"  - {url}: {err}")
 
         return downloaded_videos_path
 
