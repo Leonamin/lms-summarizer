@@ -59,6 +59,18 @@ _ICON_MAP = {
     'chevron_down': 'mdi6.chevron-down',
     'chevron_up': 'mdi6.chevron-up',
 
+    # 강의 목록
+    'refresh': 'mdi6.refresh',
+    'back': 'mdi6.arrow-left',
+    'select_all': 'mdi6.checkbox-multiple-marked',
+    'deselect_all': 'mdi6.checkbox-multiple-blank-outline',
+    'star': 'mdi6.star',
+    'star_outline': 'mdi6.star-outline',
+    'list': 'mdi6.format-list-bulleted',
+    'assignment': 'mdi6.clipboard-text',
+    'wiki': 'mdi6.note-text',
+    'quiz': 'mdi6.help-circle',
+
     # 기타
     'warning': 'mdi6.alert-outline',
     'processing': 'mdi6.timer-sand',

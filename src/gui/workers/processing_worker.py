@@ -168,6 +168,10 @@ class ProcessingWorker(QThread):
 
         self._check_cancelled()
         video_paths = video_pipeline.process_sync(urls)
+
+        failed_count = len(urls) - len(video_paths)
+        if failed_count > 0:
+            self._emit_log(f"⚠️ {failed_count}개 영상 다운로드 실패 (건너뜀)")
         self._emit_log(f"{Messages.DOWNLOAD_COMPLETE}: {len(video_paths)}개 파일")
 
         # 다운로드된 파일 목록 출력
