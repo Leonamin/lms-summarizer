@@ -212,7 +212,7 @@ class MainView:
 
     def _build_form_card(self) -> ft.Container:
         """입력 폼 카드"""
-        form_controls = []
+        form_controls = [ft.Container(height=2)]
 
         for name, config in INPUT_FIELD_CONFIGS.items():
             field = self.input_fields[name]
