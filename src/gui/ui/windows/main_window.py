@@ -17,7 +17,7 @@ from src.gui.config.constants import (
     APP_TITLE, APP_VERSION,
     WINDOW_WIDTH, WINDOW_HEIGHT,
     MIN_WINDOW_WIDTH, MIN_WINDOW_HEIGHT,
-    Messages, EMOJI_PROCESSING
+    Messages,
 )
 from src.gui.config.styles import StyleSheet
 from src.gui.config.settings import INPUT_FIELD_CONFIGS
@@ -30,9 +30,11 @@ from src.gui.core.file_manager import (
 from src.gui.ui.components.input_field import InputField
 from src.gui.ui.components.log_area import LogArea
 from src.gui.ui.components.buttons import ProcessingButton, ClearButton, AppButton
+from src.gui.ui.components.icons import AppIcons
 from src.gui.ui.components.model_selector import ModelSelector
 from src.gui.ui.components.toast import ToastMessage
 from src.gui.ui.dialogs.progress_modal import ProcessingModal
+from src.gui.ui.dialogs.settings_dialog import SettingsDialog
 from src.gui.workers.processing_worker import ProcessingWorker
 
 
@@ -94,12 +96,21 @@ class MainWindow(QWidget):
         self.setLayout(main_layout)
 
     def _create_header_section(self, layout: QVBoxLayout):
-        title = QLabel(f"🎓 {APP_TITLE}")
-        title.setAlignment(Qt.AlignCenter)
-        title.setStyleSheet(StyleSheet.title())
-        layout.addWidget(title)
+        header_row = QHBoxLayout()
 
-        desc = QLabel("📖 숭실대학교 LMS 강의 동영상을 다운로드하고 AI로 요약합니다.")
+        title = AppIcons.label('graduation', APP_TITLE, icon_size=20)
+        title.setStyleSheet(StyleSheet.title())
+        header_row.addWidget(title, stretch=1)
+
+        settings_btn = AppButton("설정", "text")
+        settings_btn.setIcon(AppIcons.icon('settings'))
+        settings_btn.setFixedWidth(80)
+        settings_btn.clicked.connect(self._open_settings_dialog)
+        header_row.addWidget(settings_btn)
+
+        layout.addLayout(header_row)
+
+        desc = QLabel("숭실대학교 LMS 강의 동영상을 다운로드하고 AI로 요약합니다.")
         desc.setAlignment(Qt.AlignCenter)
         desc.setStyleSheet(StyleSheet.subtitle())
         layout.addWidget(desc)
@@ -108,9 +119,9 @@ class MainWindow(QWidget):
         path_layout = QHBoxLayout()
         path_layout.setSpacing(6)
 
-        path_label = QLabel("📁 저장 경로:")
+        path_label = AppIcons.label('folder', '저장 경로:')
         path_label.setStyleSheet(StyleSheet.label())
-        path_label.setFixedWidth(72)
+        path_label.setFixedWidth(90)
         path_layout.addWidget(path_label)
 
         current_path = ensure_downloads_directory()
@@ -119,7 +130,8 @@ class MainWindow(QWidget):
         self.path_value_label.setWordWrap(True)
         path_layout.addWidget(self.path_value_label, stretch=1)
 
-        open_btn = AppButton("📂 열기", "outline")
+        open_btn = AppButton("열기", "outline")
+        open_btn.setIcon(AppIcons.icon('folder_open'))
         open_btn.setFixedWidth(90)
         open_btn.clicked.connect(self._open_in_finder)
         path_layout.addWidget(open_btn)
@@ -142,7 +154,7 @@ class MainWindow(QWidget):
         card.setStyleSheet(StyleSheet.card())
         card_layout = QVBoxLayout(card)
         card_layout.setContentsMargins(16, 14, 16, 14)
-        card_layout.setSpacing(2)
+        card_layout.setSpacing(4)
 
         # 입력 필드 생성
         for field_name, config in INPUT_FIELD_CONFIGS.items():
@@ -157,7 +169,7 @@ class MainWindow(QWidget):
 
             # API 키 필드 다음에 AI 모델 선택기 추가
             if field_name == 'api_key':
-                model_label = QLabel("🤖 AI 모델:")
+                model_label = AppIcons.label('robot', 'AI 모델:')
                 model_label.setStyleSheet(StyleSheet.label())
                 card_layout.addWidget(model_label)
 
@@ -169,11 +181,16 @@ class MainWindow(QWidget):
         urls_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         urls_widget.setMinimumHeight(80)
 
+        # 체크박스/버튼 영역과 입력 필드 사이 간격
+        card_layout.addSpacing(8)
+
         # 옵션 체크박스
-        self.save_video_checkbox = QCheckBox("📹 처리 완료 후 원본 동영상 보관 (미선택 시 자동 삭제)")
+        self.save_video_checkbox = QCheckBox("처리 완료 후 원본 동영상 보관 (미선택 시 자동 삭제)")
         self.save_video_checkbox.setStyleSheet(StyleSheet.checkbox())
         self.save_video_checkbox.setChecked(False)
         card_layout.addWidget(self.save_video_checkbox)
+
+        card_layout.addSpacing(4)
 
         # 버튼 영역
         btn_layout = QHBoxLayout()
@@ -220,6 +237,10 @@ class MainWindow(QWidget):
             except Exception as e:
                 QMessageBox.critical(self, "경로 변경 오류", f"저장 경로 변경 중 오류:\n{str(e)}")
 
+    def _open_settings_dialog(self):
+        dialog = SettingsDialog(self)
+        dialog.exec_()
+
     def _open_in_finder(self):
         path = ensure_downloads_directory()
         if sys.platform == 'darwin':
@@ -253,7 +274,8 @@ class MainWindow(QWidget):
             self.worker.request_cancel()
             self.log_area.append_message("⚠️ 작업 중지를 요청했습니다...")
             self.start_button.setEnabled(False)
-            self.start_button.setText(f"{EMOJI_PROCESSING} 중지 중...")
+            self.start_button.setText("중지 중...")
+            self.start_button.setIcon(AppIcons.icon('processing', color='white'))
 
     def _handle_clear_inputs(self):
         reply = QMessageBox.question(

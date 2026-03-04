@@ -404,3 +404,20 @@ class StyleSheet:
                 QPushButton:disabled {{ background-color: {Colors.DISABLED_BG}; color: white; }}
             """
         return f"QPushButton {{ {common} border: none; }}"
+
+    @staticmethod
+    def path_suggestion_button() -> str:
+        return f"""
+            QPushButton {{
+                background: none;
+                border: none;
+                color: {Colors.PRIMARY};
+                font-size: 11px;
+                text-align: left;
+                padding: 2px 4px;
+            }}
+            QPushButton:hover {{
+                color: {Colors.PRIMARY_HOVER};
+                text-decoration: underline;
+            }}
+        """

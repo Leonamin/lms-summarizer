@@ -6,9 +6,10 @@ from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel,
     QPushButton, QProgressBar, QTextEdit, QFrame
 )
-from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtCore import Qt, QSize, pyqtSignal
 
 from src.gui.config.styles import StyleSheet
+from src.gui.ui.components.icons import AppIcons
 
 # 처리 단계 정의: (단계번호, 표시 이름)
 _STEPS = [
@@ -80,7 +81,9 @@ class ProcessingModal(QDialog):
         layout.addWidget(self._progress_bar)
 
         # 로그 토글 버튼
-        self._log_toggle_btn = QPushButton("▼ 상세 로그 보기")
+        self._log_toggle_btn = QPushButton("상세 로그 보기")
+        self._log_toggle_btn.setIcon(AppIcons.icon('chevron_down'))
+        self._log_toggle_btn.setIconSize(QSize(16, 16))
         self._log_toggle_btn.setStyleSheet(StyleSheet.modal_log_toggle())
         self._log_toggle_btn.setCursor(Qt.PointingHandCursor)
         self._log_toggle_btn.clicked.connect(self._toggle_log)
@@ -97,7 +100,9 @@ class ProcessingModal(QDialog):
         # 하단 버튼 영역
         btn_layout = QHBoxLayout()
         btn_layout.addStretch()
-        self._stop_btn = QPushButton("■ 중지")
+        self._stop_btn = QPushButton("중지")
+        self._stop_btn.setIcon(AppIcons.icon('stop', color='white'))
+        self._stop_btn.setIconSize(QSize(16, 16))
         self._stop_btn.setStyleSheet(StyleSheet.modal_stop_button())
         self._stop_btn.setCursor(Qt.PointingHandCursor)
         self._stop_btn.clicked.connect(self._on_stop_clicked)
@@ -115,9 +120,12 @@ class ProcessingModal(QDialog):
     def _toggle_log(self):
         self._log_visible = not self._log_visible
         self._log_area.setVisible(self._log_visible)
-        self._log_toggle_btn.setText(
-            "▲ 상세 로그 숨기기" if self._log_visible else "▼ 상세 로그 보기"
-        )
+        if self._log_visible:
+            self._log_toggle_btn.setText("상세 로그 숨기기")
+            self._log_toggle_btn.setIcon(AppIcons.icon('chevron_up'))
+        else:
+            self._log_toggle_btn.setText("상세 로그 보기")
+            self._log_toggle_btn.setIcon(AppIcons.icon('chevron_down'))
         self.adjustSize()
 
     def _on_stop_clicked(self):

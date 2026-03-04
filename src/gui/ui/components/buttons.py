@@ -3,10 +3,10 @@
 """
 
 from PyQt5.QtWidgets import QPushButton
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QSize
 
 from src.gui.config.styles import StyleSheet
-from src.gui.config.constants import EMOJI_START, EMOJI_STOP
+from src.gui.ui.components.icons import AppIcons
 
 
 class AppButton(QPushButton):
@@ -17,6 +17,7 @@ class AppButton(QPushButton):
         self.setCursor(Qt.PointingHandCursor)
         self._variant = variant
         self.setStyleSheet(StyleSheet.app_button(variant))
+        self.setIconSize(QSize(18, 18))
 
     def set_variant(self, variant: str):
         """버튼 스타일 변형 변경"""
@@ -28,20 +29,23 @@ class ProcessingButton(AppButton):
     """처리 작업용 버튼 (시작 ↔ 중지 전환)"""
 
     def __init__(self):
-        super().__init__(f"{EMOJI_START} 요약 시작", "filled")
+        super().__init__("요약 시작", "filled")
+        self.setIcon(AppIcons.icon('start', color='white'))
         self.is_processing = False
 
     def start_processing(self):
         """처리 시작 → 중지 버튼으로 변경"""
         self.is_processing = True
-        self.setText(f"{EMOJI_STOP} 중지")
+        self.setText("중지")
+        self.setIcon(AppIcons.icon('stop', color='white'))
         self.set_variant("danger")
         self.setEnabled(True)
 
     def stop_processing(self):
         """처리 완료 → 시작 버튼으로 복원"""
         self.is_processing = False
-        self.setText(f"{EMOJI_START} 요약 시작")
+        self.setText("요약 시작")
+        self.setIcon(AppIcons.icon('start', color='white'))
         self.set_variant("filled")
         self.setEnabled(True)
 
@@ -51,12 +55,14 @@ class ProcessingButton(AppButton):
         if text:
             self.setText(text)
         elif enabled and not self.is_processing:
-            self.setText(f"{EMOJI_START} 요약 시작")
+            self.setText("요약 시작")
+            self.setIcon(AppIcons.icon('start', color='white'))
 
 
 class ClearButton(AppButton):
     """초기화 버튼"""
 
     def __init__(self):
-        super().__init__("🗑️ 초기화", "danger")
+        super().__init__("초기화", "danger")
+        self.setIcon(AppIcons.icon('delete', color='white'))
         self.setToolTip("모든 입력 필드를 초기화합니다")

@@ -3,11 +3,12 @@
 """
 
 from PyQt5.QtWidgets import QLabel, QLineEdit, QTextEdit, QPushButton, QHBoxLayout, QWidget, QVBoxLayout
-from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtCore import Qt, QSize, pyqtSignal
 from PyQt5.QtGui import QInputMethodEvent
 
 from src.gui.config.settings import InputFieldConfig
 from src.gui.config.styles import StyleSheet
+from src.gui.ui.components.icons import AppIcons
 
 
 class PasswordToggleButton(QPushButton):
@@ -18,13 +19,17 @@ class PasswordToggleButton(QPushButton):
         self.setCheckable(True)
         self.setCursor(Qt.PointingHandCursor)
         self.setFixedWidth(38)
+        self.setIconSize(QSize(18, 18))
         self.setToolTip("비밀번호 표시/숨기기")
         self._update_icon(False)
         self.setStyleSheet(self._style())
         self.toggled.connect(self._update_icon)
 
     def _update_icon(self, checked: bool):
-        self.setText("👁" if not checked else "🙈")
+        if checked:
+            self.setIcon(AppIcons.icon('visibility_off'))
+        else:
+            self.setIcon(AppIcons.icon('visibility'))
 
     @staticmethod
     def _style() -> str:
@@ -159,8 +164,12 @@ class InputField:
         if self.config.is_password:
             self._setup_caps_lock_label()
 
-    def _create_label(self) -> QLabel:
-        """라벨 생성"""
+    def _create_label(self):
+        """라벨 생성 (아이콘이 설정된 경우 IconLabel 사용)"""
+        if self.config.icon:
+            label = AppIcons.label(self.config.icon, self.config.label)
+            label.setStyleSheet(StyleSheet.label())
+            return label
         label = QLabel(self.config.label)
         label.setStyleSheet(StyleSheet.label())
         return label
@@ -196,7 +205,8 @@ class InputField:
 
     def _setup_caps_lock_label(self):
         """Caps Lock 경고 라벨 설정"""
-        self.caps_lock_label = QLabel("⚠ Caps Lock이 켜져 있습니다")
+        self.caps_lock_label = AppIcons.label('warning', "Caps Lock이 켜져 있습니다",
+                                               icon_color="#F57C00")
         self.caps_lock_label.setStyleSheet(StyleSheet.caps_lock_warning())
         self.caps_lock_label.setVisible(False)
         self.widget.caps_lock_changed.connect(self.caps_lock_label.setVisible)

@@ -144,3 +144,64 @@ def load_user_inputs() -> Dict[str, str]:
 def get_downloads_dir() -> str:
     """다운로드 디렉토리 경로 반환 (사용자 설정 경로 사용)"""
     return ensure_downloads_directory()
+
+
+# ── 요약 프롬프트 ──────────────────────────────────────────
+
+DEFAULT_PROMPT = "다음 강의 내용을 한국어로 자세히 요약해주세요."
+
+
+def get_summary_prompt() -> str:
+    """저장된 요약 프롬프트 반환. 없으면 기본 프롬프트."""
+    return load_settings().get("summary_prompt", DEFAULT_PROMPT)
+
+
+def set_summary_prompt(prompt: str) -> None:
+    """요약 프롬프트를 settings.json에 저장"""
+    settings = load_settings()
+    settings["summary_prompt"] = prompt
+    save_settings(settings)
+
+
+# ── Chrome 경로 ────────────────────────────────────────────
+
+_CHROME_PATHS = {
+    'darwin': [
+        "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+        "/Applications/Google Chrome Canary.app/Contents/MacOS/Google Chrome Canary",
+        "/Applications/Chromium.app/Contents/MacOS/Chromium",
+    ],
+    'win32': [
+        r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+        r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+    ],
+    'linux': [
+        "/usr/bin/google-chrome",
+        "/usr/bin/google-chrome-stable",
+        "/usr/bin/chromium-browser",
+        "/usr/bin/chromium",
+    ],
+}
+
+
+def detect_chrome_paths() -> List[str]:
+    """현재 OS에서 Chrome 설치 경로 후보를 반환 (존재하는 경로만)"""
+    candidates = _CHROME_PATHS.get(sys.platform, _CHROME_PATHS.get('linux', []))
+    return [p for p in candidates if os.path.exists(p)]
+
+
+def get_chrome_path() -> str:
+    """저장된 Chrome 경로 반환. 없으면 자동 감지된 첫 번째 경로."""
+    settings = load_settings()
+    saved = settings.get("chrome_path", "")
+    if saved and os.path.exists(saved):
+        return saved
+    detected = detect_chrome_paths()
+    return detected[0] if detected else ""
+
+
+def set_chrome_path(path: str) -> None:
+    """Chrome 경로를 settings.json에 저장"""
+    settings = load_settings()
+    settings["chrome_path"] = path
+    save_settings(settings)

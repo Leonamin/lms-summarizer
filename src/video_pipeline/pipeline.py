@@ -18,21 +18,26 @@ def sanitize_dirname(name: str) -> str:
     return sanitized or 'untitled'
 
 
+_DEFAULT_CHROME_PATH = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+
+
 class VideoPipeline:
     def __init__(self, user_setting: UserSetting, extraction_timeout: float = 60,
-                 progress_callback: Optional[Callable[[int, int], None]] = None):
+                 progress_callback: Optional[Callable[[int, int], None]] = None,
+                 chrome_path: str = None):
         self.user_setting = user_setting
         self.user_id = user_setting.user_id
         self.password = user_setting.password
         self.downloads_dir = None  # 다운로드 경로는 나중에 설정됨
         self.extraction_timeout = extraction_timeout
         self.progress_callback = progress_callback
+        self.chrome_path = chrome_path or _DEFAULT_CHROME_PATH
 
     async def _setup_browser(self, playwright: Playwright) -> Tuple[Page, any]:
         """브라우저 설정 및 페이지 생성"""
         browser = await playwright.chromium.launch(
             headless=False,
-            executable_path="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+            executable_path=self.chrome_path,
             args=[
                 "--disable-blink-features=AutomationControlled",
                 "--enable-proprietary-codecs",
