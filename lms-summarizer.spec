@@ -20,7 +20,7 @@ import os
 from pathlib import Path
 
 APP_NAME = "LMS-Summarizer"
-APP_VERSION = "0.1.0-beta"
+APP_VERSION = "1.1.0"
 
 # ffmpeg 경로 자동 탐지
 def find_ffmpeg():
@@ -50,6 +50,7 @@ whisper_cache = find_whisper_models()
 # 추가 데이터 파일
 datas = [
     ("src", "src"),
+    ("assets", "assets"),
 ]
 if whisper_cache:
     datas.append((whisper_cache, "whisper_models"))
@@ -112,6 +113,7 @@ exe = EXE(
     upx_exclude=[],
     runtime_tmpdir=None,
     console=False,   # GUI 앱: 콘솔 창 숨김
+    icon='assets/icon.ico',
     disable_windowed_traceback=False,
     target_arch=None,
     codesign_identity=None,
@@ -133,7 +135,7 @@ if sys.platform == "darwin":
     app = BUNDLE(
         coll,
         name=f"{APP_NAME}.app",
-        icon=None,
+        icon='assets/icon.icns',
         bundle_identifier="com.lms-summarizer.app",
         info_plist={
             "CFBundleDisplayName": "LMS 강의 다운로드 & 요약",

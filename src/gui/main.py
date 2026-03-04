@@ -24,7 +24,7 @@ def setup_import_path():
 setup_import_path()
 
 from PyQt5.QtWidgets import QApplication, QMessageBox
-from PyQt5.QtGui import QFont
+from PyQt5.QtGui import QFont, QIcon
 
 from src.gui.config.constants import APP_TITLE, APP_VERSION
 from src.gui.core.module_loader import load_required_modules, setup_python_path
@@ -34,6 +34,15 @@ def setup_application() -> QApplication:
     """QApplication 설정"""
     app = QApplication(sys.argv)
     app.setApplicationName(f"{APP_TITLE} {APP_VERSION}")
+
+    # 앱 아이콘 설정
+    if getattr(sys, 'frozen', False):
+        base_path = sys._MEIPASS
+    else:
+        base_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+    icon_path = os.path.join(base_path, "assets", "icon.png")
+    if os.path.exists(icon_path):
+        app.setWindowIcon(QIcon(icon_path))
 
     # 폰트 설정
     try:

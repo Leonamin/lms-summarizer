@@ -6,7 +6,7 @@
 
 set -e
 
-APP_VERSION="0.1.0-beta"
+APP_VERSION="1.1.0"
 APP_NAME="LMS-Summarizer"
 
 echo "🚀 LMS Summarizer v${APP_VERSION} Mac 빌드 시작..."
