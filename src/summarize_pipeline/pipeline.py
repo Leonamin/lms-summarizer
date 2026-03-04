@@ -4,8 +4,10 @@ from pathlib import Path
 
 from src.summarize_pipeline.summarizer import summarize_text
 
-
-_DEFAULT_PROMPT = "다음 강의 내용을 한국어로 자세히 요약해주세요."
+try:
+    from src.gui.core.file_manager import DEFAULT_PROMPT as _DEFAULT_PROMPT
+except ImportError:
+    _DEFAULT_PROMPT = "다음 강의 내용을 한국어로 자세히 요약해주세요."
 
 
 class SummarizePipeline:
