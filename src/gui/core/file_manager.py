@@ -126,7 +126,7 @@ def extract_urls_from_input(url_input: str) -> List[str]:
     return urls
 
 
-_PERSISTABLE_FIELDS = ['student_id', 'api_key', 'urls', 'ai_model']
+_PERSISTABLE_FIELDS = ['student_id', 'api_key', 'ai_model']
 
 
 def save_user_inputs(inputs: Dict[str, str]) -> None:
@@ -148,7 +148,30 @@ def get_downloads_dir() -> str:
 
 # ── 요약 프롬프트 ──────────────────────────────────────────
 
-DEFAULT_PROMPT = "다음 강의 내용을 한국어로 자세히 요약해주세요."
+DEFAULT_PROMPT = """당신은 대학 강의 노트 정리 전문가입니다. 아래는 한국어 강의를 STT(음성→텍스트)로 변환한 원문입니다.
+
+## 주의사항
+- STT 변환 과정에서 부정확한 단어가 포함될 수 있습니다. 문맥을 고려하여 올바른 용어로 교정해주세요.
+- IT/컴퓨터공학 전공 강의인 경우: 프로그래밍 언어, 알고리즘, 자료구조, 네트워크, 데이터베이스 등 관련 전문 용어를 정확히 유추해주세요.
+- 기독교 관련 교양 강의인 경우: 신학, 성경, 교회사 등 관련 용어를 정확히 유추해주세요.
+
+## 요약 형식
+다음 형식으로 정리해주세요:
+
+### 📚 강의 제목
+(내용에서 유추한 강의 주제)
+
+### 📝 핵심 내용 요약
+- 주요 개념과 핵심 내용을 글머리 기호로 정리
+
+### 📖 상세 내용
+강의 흐름에 따라 내용을 소주제별로 구분하여 정리
+
+### 💡 주요 키워드
+쉼표로 구분된 핵심 키워드 목록
+
+### ⚠️ STT 보정 사항
+교정한 주요 용어가 있다면 간단히 기록 (예: "파이선" → "파이썬")"""
 
 
 def get_summary_prompt() -> str:
@@ -240,4 +263,36 @@ def clear_course_cache() -> None:
     """과목 목록 캐시 삭제"""
     settings = load_settings()
     settings.pop("course_cache", None)
+    save_settings(settings)
+
+
+# ── 처리 히스토리 ────────────────────────────────────────
+
+def add_history_entry(entry: Dict) -> None:
+    """처리 히스토리 항목 추가.
+
+    entry 구조:
+        url (str): 강의 URL
+        lecture_name (str): 강의 파일명
+        file_size_mb (float): 원본 영상 크기 (MB)
+        duration_sec (float): 처리 소요 시간 (초)
+        summary_path (str): 요약 파일 경로
+        processed_at (str): ISO 형식 타임스탬프
+    """
+    settings = load_settings()
+    history = settings.get("history", [])
+    history.append(entry)
+    settings["history"] = history
+    save_settings(settings)
+
+
+def load_history() -> List[Dict]:
+    """저장된 히스토리 목록 반환"""
+    return load_settings().get("history", [])
+
+
+def clear_history() -> None:
+    """히스토리 전체 삭제"""
+    settings = load_settings()
+    settings.pop("history", None)
     save_settings(settings)

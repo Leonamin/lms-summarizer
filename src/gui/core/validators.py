@@ -73,6 +73,20 @@ class InputValidator:
         if invalid_urls:
             return False, f"유효하지 않은 URL: {', '.join(invalid_urls[:3])}", urls
 
+        # 중복 URL 검사
+        seen = set()
+        duplicates = []
+        unique_urls = []
+        for url in urls:
+            if url in seen:
+                duplicates.append(url)
+            else:
+                seen.add(url)
+                unique_urls.append(url)
+
+        if duplicates:
+            return False, f"중복된 URL이 {len(duplicates)}개 있습니다. 중복을 제거해주세요.", unique_urls
+
         return True, "", urls
 
     @staticmethod

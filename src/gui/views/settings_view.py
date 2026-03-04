@@ -1,0 +1,181 @@
+"""
+설정 다이얼로그 (Flet AlertDialog)
+"""
+
+import os
+import flet as ft
+
+from src.gui.theme import Colors, Typography, Spacing, Radius, divider
+from src.gui.core.file_manager import (
+    DEFAULT_PROMPT,
+    get_summary_prompt, set_summary_prompt,
+    get_chrome_path, set_chrome_path, detect_chrome_paths,
+)
+
+
+def open_settings_dialog(page: ft.Page):
+    """설정 다이얼로그를 열고 닫기까지 관리"""
+
+    prompt_field = ft.TextField(
+        value=get_summary_prompt(),
+        multiline=True,
+        min_lines=3,
+        max_lines=6,
+        border_radius=Radius.SM,
+        border_color=Colors.BORDER,
+        focused_border_color=Colors.PRIMARY,
+        text_size=Typography.BODY,
+        label="요약 프롬프트",
+        label_style=ft.TextStyle(size=Typography.CAPTION, color=Colors.TEXT_SECONDARY),
+    )
+
+    chrome_field = ft.TextField(
+        value=get_chrome_path(),
+        hint_text="Chrome 실행 파일 경로",
+        border_radius=Radius.SM,
+        border_color=Colors.BORDER,
+        focused_border_color=Colors.PRIMARY,
+        text_size=Typography.BODY,
+        label="Chrome 경로",
+        label_style=ft.TextStyle(size=Typography.CAPTION, color=Colors.TEXT_SECONDARY),
+        prefix_icon=ft.Icons.WEB,
+    )
+
+    # 자동 감지 경로 버튼들
+    detected_paths = detect_chrome_paths()
+    detected_controls = []
+    if detected_paths:
+        detected_controls.append(
+            ft.Text("자동 감지된 경로:", size=Typography.SMALL, color=Colors.TEXT_MUTED)
+        )
+        for p in detected_paths:
+            detected_controls.append(
+                ft.TextButton(
+                    text=p,
+                    style=ft.ButtonStyle(
+                        color=Colors.PRIMARY,
+                        padding=ft.padding.symmetric(horizontal=4, vertical=2),
+                        text_style=ft.TextStyle(size=Typography.SMALL),
+                    ),
+                    on_click=lambda e, path=p: _set_chrome_path(path),
+                )
+            )
+
+    def _set_chrome_path(path):
+        chrome_field.value = path
+        chrome_field.update()
+
+    def _reset_prompt(e):
+        prompt_field.value = DEFAULT_PROMPT
+        prompt_field.update()
+
+    def _close(e):
+        dialog.open = False
+        page.update()
+
+    def _save(e):
+        prompt = (prompt_field.value or "").strip()
+        chrome_path = (chrome_field.value or "").strip()
+
+        set_summary_prompt(prompt if prompt else DEFAULT_PROMPT)
+
+        if chrome_path:
+            if not os.path.exists(chrome_path):
+                page.open(ft.SnackBar(
+                    content=ft.Text(f"Chrome 경로가 존재하지 않습니다: {chrome_path}"),
+                    bgcolor=Colors.ERROR,
+                ))
+                return
+            set_chrome_path(chrome_path)
+
+        dialog.open = False
+        page.update()
+
+    file_picker = ft.FilePicker(
+        on_result=lambda e: (
+            _set_chrome_path(e.files[0].path) if e.files else None
+        ),
+    )
+    page.overlay.append(file_picker)
+
+    def _browse_chrome(e):
+        file_picker.pick_files(
+            dialog_title="Chrome 실행 파일 선택",
+            allowed_extensions=["app", "exe", ""],
+        )
+
+    dialog = ft.AlertDialog(
+        modal=True,
+        title=ft.Row(
+            controls=[
+                ft.Icon(ft.Icons.SETTINGS, size=20, color=Colors.PRIMARY),
+                ft.Text("설정", size=Typography.HEADING, weight=Typography.SEMI_BOLD),
+            ],
+            spacing=Spacing.SM,
+        ),
+        content=ft.Container(
+            width=480,
+            content=ft.Column(
+                controls=[
+                    # 요약 프롬프트 섹션
+                    ft.Text(
+                        "AI 요약 시 사용되는 프롬프트를 수정할 수 있습니다.",
+                        size=Typography.SMALL,
+                        color=Colors.TEXT_MUTED,
+                    ),
+                    prompt_field,
+                    ft.TextButton(
+                        text="기본값 복원",
+                        icon=ft.Icons.RESTORE,
+                        style=ft.ButtonStyle(
+                            color=Colors.PRIMARY,
+                            text_style=ft.TextStyle(size=Typography.CAPTION),
+                        ),
+                        on_click=_reset_prompt,
+                    ),
+                    divider(),
+                    # Chrome 경로 섹션
+                    ft.Text(
+                        "LMS 영상 재생에 사용할 Chrome 경로입니다.",
+                        size=Typography.SMALL,
+                        color=Colors.TEXT_MUTED,
+                    ),
+                    ft.Row(
+                        controls=[
+                            ft.Container(content=chrome_field, expand=True),
+                            ft.OutlinedButton(
+                                text="찾아보기",
+                                icon=ft.Icons.FOLDER_OPEN,
+                                on_click=_browse_chrome,
+                                style=ft.ButtonStyle(
+                                    color=Colors.PRIMARY,
+                                    shape=ft.RoundedRectangleBorder(radius=Radius.SM),
+                                ),
+                            ),
+                        ],
+                        spacing=Spacing.SM,
+                    ),
+                    *detected_controls,
+                ],
+                spacing=Spacing.MD,
+                tight=True,
+                scroll=ft.ScrollMode.AUTO,
+            ),
+        ),
+        actions=[
+            ft.TextButton("취소", on_click=_close),
+            ft.ElevatedButton(
+                "저장",
+                icon=ft.Icons.SAVE,
+                on_click=_save,
+                style=ft.ButtonStyle(
+                    color=ft.Colors.WHITE,
+                    bgcolor=Colors.PRIMARY,
+                    shape=ft.RoundedRectangleBorder(radius=Radius.SM),
+                ),
+            ),
+        ],
+        actions_alignment=ft.MainAxisAlignment.END,
+    )
+
+    page.open(dialog)
