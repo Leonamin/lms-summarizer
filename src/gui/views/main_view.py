@@ -308,14 +308,23 @@ class MainView:
 
     def _on_urls_selected(self, urls: List[str]):
         current = self.input_fields['urls'].get_value().strip()
-        new_urls = '\n'.join(urls)
-        if current:
-            combined = current + '\n' + new_urls
-        else:
-            combined = new_urls
-        self.input_fields['urls'].set_value(combined)
-        self.input_fields['urls'].control.update()
-        self.log_area.append_message(f"강의 목록에서 {len(urls)}개 URL이 추가되었습니다.")
+        existing = set(line.strip() for line in current.split('\n') if line.strip()) if current else set()
+
+        new_urls = [u for u in urls if u not in existing]
+        skipped = len(urls) - len(new_urls)
+
+        if new_urls:
+            if current:
+                combined = current + '\n' + '\n'.join(new_urls)
+            else:
+                combined = '\n'.join(new_urls)
+            self.input_fields['urls'].set_value(combined)
+            self.input_fields['urls'].control.update()
+
+        msg = f"강의 목록에서 {len(new_urls)}개 URL이 추가되었습니다."
+        if skipped:
+            msg += f" (중복 {skipped}개 제외)"
+        self.log_area.append_message(msg)
         self.page.update()
 
     def _handle_start(self, e=None):
