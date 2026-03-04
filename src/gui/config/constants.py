@@ -2,11 +2,12 @@
 애플리케이션에서 사용하는 상수들
 """
 
+import sys
 from dataclasses import dataclass
 
 # 앱 기본 정보
 APP_TITLE = "LMS 강의 다운로드 & 요약"
-APP_VERSION = "v1.2.0"
+APP_VERSION = "v1.2.1"
 WINDOW_WIDTH = 660
 WINDOW_HEIGHT = 600
 MIN_WINDOW_WIDTH = 580
@@ -53,7 +54,11 @@ class Messages:
 
     # 에러 메시지
     MODULE_LOAD_ERROR = f"{EMOJI_ERROR} 필수 모듈들이 로드되지 않았습니다"
-    INSTALL_REQUIREMENTS = "uv sync 실행 후 재시작하세요."
+    INSTALL_REQUIREMENTS = (
+        "프로그램을 재설치하거나 개발자에게 문의하세요."
+        if getattr(sys, 'frozen', False)
+        else "uv sync 실행 후 재시작하세요."
+    )
 
     # 입력 검증 메시지
     STUDENT_ID_REQUIRED = "학번을 입력해주세요."
