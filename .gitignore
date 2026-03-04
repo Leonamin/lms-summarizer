@@ -198,4 +198,5 @@ cython_debug/
 .cursorignore
 .cursorindexingignore
 
-user_settings.json
+user_settings.json.claude/
+.claude/
