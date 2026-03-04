@@ -8,8 +8,10 @@ from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel,
     QListWidget, QListWidgetItem, QTreeWidget, QTreeWidgetItem,
     QCheckBox, QStackedWidget, QWidget, QFrame, QSizePolicy,
+    QProgressBar,
 )
 from PyQt5.QtCore import Qt, QSize
+from PyQt5.QtGui import QColor
 
 from src.gui.config.constants import Colors
 from src.gui.config.styles import StyleSheet
@@ -95,6 +97,15 @@ class CourseListDialog(QDialog):
         desc.setStyleSheet(f"color: {Colors.TEXT_LIGHT}; font-size: 12px;")
         layout.addWidget(desc)
 
+        # 로딩 표시
+        self._course_loading_bar = QProgressBar()
+        self._course_loading_bar.setRange(0, 0)  # indeterminate
+        self._course_loading_bar.setFixedHeight(4)
+        self._course_loading_bar.setTextVisible(False)
+        self._course_loading_bar.setStyleSheet(StyleSheet.progress_bar())
+        self._course_loading_bar.setVisible(False)
+        layout.addWidget(self._course_loading_bar)
+
         # 과목 리스트
         self._course_list = QListWidget()
         self._course_list.setStyleSheet(StyleSheet.course_list_widget())
@@ -167,6 +178,15 @@ class CourseListDialog(QDialog):
 
         layout.addLayout(filter_row)
 
+        # 로딩 표시
+        self._lecture_loading_bar = QProgressBar()
+        self._lecture_loading_bar.setRange(0, 0)  # indeterminate
+        self._lecture_loading_bar.setFixedHeight(4)
+        self._lecture_loading_bar.setTextVisible(False)
+        self._lecture_loading_bar.setStyleSheet(StyleSheet.progress_bar())
+        self._lecture_loading_bar.setVisible(False)
+        layout.addWidget(self._lecture_loading_bar)
+
         # 강의 트리
         self._lecture_tree = QTreeWidget()
         self._lecture_tree.setHeaderHidden(True)
@@ -214,6 +234,7 @@ class CourseListDialog(QDialog):
         self._cleanup_worker()
         self._course_list.clear()
         self._course_status_label.setText("과목 목록을 불러오는 중... (브라우저가 열립니다)")
+        self._course_loading_bar.setVisible(True)
         self._set_course_page_enabled(False)
 
         self._worker = CourseListWorker(self._username, self._password)
@@ -224,6 +245,7 @@ class CourseListDialog(QDialog):
 
     def _on_courses_loaded(self, courses: List[Course]):
         self._courses = courses
+        self._course_loading_bar.setVisible(False)
         # 캐시 저장
         save_course_cache([c.to_dict() for c in courses])
         self._populate_course_list()
@@ -260,6 +282,7 @@ class CourseListDialog(QDialog):
 
         self._lecture_tree.clear()
         self._lecture_status_label.setText("강의 목록을 불러오는 중... (브라우저가 열립니다)")
+        self._lecture_loading_bar.setVisible(True)
         self._confirm_btn.setEnabled(False)
 
         self._worker = CourseListWorker(
@@ -272,6 +295,7 @@ class CourseListDialog(QDialog):
 
     def _on_lectures_loaded(self, detail: CourseDetail):
         self._course_detail = detail
+        self._lecture_loading_bar.setVisible(False)
         self._populate_lecture_tree(detail)
 
     def _populate_lecture_tree(self, detail: CourseDetail):
@@ -323,14 +347,21 @@ class CourseListDialog(QDialog):
                 if att_text:
                     parts.append(f"[{att_text}]")
 
+                # 예정 표시
+                if lecture.is_upcoming:
+                    parts.append("[예정]")
+
                 child.setText(0, "  ".join(parts))
 
                 # 아이콘
                 icon_name = _TYPE_ICON_MAP.get(lecture.lecture_type, "list")
                 child.setIcon(0, AppIcons.icon(icon_name))
 
-                # 체크박스 (영상만 선택 가능)
-                if lecture.is_video and lecture.item_url:
+                # 예정 항목: 비활성화 (회색 텍스트, 체크 불가)
+                if lecture.is_upcoming:
+                    child.setFlags(child.flags() & ~(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled))
+                    child.setForeground(0, QColor(Colors.TEXT_LIGHT))
+                elif lecture.is_video and lecture.item_url:
                     child.setFlags(child.flags() | Qt.ItemIsUserCheckable)
                     child.setCheckState(0, Qt.Unchecked)
                 else:
@@ -415,6 +446,8 @@ class CourseListDialog(QDialog):
     # ── 에러/완료 처리 ─────────────────────────────────────────
 
     def _on_load_error(self, error_msg: str):
+        self._course_loading_bar.setVisible(False)
+        self._lecture_loading_bar.setVisible(False)
         if self._stack.currentIndex() == 0:
             self._course_status_label.setText(f"오류: {error_msg}")
             self._set_course_page_enabled(True)
@@ -422,6 +455,8 @@ class CourseListDialog(QDialog):
             self._lecture_status_label.setText(f"오류: {error_msg}")
 
     def _on_worker_finished(self):
+        self._course_loading_bar.setVisible(False)
+        self._lecture_loading_bar.setVisible(False)
         if self._stack.currentIndex() == 0:
             self._set_course_page_enabled(True)
 

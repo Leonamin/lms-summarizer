@@ -36,7 +36,7 @@ class VideoPipeline:
     async def _setup_browser(self, playwright: Playwright) -> Tuple[Page, any]:
         """브라우저 설정 및 페이지 생성"""
         browser = await playwright.chromium.launch(
-            headless=False,
+            headless=True,
             executable_path=self.chrome_path,
             args=[
                 "--disable-blink-features=AutomationControlled",

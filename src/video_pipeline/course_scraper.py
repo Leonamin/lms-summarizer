@@ -45,10 +45,12 @@ class CourseScraper:
 
     def __init__(self, username: str, password: str,
                  chrome_path: str = None,
+                 headless: bool = True,
                  log_callback: Optional[Callable[[str], None]] = None):
         self.username = username
         self.password = password
         self.chrome_path = chrome_path or _DEFAULT_CHROME_PATH
+        self.headless = headless
         self._log = log_callback or (lambda msg: None)
         self._pw = None
         self._browser = None
@@ -57,7 +59,7 @@ class CourseScraper:
     async def _setup_browser(self, playwright: Playwright):
         """브라우저 설정 (VideoPipeline._setup_browser 패턴)"""
         browser = await playwright.chromium.launch(
-            headless=False,
+            headless=self.headless,
             executable_path=self.chrome_path,
             args=[
                 "--disable-blink-features=AutomationControlled",
@@ -312,6 +314,14 @@ class CourseScraper:
             if "completed" in comp_classes and "incomplete" not in comp_classes:
                 completion = "completed"
 
+        # 예정 상태 (아직 공개되지 않은 강의)
+        is_upcoming = False
+        dday_el = await el.query_selector(".xncb-component-sub-d_day")
+        if dday_el:
+            dday_classes = await dday_el.get_attribute("class") or ""
+            if "upcoming" in dday_classes:
+                is_upcoming = True
+
         return LectureItem(
             title=title,
             item_url=item_url,
@@ -322,6 +332,7 @@ class CourseScraper:
             attendance=attendance,
             completion=completion,
             content_type_label=content_type_label,
+            is_upcoming=is_upcoming,
         )
 
     # ── 수명 관리 ──────────────────────────────────────────────
