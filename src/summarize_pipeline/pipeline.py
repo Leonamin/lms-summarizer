@@ -5,10 +5,14 @@ from pathlib import Path
 from src.summarize_pipeline.summarizer import summarize_text
 
 
+_DEFAULT_PROMPT = "다음 강의 내용을 한국어로 자세히 요약해주세요."
+
+
 class SummarizePipeline:
-    def __init__(self, model_name: str = "gemini-2.5-flash"):
+    def __init__(self, model_name: str = "gemini-2.5-flash", prompt: str = None):
         self.downloads_dir = None  # 다운로드 경로는 나중에 설정됨
         self.model_name = model_name
+        self.prompt = prompt or _DEFAULT_PROMPT
 
     def process(self, text_path: str) -> str:
         """텍스트 요약"""
@@ -18,7 +22,7 @@ class SummarizePipeline:
 
         print(f"[INFO] 요약 시작: {text_path}")
         start_time = time.time()
-        summary = summarize_text(text_path, "다음 강의 내용을 한국어로 자세히 요약해주세요.",
+        summary = summarize_text(text_path, self.prompt,
                                  model_name=self.model_name)
 
         end_time = time.time()

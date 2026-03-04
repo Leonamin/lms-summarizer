@@ -9,7 +9,10 @@ from typing import Dict, List
 from PyQt5.QtCore import QThread, pyqtSignal
 
 from src.gui.config.constants import Messages
-from src.gui.core.file_manager import create_config_files, extract_urls_from_input, ensure_downloads_directory
+from src.gui.core.file_manager import (
+    create_config_files, extract_urls_from_input, ensure_downloads_directory,
+    get_summary_prompt, get_chrome_path,
+)
 from src.gui.core.module_loader import check_required_modules
 
 
@@ -34,6 +37,8 @@ class ProcessingWorker(QThread):
         self.modules = modules
         self.save_video_dir = save_video_dir
         self.model_name = model_name
+        self.summary_prompt = get_summary_prompt()
+        self.chrome_path = get_chrome_path()
         self._cancel_event = threading.Event()
 
     def request_cancel(self):
@@ -155,7 +160,10 @@ class ProcessingWorker(QThread):
                 mb_total = total / (1024 * 1024)
                 self._emit_log(f"   📊 다운로드 진행: {pct}% ({mb_down:.1f}/{mb_total:.1f} MB)")
 
-        video_pipeline = self.modules['VideoPipeline'](user_setting, progress_callback=on_progress)
+        video_pipeline = self.modules['VideoPipeline'](
+            user_setting, progress_callback=on_progress,
+            chrome_path=self.chrome_path,
+        )
         video_pipeline.downloads_dir = ensure_downloads_directory()
 
         self._check_cancelled()
@@ -221,7 +229,7 @@ class ProcessingWorker(QThread):
         """텍스트 요약"""
         self._emit_log(Messages.TEXT_SUMMARIZING)
 
-        summarize_pipeline = self.modules['SummarizePipeline'](self.model_name)
+        summarize_pipeline = self.modules['SummarizePipeline'](self.model_name, prompt=self.summary_prompt)
         summary_paths = []
 
         for i, text_path in enumerate(text_paths, 1):

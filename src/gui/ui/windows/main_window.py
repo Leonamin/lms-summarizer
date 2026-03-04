@@ -33,6 +33,7 @@ from src.gui.ui.components.buttons import ProcessingButton, ClearButton, AppButt
 from src.gui.ui.components.model_selector import ModelSelector
 from src.gui.ui.components.toast import ToastMessage
 from src.gui.ui.dialogs.progress_modal import ProcessingModal
+from src.gui.ui.dialogs.settings_dialog import SettingsDialog
 from src.gui.workers.processing_worker import ProcessingWorker
 
 
@@ -94,10 +95,19 @@ class MainWindow(QWidget):
         self.setLayout(main_layout)
 
     def _create_header_section(self, layout: QVBoxLayout):
+        header_row = QHBoxLayout()
+
         title = QLabel(f"🎓 {APP_TITLE}")
-        title.setAlignment(Qt.AlignCenter)
+        title.setAlignment(Qt.AlignLeft)
         title.setStyleSheet(StyleSheet.title())
-        layout.addWidget(title)
+        header_row.addWidget(title, stretch=1)
+
+        settings_btn = AppButton("⚙️ 설정", "text")
+        settings_btn.setFixedWidth(80)
+        settings_btn.clicked.connect(self._open_settings_dialog)
+        header_row.addWidget(settings_btn)
+
+        layout.addLayout(header_row)
 
         desc = QLabel("📖 숭실대학교 LMS 강의 동영상을 다운로드하고 AI로 요약합니다.")
         desc.setAlignment(Qt.AlignCenter)
@@ -219,6 +229,10 @@ class MainWindow(QWidget):
                 self.log_area.append_message(f"✅ 저장 경로 변경: {new_path}")
             except Exception as e:
                 QMessageBox.critical(self, "경로 변경 오류", f"저장 경로 변경 중 오류:\n{str(e)}")
+
+    def _open_settings_dialog(self):
+        dialog = SettingsDialog(self)
+        dialog.exec_()
 
     def _open_in_finder(self):
         path = ensure_downloads_directory()
