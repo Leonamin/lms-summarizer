@@ -126,7 +126,7 @@ def extract_urls_from_input(url_input: str) -> List[str]:
     return urls
 
 
-_PERSISTABLE_FIELDS = ['student_id', 'api_key', 'urls', 'ai_model']
+_PERSISTABLE_FIELDS = ['student_id', 'api_key', 'ai_model']
 
 
 def save_user_inputs(inputs: Dict[str, str]) -> None:
@@ -240,4 +240,36 @@ def clear_course_cache() -> None:
     """과목 목록 캐시 삭제"""
     settings = load_settings()
     settings.pop("course_cache", None)
+    save_settings(settings)
+
+
+# ── 처리 히스토리 ────────────────────────────────────────
+
+def add_history_entry(entry: Dict) -> None:
+    """처리 히스토리 항목 추가.
+
+    entry 구조:
+        url (str): 강의 URL
+        lecture_name (str): 강의 파일명
+        file_size_mb (float): 원본 영상 크기 (MB)
+        duration_sec (float): 처리 소요 시간 (초)
+        summary_path (str): 요약 파일 경로
+        processed_at (str): ISO 형식 타임스탬프
+    """
+    settings = load_settings()
+    history = settings.get("history", [])
+    history.append(entry)
+    settings["history"] = history
+    save_settings(settings)
+
+
+def load_history() -> List[Dict]:
+    """저장된 히스토리 목록 반환"""
+    return load_settings().get("history", [])
+
+
+def clear_history() -> None:
+    """히스토리 전체 삭제"""
+    settings = load_settings()
+    settings.pop("history", None)
     save_settings(settings)

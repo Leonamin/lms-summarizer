@@ -2,6 +2,7 @@
 백그라운드에서 LMS 처리 작업을 수행하는 워커 스레드
 """
 
+import os
 import threading
 import traceback
 from pathlib import Path
@@ -10,7 +11,7 @@ from typing import Dict, List, Callable, Optional
 from src.gui.config.constants import Messages
 from src.gui.core.file_manager import (
     create_config_files, extract_urls_from_input, ensure_downloads_directory,
-    get_summary_prompt, get_chrome_path,
+    get_summary_prompt, get_chrome_path, add_history_entry,
 )
 from src.gui.core.module_loader import check_required_modules
 
@@ -115,11 +116,13 @@ class ProcessingWorker:
         create_config_files(self.user_inputs)
 
     def _execute_processing_pipeline(self):
+        import time as _time
         urls = extract_urls_from_input(self.user_inputs.get('urls', ''))
         if not urls:
             raise ValueError("처리할 URL이 없습니다.")
 
         user_setting = self.modules['UserSetting'](self.user_inputs)
+        pipeline_start = _time.time()
 
         # 1. 비디오 다운로드
         self._check_cancelled()
@@ -129,6 +132,14 @@ class ProcessingWorker:
         if not video_paths:
             raise ValueError(f"다운로드된 영상이 없습니다. ({len(urls)}개 URL 중 0개 성공)")
 
+        # 영상 파일 크기 기록 (삭제 전)
+        video_sizes = {}
+        for vp in video_paths:
+            try:
+                video_sizes[vp] = os.path.getsize(vp) / (1024 * 1024)
+            except OSError:
+                video_sizes[vp] = 0.0
+
         # 2. 오디오 → 텍스트
         self._check_cancelled()
         self._on_step_changed(2, "음성 → 텍스트 변환")
@@ -137,7 +148,11 @@ class ProcessingWorker:
         # 3. AI 요약
         self._check_cancelled()
         self._on_step_changed(3, "AI 요약 생성")
-        self._summarize_texts(text_paths)
+        summary_paths = self._summarize_texts(text_paths)
+
+        # 히스토리 저장
+        duration_sec = _time.time() - pipeline_start
+        self._save_processing_history(urls, video_paths, video_sizes, summary_paths, duration_sec)
 
         if not self.save_video_dir:
             self._delete_video_files(video_paths)
@@ -267,6 +282,32 @@ class ProcessingWorker:
 
         self._emit_log("ffmpeg를 찾을 수 없습니다. 설치가 필요합니다.")
         raise RuntimeError("ffmpeg가 설치되어 있지 않습니다.")
+
+    def _save_processing_history(
+        self, urls: List[str], video_paths: List[str],
+        video_sizes: Dict[str, float], summary_paths: List[str],
+        duration_sec: float,
+    ):
+        """처리 완료된 강의 히스토리를 저장"""
+        from datetime import datetime
+        timestamp = datetime.now().isoformat()
+
+        for i, url in enumerate(urls):
+            video_path = video_paths[i] if i < len(video_paths) else None
+            summary_path = summary_paths[i] if i < len(summary_paths) else None
+
+            entry = {
+                "url": url,
+                "lecture_name": Path(video_path).stem if video_path else "",
+                "file_size_mb": round(video_sizes.get(video_path, 0.0), 2),
+                "duration_sec": round(duration_sec, 1),
+                "summary_path": summary_path or "",
+                "processed_at": timestamp,
+            }
+            try:
+                add_history_entry(entry)
+            except Exception as e:
+                self._emit_log(f"⚠️ 히스토리 저장 실패: {e}")
 
     def _display_results(self, video_paths: List[str], text_paths: List[str]):
         self._emit_log("\n" + "=" * 50)
