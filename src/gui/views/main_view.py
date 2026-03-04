@@ -118,6 +118,7 @@ class MainView:
                         self._build_path_section(),
                         self._build_form_card(),
                         self.log_area.control,
+                        self._build_action_bar(),
                     ],
                     spacing=Spacing.SM,
                     expand=True,
@@ -244,16 +245,6 @@ class MainView:
             if name == 'api_key':
                 form_controls.append(self.model_selector.control)
 
-        form_controls.append(ft.Container(height=4))
-        form_controls.append(self._save_video_checkbox)
-        form_controls.append(ft.Container(height=4))
-        form_controls.append(
-            ft.Row(
-                controls=[self._start_btn, self._clear_btn],
-                spacing=Spacing.SM,
-            )
-        )
-
         return card_container(
             content=ft.Column(
                 controls=form_controls,
@@ -261,6 +252,22 @@ class MainView:
                 scroll=ft.ScrollMode.AUTO,
             ),
             expand=True,
+        )
+
+    def _build_action_bar(self) -> ft.Container:
+        """하단 고정 액션 바 (체크박스 + 버튼)"""
+        return ft.Container(
+            content=ft.Column(
+                controls=[
+                    self._save_video_checkbox,
+                    ft.Row(
+                        controls=[self._start_btn, self._clear_btn],
+                        spacing=Spacing.SM,
+                    ),
+                ],
+                spacing=Spacing.XS,
+            ),
+            padding=ft.padding.only(top=4),
         )
 
     # ── 이벤트 핸들러 ──────────────────────────────────────
