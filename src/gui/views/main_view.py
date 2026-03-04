@@ -511,3 +511,4 @@ class MainView:
                 self.input_fields[field_name].set_value(value)
         if 'ai_model' in saved:
             self.model_selector.set_model(saved['ai_model'])
+        self.page.update()
