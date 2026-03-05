@@ -271,6 +271,10 @@ src/
 powershell -ExecutionPolicy Bypass -File scripts/build_windows.ps1
 ```
 
+### 실행 파일 만들기
+
+`uv run pyinstaller lms-summarizer.spec`
+
 ### 커밋 메시지 규칙
 
 ```
