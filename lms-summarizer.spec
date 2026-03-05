@@ -116,7 +116,7 @@ a = Analysis(
         "dotenv", "google.generativeai",
         # torch 핵심 모듈 (Windows DLL 로드에 필요)
         "torch", "torch._C", "torch.nn", "torch.nn.functional",
-        "torch.utils", "torch.backends",
+        "torch.utils", "torch.backends", "torch.cuda",
         # 표준 라이브러리
         "json", "threading", "pathlib",
     ],
@@ -131,9 +131,7 @@ a = Analysis(
         # PyQt5 (더 이상 사용하지 않음)
         "PyQt5", "PyQt5.QtCore", "PyQt5.QtWidgets", "PyQt5.QtGui",
         "qtawesome",
-        # torch CUDA 관련 제외 (CPU-only 빌드)
-        "torch.cuda", "torch.backends.cudnn",
-        "torch.distributed", "torch.testing",
+        # 주의: torch 하위 모듈은 내부 상호 참조가 많아 개별 제외 불가
     ],
     noarchive=False,
     optimize=1,

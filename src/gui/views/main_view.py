@@ -436,9 +436,9 @@ class MainView:
             on_progress=on_progress,
         )
 
-        self.worker.start()
         self.modal.show()
         self.page.update()
+        self.worker.start()
 
     def _handle_stop(self):
         def do_stop(e):

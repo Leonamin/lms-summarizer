@@ -10,13 +10,14 @@ from pathlib import Path
 
 
 def get_app_data_dir() -> str:
-    """애플리케이션 데이터 디렉토리 경로 반환"""
-    if getattr(sys, 'frozen', False):
-        # .app 번들 내부
-        base_path = os.path.dirname(sys.executable)
+    """애플리케이션 데이터 디렉토리 경로 반환 (항상 쓰기 가능한 경로)"""
+    if sys.platform == 'darwin':
+        base_path = os.path.join(os.path.expanduser('~'), 'Library', 'Application Support', 'LMS-Summarizer')
+    elif sys.platform == 'win32':
+        base_path = os.path.join(os.environ.get('APPDATA', os.path.expanduser('~')), 'LMS-Summarizer')
     else:
-        # 개발 환경
-        base_path = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+        base_path = os.path.join(os.path.expanduser('~'), '.local', 'share', 'LMS-Summarizer')
+    os.makedirs(base_path, exist_ok=True)
     return base_path
 
 
@@ -47,11 +48,16 @@ def load_settings() -> Dict:
     return {"downloads_dir": get_default_downloads_dir()}
 
 
-def save_settings(settings: Dict) -> None:
-    """설정 파일 저장"""
+def save_settings(settings: Dict) -> bool:
+    """설정 파일 저장. 성공 시 True, 실패 시 False 반환."""
     settings_path = get_settings_path()
-    with open(settings_path, 'w', encoding='utf-8') as f:
-        json.dump(settings, f, indent=2, ensure_ascii=False)
+    try:
+        with open(settings_path, 'w', encoding='utf-8') as f:
+            json.dump(settings, f, indent=2, ensure_ascii=False)
+        return True
+    except OSError as e:
+        print(f"[WARNING] 설정 파일 저장 실패 ({settings_path}): {e}")
+        return False
 
 
 def get_resource_path(relative_path: str) -> str:
@@ -75,14 +81,14 @@ def create_env_file(user_inputs: Dict[str, str]) -> None:
 PASSWORD={user_inputs.get('password', '')}
 GOOGLE_API_KEY={user_inputs.get('api_key', '')}
 """
-    with open(get_resource_path('.env'), 'w', encoding='utf-8') as f:
+    with open(os.path.join(get_app_data_dir(), '.env'), 'w', encoding='utf-8') as f:
         f.write(env_content)
 
 
 def create_user_settings_file(urls: List[str]) -> None:
     """사용자 설정 파일 생성"""
     settings = {"video": urls}
-    with open(get_resource_path('user_settings.json'), 'w', encoding='utf-8') as f:
+    with open(os.path.join(get_app_data_dir(), 'user_settings.json'), 'w', encoding='utf-8') as f:
         json.dump(settings, f, indent=2, ensure_ascii=False)
 
 

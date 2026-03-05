@@ -193,7 +193,10 @@ class CourseListView:
     def _on_courses_loaded(self, courses):
         self._courses = courses
         self._course_loading.visible = False
-        save_course_cache([c.to_dict() for c in courses])
+        try:
+            save_course_cache([c.to_dict() for c in courses])
+        except Exception as e:
+            print(f"[WARNING] 과목 캐시 저장 실패 (무시): {e}")
         self._populate_course_list()
         self._page.update()
 
