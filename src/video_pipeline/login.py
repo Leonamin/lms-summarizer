@@ -1,6 +1,6 @@
 from typing import Callable, Optional
 
-from playwright.sync_api import Page
+from playwright.async_api import Page
 
 
 async def perform_login_if_needed(
@@ -16,8 +16,8 @@ async def perform_login_if_needed(
     _log("[LOGIN] 로그인 페이지 감지됨. 로그인 시도 중...")
 
     try:
-        login_button = await page.query_selector(".login_btn a")
-        if login_button:
+        login_button = page.locator(".login_btn a")
+        if await login_button.count() > 0:
             _log("[LOGIN] SSO 로그인 버튼 클릭")
             await login_button.click()
             await page.wait_for_load_state("networkidle")
@@ -26,12 +26,12 @@ async def perform_login_if_needed(
             _log("[LOGIN] SSO 로그인 버튼 없음, 직접 폼 입력 시도")
 
         _log("[LOGIN] 로그인 폼 입력 중...")
-        await page.fill("input#userid", username)
-        await page.fill("input#pwd", password)
+        await page.locator("input#userid").fill(username)
+        await page.locator("input#pwd").fill(password)
 
         _log("[LOGIN] 로그인 버튼 클릭")
         async with page.expect_navigation(wait_until="networkidle"):
-            await page.click("a.btn_login")
+            await page.locator("a.btn_login").click()
 
         _log(f"[LOGIN] 리디렉션 완료. URL: {page.url}")
 
