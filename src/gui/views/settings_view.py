@@ -10,6 +10,7 @@ from src.gui.core.file_manager import (
     DEFAULT_PROMPT,
     get_summary_prompt, set_summary_prompt,
     get_chrome_path, set_chrome_path, detect_chrome_paths,
+    get_debug_mode, set_debug_mode,
 )
 
 
@@ -73,11 +74,17 @@ def open_settings_dialog(page: ft.Page):
         dialog.open = False
         page.update()
 
+    debug_switch = ft.Switch(
+        value=get_debug_mode(),
+        active_color=Colors.PRIMARY,
+    )
+
     def _save(e):
         prompt = (prompt_field.value or "").strip()
         chrome_path = (chrome_field.value or "").strip()
 
         set_summary_prompt(prompt if prompt else DEFAULT_PROMPT)
+        set_debug_mode(debug_switch.value)
 
         if chrome_path:
             if not os.path.exists(chrome_path):
@@ -156,6 +163,27 @@ def open_settings_dialog(page: ft.Page):
                         spacing=Spacing.SM,
                     ),
                     *detected_controls,
+                    divider(),
+                    # 디버그 모드 섹션
+                    ft.Row(
+                        controls=[
+                            ft.Column(
+                                controls=[
+                                    ft.Text("디버그 모드", size=Typography.BODY, weight=Typography.SEMI_BOLD),
+                                    ft.Text(
+                                        "브라우저 창을 표시하여 동작을 확인합니다.",
+                                        size=Typography.SMALL,
+                                        color=Colors.TEXT_MUTED,
+                                    ),
+                                ],
+                                spacing=2,
+                                expand=True,
+                            ),
+                            debug_switch,
+                        ],
+                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                    ),
                 ],
                 spacing=Spacing.MD,
                 tight=True,

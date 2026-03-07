@@ -1,6 +1,7 @@
 import os
 import random
 import string
+import sys
 import time
 from http.client import IncompleteRead
 from typing import Callable, Optional
@@ -8,6 +9,17 @@ from typing import Callable, Optional
 import requests
 
 from src.gui.core.file_manager import get_downloads_dir
+
+
+def _get_ssl_verify():
+    """PyInstaller 번들 환경에서 SSL 인증서 경로 반환"""
+    if getattr(sys, 'frozen', False):
+        try:
+            import certifi
+            return certifi.where()
+        except ImportError:
+            pass
+    return True
 
 _MAX_RETRIES = 3
 _TIMEOUT = (10, 60)  # (connect timeout, read timeout) in seconds
@@ -64,7 +76,7 @@ def _download_with_progress(
     attempt: int,
 ):
     print(f"[INFO] 동영상 다운로드 중... (시도 {attempt}/{_MAX_RETRIES}): {url}")
-    response = requests.get(url, stream=True, timeout=_TIMEOUT)
+    response = requests.get(url, stream=True, timeout=_TIMEOUT, verify=_get_ssl_verify())
     response.raise_for_status()
 
     total_size = int(response.headers.get('content-length', 0))

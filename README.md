@@ -18,11 +18,11 @@
 
 ## ✅ 시작 전 필요한 것
 
-| 항목 | 설명 | 비용 |
-|------|------|------|
-| **숭실대 LMS 계정** | 학번 + 비밀번호 | 무료 |
-| **Gemini API 키** | AI 요약에 사용 (발급 방법 아래 참고) | 무료 |
-| **Google Chrome** | 강의 영상 접근에 필요 | 무료 |
+| 항목                | 설명                                 | 비용 |
+| ------------------- | ------------------------------------ | ---- |
+| **숭실대 LMS 계정** | 학번 + 비밀번호                      | 무료 |
+| **Gemini API 키**   | AI 요약에 사용 (발급 방법 아래 참고) | 무료 |
+| **Google Chrome**   | 강의 영상 접근에 필요                | 무료 |
 
 ---
 
@@ -41,9 +41,11 @@
 > ⚠️ **Mac에서 "확인되지 않은 개발자" 경고가 뜨는 경우**
 >
 > 터미널을 열고 아래 명령어를 입력한 후 다시 실행하세요:
+>
 > ```
 > xattr -rd com.apple.quarantine /path/to/LMS-Summarizer.app
 > ```
+>
 > 또는: 시스템 설정 → 개인 정보 보호 및 보안 → "확인 없이 열기" 클릭
 
 ---
@@ -56,6 +58,7 @@
 #### 1. 필수 도구 설치
 
 **uv** (Python 패키지 관리자):
+
 ```bash
 # macOS / Linux
 curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -65,6 +68,7 @@ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | ie
 ```
 
 **ffmpeg** (음성 변환에 필요):
+
 ```bash
 # macOS
 brew install ffmpeg
@@ -73,6 +77,7 @@ brew install ffmpeg
 ```
 
 #### 2. 저장소 복제 및 실행
+
 ```bash
 git clone https://github.com/Leonamin/lms-summarizer.git
 cd lms-summarizer
@@ -125,9 +130,9 @@ Google 계정으로 로그인하세요.
 
 **무료 사용 한도** (2025년 기준):
 
-| 모델 | 무료 한도 |
-|------|----------|
-| Gemini 2.5 Flash | 분당 10회 요청, 하루 500회 |
+| 모델             | 무료 한도                    |
+| ---------------- | ---------------------------- |
+| Gemini 2.5 Flash | 분당 10회 요청, 하루 500회   |
 | Gemini 2.0 Flash | 분당 15회 요청, 하루 1,500회 |
 
 강의 요약 용도라면 무료 한도로 충분합니다.
@@ -161,13 +166,13 @@ Google 계정으로 로그인하세요.
 
 ### 2. 정보 입력
 
-| 항목 | 입력 내용 |
-|------|----------|
-| **학번** | 숭실대 LMS 학번 |
-| **비밀번호** | LMS 비밀번호 (영문 자판으로 입력) |
-| **Gemini API 키** | 위에서 발급받은 API 키 |
-| **AI 모델** | Gemini 2.5 Flash 권장 |
-| **강의 URL** | LMS 강의 페이지 URL (아래 참고) |
+| 항목              | 입력 내용                         |
+| ----------------- | --------------------------------- |
+| **학번**          | 숭실대 LMS 학번                   |
+| **비밀번호**      | LMS 비밀번호 (영문 자판으로 입력) |
+| **Gemini API 키** | 위에서 발급받은 API 키            |
+| **AI 모델**       | Gemini 2.5 Flash 권장             |
+| **강의 URL**      | LMS 강의 페이지 URL (아래 참고)   |
 
 > 💡 **학번과 API 키는 자동으로 저장됩니다.** 다음 실행 시 다시 입력하지 않아도 됩니다.
 > 비밀번호는 보안상 저장되지 않습니다.
@@ -180,6 +185,7 @@ Google 계정으로 로그인하세요.
 4. 브라우저 주소창의 URL을 복사해서 입력란에 붙여넣습니다
 
 여러 강의를 한 번에 처리하려면 URL을 **한 줄에 하나씩** 입력하세요:
+
 ```
 https://canvas.ssu.ac.kr/courses/12345/modules/items/111111
 https://canvas.ssu.ac.kr/courses/12345/modules/items/222222
@@ -190,6 +196,7 @@ https://canvas.ssu.ac.kr/courses/12345/modules/items/222222
 "**▶ 처리 시작**" 버튼을 클릭하면 자동으로 진행됩니다.
 
 처리 단계:
+
 - **1단계**: 강의 영상 다운로드 (인터넷 속도에 따라 수 분 소요)
 - **2단계**: 음성 → 텍스트 변환 (영상 길이의 20~50% 소요)
 - **3단계**: AI 요약 생성 (수십 초 소요)
@@ -197,6 +204,7 @@ https://canvas.ssu.ac.kr/courses/12345/modules/items/222222
 ### 5. 결과 확인
 
 완료 후 요약 파일이 저장 경로에 생성됩니다:
+
 - `강의명_summarized.txt` — AI 요약 내용
 
 저장 경로는 기본값이 `~/Documents/LMS-Summarizer/` 이며, "경로 변경" 버튼으로 바꿀 수 있습니다.
@@ -206,27 +214,34 @@ https://canvas.ssu.ac.kr/courses/12345/modules/items/222222
 ## ❓ 자주 묻는 질문
 
 ### Q. 처음 실행할 때 오래 걸려요
+
 첫 실행 시 Whisper AI 모델(약 142MB)을 다운로드합니다. 한 번만 다운로드되며 이후에는 빠릅니다.
 
 ### Q. 비밀번호가 입력이 안 돼요
+
 비밀번호 입력란은 **영문 자판**에서만 입력됩니다. 한글 자판으로 되어 있다면 영문으로 전환 후 입력하세요.
 
 ### Q. 강의 영상이 없다고 나와요
+
 - URL이 올바른지 확인하세요 (영상이 있는 강의 항목의 URL이어야 합니다)
 - 해당 강의가 현재 수강 중인지 확인하세요
 - Chrome이 설치되어 있는지 확인하세요
 
 ### Q. API 키 오류가 나요
+
 - Gemini API 키가 올바르게 입력됐는지 확인하세요 (`AIzaSy`로 시작)
 - [Google AI Studio](https://aistudio.google.com/app/apikey)에서 키가 활성화 상태인지 확인하세요
 
 ### Q. Mac에서 "개발자를 확인할 수 없음" 오류가 나요
+
 터미널에서 아래 명령어를 실행하세요:
+
 ```bash
 xattr -rd com.apple.quarantine ~/Downloads/LMS-Summarizer.app
 ```
 
 ### Q. 요약 결과가 마음에 안 들어요
+
 - **Gemini 2.5 Pro** 모델을 선택하면 더 상세한 요약이 가능합니다 (단, API 사용량이 증가합니다)
 - 강의 음질이 좋지 않으면 텍스트 변환 정확도가 낮아질 수 있습니다
 
@@ -239,13 +254,13 @@ xattr -rd com.apple.quarantine ~/Downloads/LMS-Summarizer.app
 
 ### 기술 스택
 
-| 영역 | 기술 |
-|------|------|
-| GUI | PyQt5 |
-| 영상 다운로드 | Playwright (headless=False, 시스템 Chrome) |
-| 음성 변환 (STT) | OpenAI Whisper (로컬 실행) |
-| AI 요약 | Google Gemini API |
-| 패키지 관리 | uv |
+| 영역            | 기술                                       |
+| --------------- | ------------------------------------------ |
+| GUI             | PyQt5                                      |
+| 영상 다운로드   | Playwright (headless=False, 시스템 Chrome) |
+| 음성 변환 (STT) | OpenAI Whisper (로컬 실행)                 |
+| AI 요약         | Google Gemini API                          |
+| 패키지 관리     | uv                                         |
 
 ### 프로젝트 구조
 

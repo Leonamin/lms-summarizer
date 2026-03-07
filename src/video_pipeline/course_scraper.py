@@ -45,7 +45,7 @@ class CourseScraper:
 
     def __init__(self, username: str, password: str,
                  chrome_path: str = None,
-                 headless: bool = True,
+                 headless: bool = False,
                  log_callback: Optional[Callable[[str], None]] = None):
         self.username = username
         self.password = password

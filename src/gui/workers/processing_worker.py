@@ -2,7 +2,9 @@
 백그라운드에서 LMS 처리 작업을 수행하는 워커 스레드
 """
 
+import logging
 import os
+import sys
 import threading
 import traceback
 from pathlib import Path
@@ -11,9 +13,23 @@ from typing import Dict, List, Callable, Optional
 from src.gui.config.constants import Messages
 from src.gui.core.file_manager import (
     create_config_files, extract_urls_from_input, ensure_downloads_directory,
-    get_summary_prompt, get_chrome_path, add_history_entry,
+    get_summary_prompt, get_chrome_path, get_debug_mode, add_history_entry,
+    get_app_data_dir,
 )
 from src.gui.core.module_loader import check_required_modules
+
+
+def _setup_file_logger() -> logging.Logger:
+    """디버그 파일 로거 설정 (PyInstaller 환경에서 에러 추적용)"""
+    logger = logging.getLogger("lms_worker")
+    if logger.handlers:
+        return logger
+    logger.setLevel(logging.DEBUG)
+    log_path = os.path.join(get_app_data_dir(), "debug.log")
+    handler = logging.FileHandler(log_path, encoding="utf-8")
+    handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
+    logger.addHandler(handler)
+    return logger
 
 
 class CancelledException(Exception):
@@ -41,6 +57,7 @@ class ProcessingWorker:
         self.model_name = model_name
         self.summary_prompt = get_summary_prompt()
         self.chrome_path = get_chrome_path()
+        self.debug_mode = get_debug_mode()
         self._cancel_event = threading.Event()
         self._thread: Optional[threading.Thread] = None
 
@@ -74,10 +91,16 @@ class ProcessingWorker:
             raise CancelledException("사용자가 작업을 취소했습니다.")
 
     def _emit_log(self, message: str):
+        self._file_logger.info(message)
         self._on_log(message)
 
     def _run(self):
         """실제 처리 작업 실행"""
+        self._file_logger = _setup_file_logger()
+        self._file_logger.info("=" * 60)
+        self._file_logger.info(f"frozen={getattr(sys, 'frozen', False)}, "
+                               f"platform={sys.platform}, "
+                               f"chrome_path={self.chrome_path}")
         try:
             self._emit_log(Messages.PROCESSING_START)
 
@@ -177,6 +200,8 @@ class ProcessingWorker:
         video_pipeline = self.modules['VideoPipeline'](
             user_setting, progress_callback=on_progress,
             chrome_path=self.chrome_path,
+            log_callback=self._emit_log,
+            headless=not self.debug_mode,
         )
         video_pipeline.downloads_dir = ensure_downloads_directory()
 

@@ -21,10 +21,15 @@ def sanitize_dirname(name: str) -> str:
 _DEFAULT_CHROME_PATH = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 
 
+_LOGIN_URL = "https://canvas.ssu.ac.kr/"
+
+
 class VideoPipeline:
     def __init__(self, user_setting: UserSetting, extraction_timeout: float = 60,
                  progress_callback: Optional[Callable[[int, int], None]] = None,
-                 chrome_path: str = None):
+                 chrome_path: str = None,
+                 log_callback: Optional[Callable[[str], None]] = None,
+                 headless: bool = False):
         self.user_setting = user_setting
         self.user_id = user_setting.user_id
         self.password = user_setting.password
@@ -32,11 +37,13 @@ class VideoPipeline:
         self.extraction_timeout = extraction_timeout
         self.progress_callback = progress_callback
         self.chrome_path = chrome_path or _DEFAULT_CHROME_PATH
+        self._log = log_callback or (lambda msg: print(msg))
+        self.headless = headless
 
     async def _setup_browser(self, playwright: Playwright) -> Tuple[Page, any]:
         """브라우저 설정 및 페이지 생성"""
         browser = await playwright.chromium.launch(
-            headless=True,
+            headless=self.headless,
             executable_path=self.chrome_path,
             args=[
                 "--disable-blink-features=AutomationControlled",
@@ -64,23 +71,32 @@ class VideoPipeline:
 
         return page, browser
 
+    async def _ensure_logged_in(self, page: Page):
+        """대시보드로 이동하여 로그인 선행 처리 (CourseScraper 패턴)"""
+        self._log("LMS 로그인 확인 중...")
+        await page.goto(_LOGIN_URL, wait_until="networkidle")
+
+        if "login" in page.url:
+            self._log("로그인 진행 중...")
+            result = await perform_login_if_needed(
+                page, self.user_id, self.password, log=self._log
+            )
+            if not result and "login" in page.url:
+                raise RuntimeError("LMS 로그인 실패. 학번/비밀번호를 확인하세요.")
+            self._log("로그인 완료")
+        else:
+            self._log("이미 로그인 상태")
+
     async def _process_single_url(self, page: Page, url: str) -> Optional[str]:
         """단일 URL에 대한 비디오 처리"""
-        print(f"\n[INFO] 처리 중: {url}")
+        self._log(f"처리 중: {url}")
         await page.goto(url, wait_until="networkidle")
-        print(f"[DEBUG] 페이지 이동 완료: {page.url}")
-
-        if await perform_login_if_needed(page, self.user_id, self.password):
-            print("[INFO] 로그인 완료 또는 유지됨.")
-            await page.wait_for_load_state("networkidle")
-            print(f"[DEBUG] 로그인 후 현재 URL: {page.url}")
-        else:
-            print("[INFO] 로그인 불필요.")
+        self._log(f"페이지 이동 완료: {page.url}")
 
         video_url, title = await extract_video_url(page, method="dom", timeout=self.extraction_timeout)
 
         if video_url:
-            print(f"[SUCCESS] 동영상 링크 추출됨: {video_url}, 제목: {title}")
+            self._log(f"동영상 링크 추출됨: {video_url}")
 
             # 강의 이름으로 하위 디렉토리 생성
             save_dir = self.downloads_dir
@@ -88,14 +104,13 @@ class VideoPipeline:
                 lecture_dir = Path(save_dir) / sanitize_dirname(title)
                 lecture_dir.mkdir(parents=True, exist_ok=True)
                 save_dir = str(lecture_dir)
-                print(f"[INFO] 강의 폴더: {save_dir}")
 
             filepath = download_video(video_url, save_dir=save_dir, filename=title,
                                      progress_callback=self.progress_callback)
-            print(f"[SUCCESS] 동영상 다운로드 완료: {filepath}")
+            self._log(f"동영상 다운로드 완료: {filepath}")
             return filepath
         else:
-            print("[WARN] 동영상 링크를 찾지 못했습니다.")
+            self._log("[WARN] 동영상 링크를 찾지 못했습니다.")
             return None
 
     async def process(self, urls: list[str]) -> list[str]:
@@ -104,25 +119,30 @@ class VideoPipeline:
         failed_urls = []
 
         async with async_playwright() as p:
+            self._log(f"Playwright 시작, Chrome: {self.chrome_path}")
             page, browser = await self._setup_browser(p)
+            self._log("브라우저 시작 완료")
 
             try:
+                # 로그인 선행: 대시보드에서 먼저 인증 후 영상 URL 접근
+                await self._ensure_logged_in(page)
+
                 for i, url in enumerate(urls, 1):
                     try:
                         filepath = await self._process_single_url(page, url)
                         if filepath:
                             downloaded_videos_path.append(filepath)
                     except Exception as e:
-                        print(f"[ERROR] ({i}/{len(urls)}) 다운로드 실패, 다음 영상으로 진행: {url}")
-                        print(f"[ERROR] 원인: {e}")
+                        self._log(f"[ERROR] ({i}/{len(urls)}) 다운로드 실패, 다음 영상으로 진행: {url}")
+                        self._log(f"[ERROR] 원인: {type(e).__name__}: {e}")
                         failed_urls.append((url, str(e)))
             finally:
                 await browser.close()
 
         if failed_urls:
-            print(f"\n[WARN] {len(failed_urls)}개 영상 다운로드 실패:")
+            self._log(f"[WARN] {len(failed_urls)}개 영상 다운로드 실패:")
             for url, err in failed_urls:
-                print(f"  - {url}: {err}")
+                self._log(f"  - {url}: {err}")
 
         return downloaded_videos_path
 

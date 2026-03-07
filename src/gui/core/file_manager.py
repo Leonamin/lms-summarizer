@@ -236,6 +236,20 @@ def set_chrome_path(path: str) -> None:
     save_settings(settings)
 
 
+# ── 디버그 모드 (headless off) ─────────────────────────────
+
+def get_debug_mode() -> bool:
+    """디버그 모드 반환. True이면 브라우저 창이 표시됨 (headless=False)."""
+    return load_settings().get("debug_mode", False)
+
+
+def set_debug_mode(enabled: bool) -> None:
+    """디버그 모드를 settings.json에 저장"""
+    settings = load_settings()
+    settings["debug_mode"] = enabled
+    save_settings(settings)
+
+
 # ── 과목 캐시 ─────────────────────────────────────────────
 
 def save_course_cache(courses_data: list) -> None:
