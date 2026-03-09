@@ -20,7 +20,7 @@ import os
 from pathlib import Path
 
 APP_NAME = "LMS-Summarizer"
-APP_VERSION = "1.2.1"
+APP_VERSION = "1.3.0"
 
 # ffmpeg 경로 자동 탐지
 def find_ffmpeg():
