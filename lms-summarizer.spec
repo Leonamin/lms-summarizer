@@ -73,6 +73,16 @@ def collect_torch_libs():
 ffmpeg_path = find_ffmpeg()
 whisper_cache = find_whisper_models()
 
+# SSL 인증서 번들 경로 (PyInstaller에서 requests HTTPS 요청에 필요)
+def find_certifi_cacert():
+    try:
+        import certifi
+        return certifi.where()
+    except ImportError:
+        return None
+
+certifi_cacert = find_certifi_cacert()
+
 # 추가 데이터 파일
 datas = [
     ("src", "src"),
@@ -80,6 +90,8 @@ datas = [
 ]
 if whisper_cache:
     datas.append((whisper_cache, "whisper_models"))
+if certifi_cacert:
+    datas.append((certifi_cacert, "certifi"))
 
 # 바이너리: ffmpeg + torch 네이티브 라이브러리
 binaries = [(ffmpeg_path, ".")]
@@ -113,10 +125,10 @@ a = Analysis(
         "src.gui.config.course_models",
         # 외부 라이브러리
         "openai", "whisper", "playwright", "requests",
-        "dotenv", "google.generativeai",
+        "dotenv", "google.generativeai", "certifi",
         # torch 핵심 모듈 (Windows DLL 로드에 필요)
         "torch", "torch._C", "torch.nn", "torch.nn.functional",
-        "torch.utils", "torch.backends",
+        "torch.utils", "torch.backends", "torch.cuda",
         # 표준 라이브러리
         "json", "threading", "pathlib",
     ],
@@ -131,9 +143,7 @@ a = Analysis(
         # PyQt5 (더 이상 사용하지 않음)
         "PyQt5", "PyQt5.QtCore", "PyQt5.QtWidgets", "PyQt5.QtGui",
         "qtawesome",
-        # torch CUDA 관련 제외 (CPU-only 빌드)
-        "torch.cuda", "torch.backends.cudnn",
-        "torch.distributed", "torch.testing",
+        # 주의: torch 하위 모듈은 내부 상호 참조가 많아 개별 제외 불가
     ],
     noarchive=False,
     optimize=1,

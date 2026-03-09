@@ -1,6 +1,7 @@
 import os
 import random
 import string
+import sys
 import time
 from http.client import IncompleteRead
 from typing import Callable, Optional
@@ -9,9 +10,32 @@ import requests
 
 from src.gui.core.file_manager import get_downloads_dir
 
+
+def _get_ssl_verify():
+    """PyInstaller 번들 환경에서 SSL 인증서 경로 반환"""
+    if getattr(sys, 'frozen', False):
+        try:
+            import certifi
+            return certifi.where()
+        except ImportError:
+            pass
+    return True
+
 _MAX_RETRIES = 3
 _TIMEOUT = (10, 60)  # (connect timeout, read timeout) in seconds
 _CHUNK_SIZE = 65536   # 64KB chunks (더 빠른 대용량 파일 다운로드)
+
+# LMS 영상 서버가 Referer 검증을 하므로 브라우저 요청과 동일한 헤더 필요
+_DOWNLOAD_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                  "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36",
+    "Referer": "https://commons.ssu.ac.kr/",
+    "Accept-Encoding": "identity;q=1, *;q=0",
+    "Range": "bytes=0-",
+    "Sec-Ch-Ua": '"Not:A-Brand";v="99", "Google Chrome";v="145", "Chromium";v="145"',
+    "Sec-Ch-Ua-Mobile": "?0",
+    "Sec-Ch-Ua-Platform": '"macOS"',
+}
 
 
 def download_video(
@@ -64,10 +88,16 @@ def _download_with_progress(
     attempt: int,
 ):
     print(f"[INFO] 동영상 다운로드 중... (시도 {attempt}/{_MAX_RETRIES}): {url}")
-    response = requests.get(url, stream=True, timeout=_TIMEOUT)
+    response = requests.get(url, headers=_DOWNLOAD_HEADERS, stream=True,
+                            timeout=_TIMEOUT, verify=_get_ssl_verify())
     response.raise_for_status()
 
-    total_size = int(response.headers.get('content-length', 0))
+    # Range 헤더 사용 시 content-range에서 전체 크기 추출
+    content_range = response.headers.get('content-range', '')
+    if '/' in content_range:
+        total_size = int(content_range.split('/')[-1])
+    else:
+        total_size = int(response.headers.get('content-length', 0))
     downloaded = 0
 
     with open(filepath, "wb") as f:

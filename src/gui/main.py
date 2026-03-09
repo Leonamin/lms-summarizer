@@ -10,6 +10,21 @@ def setup_import_path():
     """개발 환경과 PyInstaller 환경 모두에서 동작하도록 import 경로 설정"""
     if getattr(sys, 'frozen', False):
         application_path = sys._MEIPASS
+
+        # PyInstaller 번들에서 SSL 인증서 경로 설정
+        # 1) 번들에 포함된 cacert.pem 우선 사용
+        bundled_cert = os.path.join(application_path, 'certifi', 'cacert.pem')
+        if os.path.exists(bundled_cert):
+            os.environ.setdefault('SSL_CERT_FILE', bundled_cert)
+            os.environ.setdefault('REQUESTS_CA_BUNDLE', bundled_cert)
+        else:
+            # 2) certifi 모듈 fallback
+            try:
+                import certifi
+                os.environ.setdefault('SSL_CERT_FILE', certifi.where())
+                os.environ.setdefault('REQUESTS_CA_BUNDLE', certifi.where())
+            except ImportError:
+                pass
     else:
         application_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 

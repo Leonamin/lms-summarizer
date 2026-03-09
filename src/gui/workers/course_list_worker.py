@@ -8,7 +8,7 @@ import traceback
 from typing import Optional, Callable, List
 
 from src.gui.config.course_models import Course
-from src.gui.core.file_manager import get_chrome_path
+from src.gui.core.file_manager import get_chrome_path, get_debug_mode
 
 
 class CourseListWorker:
@@ -33,6 +33,7 @@ class CourseListWorker:
         self.password = password
         self.course = course
         self.chrome_path = get_chrome_path()
+        self.debug_mode = get_debug_mode()
         self._cancel_event = threading.Event()
         self._thread: Optional[threading.Thread] = None
 
@@ -81,6 +82,7 @@ class CourseListWorker:
         async with CourseScraper(
             self.username, self.password,
             chrome_path=self.chrome_path,
+            headless=not self.debug_mode,
             log_callback=log_cb,
         ) as scraper:
             if self._cancel_event.is_set():

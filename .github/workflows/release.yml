@@ -86,6 +86,7 @@ jobs:
         run: |
           uv run python -c "
           import torch; print(f'torch {torch.__version__}')
+          import torch.cuda; print(f'torch.cuda OK (available={torch.cuda.is_available()})')
           import whisper; print('whisper OK')
           import flet; print('flet OK')
           from src.audio_pipeline.pipeline import AudioToTextPipeline; print('AudioToTextPipeline OK')
