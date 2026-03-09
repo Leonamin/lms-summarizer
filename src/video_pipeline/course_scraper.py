@@ -98,7 +98,7 @@ class CourseScraper:
             result = await perform_login_if_needed(
                 self._page, self.username, self.password
             )
-            if not result and "login" in self._page.url:
+            if not result:
                 raise RuntimeError("LMS 로그인 실패. 학번/비밀번호를 확인하세요.")
             self._log("로그인 완료")
         else:
