@@ -9,25 +9,28 @@ from dotenv import load_dotenv
 class UserSetting:
     def __init__(self, gui_inputs: Optional[dict] = None):
         self.gui_inputs = gui_inputs or {}
-        
-        # .env 파일이 있으면 로드, 없으면 GUI 입력값 사용
-        # 이 파일(user_setting.py)과 같은 src/ 디렉토리의 .env를 사용 (CWD 의존 방지)
-        env_path = Path(__file__).parent / '.env'
-        if env_path.exists():
-            load_dotenv()
-            self.user_id = os.getenv("USERID")
-            self.password = os.getenv("PASSWORD")
-            self.RETURNZERO_CLIENT_ID = os.getenv("RETURNZERO_CLIENT_ID")
-            self.RETURNZERO_CLIENT_SECRET = os.getenv("RETURNZERO_CLIENT_SECRET")
-            self.GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
-            self.OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-        else:
-            self.user_id = self.gui_inputs.get('student_id')
-            self.password = self.gui_inputs.get('password')
-            self.RETURNZERO_CLIENT_ID = self.gui_inputs.get('returnzero_client_id')
-            self.RETURNZERO_CLIENT_SECRET = self.gui_inputs.get('returnzero_client_secret')
-            self.GOOGLE_API_KEY = self.gui_inputs.get('api_key')
-            self.OPENAI_API_KEY = self.gui_inputs.get('openai_api_key')
+
+        # GUI 입력값 우선 사용, 없으면 .env 폴백
+        # PyInstaller에서 .env가 번들되면 load_dotenv()가 잘못된 경로를 로드하여
+        # os.getenv()가 None을 반환하는 문제 방지
+        self.user_id = self.gui_inputs.get('student_id')
+        self.password = self.gui_inputs.get('password')
+        self.RETURNZERO_CLIENT_ID = self.gui_inputs.get('returnzero_client_id')
+        self.RETURNZERO_CLIENT_SECRET = self.gui_inputs.get('returnzero_client_secret')
+        self.GOOGLE_API_KEY = self.gui_inputs.get('api_key')
+        self.OPENAI_API_KEY = self.gui_inputs.get('openai_api_key')
+
+        # GUI 입력이 없으면 .env에서 로드 (CLI 모드)
+        if not self.user_id:
+            env_path = Path(__file__).parent / '.env'
+            if env_path.exists():
+                load_dotenv(env_path)
+                self.user_id = os.getenv("USERID")
+                self.password = os.getenv("PASSWORD")
+                self.RETURNZERO_CLIENT_ID = self.RETURNZERO_CLIENT_ID or os.getenv("RETURNZERO_CLIENT_ID")
+                self.RETURNZERO_CLIENT_SECRET = self.RETURNZERO_CLIENT_SECRET or os.getenv("RETURNZERO_CLIENT_SECRET")
+                self.GOOGLE_API_KEY = self.GOOGLE_API_KEY or os.getenv("GOOGLE_API_KEY")
+                self.OPENAI_API_KEY = self.OPENAI_API_KEY or os.getenv("OPENAI_API_KEY")
 
     def get_video_urls(self) -> list[str]:
         # GUI 입력값이 있으면 사용
