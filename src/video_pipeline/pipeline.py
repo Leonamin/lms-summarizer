@@ -148,4 +148,9 @@ class VideoPipeline:
 
     def process_sync(self, urls: list[str]) -> list[str]:
         """동기 방식으로 파이프라인 실행"""
-        return asyncio.run(self.process(urls))
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            return loop.run_until_complete(self.process(urls))
+        finally:
+            loop.close()
