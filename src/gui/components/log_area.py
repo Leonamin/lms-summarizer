@@ -14,9 +14,16 @@ class LogArea:
         self._messages: list[str] = []
         self._expanded = False
 
-        self._list_view = ft.ListView(
-            spacing=2,
-            auto_scroll=True,
+        self._text_field = ft.TextField(
+            value="",
+            read_only=True,
+            multiline=True,
+            min_lines=1,
+            max_lines=None,
+            text_size=Typography.SMALL,
+            color=Colors.TEXT_SECONDARY,
+            border=ft.InputBorder.NONE,
+            content_padding=0,
             expand=True,
         )
 
@@ -29,7 +36,7 @@ class LogArea:
         )
 
         self._log_container = ft.Container(
-            content=self._list_view,
+            content=self._text_field,
             bgcolor=Colors.SURFACE,
             border_radius=Radius.SM,
             border=ft.border.all(1, Colors.BORDER),
@@ -81,15 +88,10 @@ class LogArea:
 
     def append_message(self, message: str):
         self._messages.append(message)
-        self._list_view.controls.append(
-            ft.Text(
-                message,
-                size=Typography.SMALL,
-                color=Colors.TEXT_SECONDARY,
-                selectable=True,
-                no_wrap=False,
-            )
-        )
+        if self._text_field.value:
+            self._text_field.value += "\n" + message
+        else:
+            self._text_field.value = message
         self._count_badge.value = f"({len(self._messages)})"
 
         # 첫 메시지 시 자동 펼치기
@@ -101,7 +103,7 @@ class LogArea:
 
     def clear(self):
         self._messages.clear()
-        self._list_view.controls.clear()
+        self._text_field.value = ""
         self._count_badge.value = ""
         # 초기화 시 접기
         self._expanded = False
