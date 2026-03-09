@@ -81,7 +81,7 @@ class VideoPipeline:
             result = await perform_login_if_needed(
                 page, self.user_id, self.password, log=self._log
             )
-            if not result and "login" in page.url:
+            if not result:
                 raise RuntimeError("LMS 로그인 실패. 학번/비밀번호를 확인하세요.")
             self._log("로그인 완료")
         else:
@@ -148,4 +148,9 @@ class VideoPipeline:
 
     def process_sync(self, urls: list[str]) -> list[str]:
         """동기 방식으로 파이프라인 실행"""
-        return asyncio.run(self.process(urls))
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            return loop.run_until_complete(self.process(urls))
+        finally:
+            loop.close()

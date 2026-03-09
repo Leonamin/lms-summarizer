@@ -53,13 +53,24 @@ class ProgressModal:
         )
 
         # 로그 영역
-        self._log_list = ft.ListView(spacing=1, auto_scroll=True, height=120)
+        self._log_field = ft.TextField(
+            value="",
+            read_only=True,
+            multiline=True,
+            min_lines=1,
+            max_lines=None,
+            text_size=Typography.SMALL,
+            color=Colors.TEXT_SECONDARY,
+            border=ft.InputBorder.NONE,
+            content_padding=0,
+        )
         self._log_container = ft.Container(
-            content=self._log_list,
+            content=self._log_field,
             bgcolor=Colors.SURFACE,
             border_radius=Radius.SM,
             border=ft.border.all(1, Colors.BORDER),
             padding=Spacing.SM,
+            height=120,
             visible=False,
         )
 
@@ -188,9 +199,10 @@ class ProgressModal:
 
     def append_log(self, message: str):
         self._log_messages.append(message)
-        self._log_list.controls.append(
-            ft.Text(message, size=Typography.SMALL, color=Colors.TEXT_SECONDARY, selectable=True)
-        )
+        if self._log_field.value:
+            self._log_field.value += "\n" + message
+        else:
+            self._log_field.value = message
         self._safe_update()
 
     def mark_complete(self):
