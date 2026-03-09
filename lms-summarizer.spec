@@ -44,6 +44,17 @@ def find_whisper_models():
         return str(cache)
     return None
 
+# Whisper 패키지 에셋 (mel_filters.npz, tiktoken 등)
+def find_whisper_assets():
+    try:
+        import whisper
+        assets = os.path.join(os.path.dirname(whisper.__file__), "assets")
+        if os.path.isdir(assets):
+            return assets
+    except ImportError:
+        pass
+    return None
+
 # torch 네이티브 라이브러리 수집 (Windows DLL 누락 방지)
 def collect_torch_libs():
     """torch의 네이티브 바이너리를 명시적으로 수집"""
@@ -72,6 +83,7 @@ def collect_torch_libs():
 
 ffmpeg_path = find_ffmpeg()
 whisper_cache = find_whisper_models()
+whisper_assets = find_whisper_assets()
 
 # SSL 인증서 번들 경로 (PyInstaller에서 requests HTTPS 요청에 필요)
 def find_certifi_cacert():
@@ -90,6 +102,8 @@ datas = [
 ]
 if whisper_cache:
     datas.append((whisper_cache, "whisper_models"))
+if whisper_assets:
+    datas.append((whisper_assets, "whisper/assets"))
 if certifi_cacert:
     datas.append((certifi_cacert, "certifi"))
 
