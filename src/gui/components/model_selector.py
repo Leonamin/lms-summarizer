@@ -40,7 +40,7 @@ class ModelSelector:
             options=options,
             value="gemini-2.5-flash",
             label="AI 모델",
-            prefix_icon=ft.Icons.SMART_TOY,
+            leading_icon=ft.Icons.SMART_TOY,
             border_radius=Radius.SM,
             border_color=Colors.BORDER,
             focused_border_color=Colors.PRIMARY,
