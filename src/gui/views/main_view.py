@@ -96,8 +96,7 @@ class MainView:
             overflow=ft.TextOverflow.ELLIPSIS,
         )
 
-        self._folder_picker = ft.FilePicker(on_result=self._on_folder_picked)
-        page.overlay.append(self._folder_picker)
+        self._folder_picker = ft.FilePicker()
 
         # 입력 필드 생성
         for name, config in INPUT_FIELD_CONFIGS.items():
@@ -282,17 +281,15 @@ class MainView:
             subprocess.Popen(['xdg-open', path])
 
     def _change_path(self, e=None):
-        self._folder_picker.get_directory_path(
+        path = self._folder_picker.get_directory_path(
             dialog_title="저장 경로 선택",
             initial_directory=ensure_downloads_directory(),
         )
-
-    def _on_folder_picked(self, e: ft.FilePickerResultEvent):
-        if e.path:
+        if path:
             try:
-                set_downloads_directory(e.path)
-                self._path_text.value = e.path
-                self.log_area.append_message(f"저장 경로 변경: {e.path}")
+                set_downloads_directory(path)
+                self._path_text.value = path
+                self.log_area.append_message(f"저장 경로 변경: {path}")
                 self.page.update()
             except Exception as ex:
                 self._show_snackbar(f"경로 변경 오류: {str(ex)}", Colors.ERROR)
