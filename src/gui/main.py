@@ -6,6 +6,17 @@ import os
 import sys
 
 
+def fix_windowed_stdio():
+    """Windows PyInstaller windowed 모드(console=False)에서 sys.stdout/stderr가 None이 되는 문제 방지"""
+    if sys.stdout is None:
+        sys.stdout = open(os.devnull, 'w')
+    if sys.stderr is None:
+        sys.stderr = open(os.devnull, 'w')
+
+
+fix_windowed_stdio()
+
+
 def setup_import_path():
     """개발 환경과 PyInstaller 환경 모두에서 동작하도록 import 경로 설정"""
     if getattr(sys, 'frozen', False):
