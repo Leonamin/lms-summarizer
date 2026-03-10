@@ -47,7 +47,7 @@ Write-Host "✅ ffmpeg: $ffmpegPath" -ForegroundColor Green
 
 # Whisper 모델 사전 다운로드
 Write-Host "📥 Whisper base 모델 확인 중..."
-uv run python -c "import whisper; whisper.load_model('base'); print('✅ 모델 준비 완료')"
+uv run python -c "from pywhispercpp.model import Model; Model('base'); print('✅ 모델 준비 완료')"
 
 # 의존성 설치
 Write-Host "📦 의존성 설치 중..."

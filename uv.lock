@@ -685,7 +685,7 @@ wheels = [
 
 [[package]]
 name = "lms-summarizer"
-version = "1.2.1"
+version = "1.4.1"
 source = { editable = "." }
 dependencies = [
     { name = "flet", extra = ["all"] },

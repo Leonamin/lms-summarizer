@@ -17,7 +17,7 @@ import os
 from pathlib import Path
 
 APP_NAME = "LMS-Summarizer"
-APP_VERSION = "1.4.0"
+APP_VERSION = "1.4.1"
 
 # SSL 인증서 번들 경로 (PyInstaller에서 requests HTTPS 요청에 필요)
 def find_certifi_cacert():
