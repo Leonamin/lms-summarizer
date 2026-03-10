@@ -192,6 +192,13 @@ def set_summary_prompt(prompt: str) -> None:
     save_settings(settings)
 
 
+# ── STT 엔진 ──────────────────────────────────────────────
+
+def get_stt_engine() -> str:
+    """STT 엔진 반환. whisper.cpp 단일 엔진."""
+    return "whisper-cpp"
+
+
 # ── Chrome 경로 ────────────────────────────────────────────
 
 _CHROME_PATHS = {

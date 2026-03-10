@@ -1,6 +1,5 @@
 import json
 import time
-from faster_whisper import WhisperModel
 from abc import ABC, abstractmethod
 import os
 import requests
@@ -9,10 +8,10 @@ from src.user_setting import UserSetting
 # https://developers.rtzr.ai/docs/stt-file/
 
 
-def transcribe_audio_to_text(audio_path: str, txt_path: str, engine="whisper"):
-    """오디오/비디오 파일을 텍스트로 변환 (MP4 직접 입력 지원)"""
-    if engine == "whisper":
-        transcriber = WhisperTranscriber()
+def transcribe_audio_to_text(audio_path: str, txt_path: str, engine="whisper-cpp"):
+    """오디오/비디오 파일을 텍스트로 변환"""
+    if engine == "whisper-cpp":
+        transcriber = WhisperCppTranscriber()
     elif engine == "returnzero":
         transcriber = ReturnZeroTranscriber()
     else:
@@ -31,38 +30,40 @@ class Transcriber(ABC):
         pass
 
 
-class WhisperTranscriber(Transcriber):
-    def __init__(self, model_name="base"):
+class WhisperCppTranscriber(Transcriber):
+    def __init__(self, model_name="base", language="ko"):
+        from pywhispercpp.model import Model
         import sys
 
+        self._language = language
         load_start = time.time()
 
         # .app 번들 내부의 모델 확인
         if getattr(sys, 'frozen', False):
-            model_path = os.path.join(sys._MEIPASS, 'whisper_models', model_name)
+            model_path = os.path.join(sys._MEIPASS, 'whisper_models', f'ggml-{model_name}.bin')
             if os.path.exists(model_path):
-                print(f"[INFO] 번들된 Whisper 모델 사용: {model_path}")
-                self.model = WhisperModel(model_path, compute_type="int8")
+                print(f"[INFO] 번들된 whisper.cpp 모델 사용: {model_path}")
+                self.model = Model(model_path)
                 self.model_load_sec = time.time() - load_start
                 print(f"[INFO] 모델 로드 시간: {self.model_load_sec:.1f}초")
                 return
 
         # 기본 경로에서 모델 로드 (자동 다운로드)
-        print(f"[INFO] Whisper 모델 로드 중: {model_name}")
-        self.model = WhisperModel(model_name, compute_type="int8")
+        print(f"[INFO] whisper.cpp 모델 로드 중: {model_name}")
+        self.model = Model(model_name)
         self.model_load_sec = time.time() - load_start
         print(f"[INFO] 모델 로드 시간: {self.model_load_sec:.1f}초")
 
     def transcribe(self, audio_path: str, txt_path: str):
         try:
             transcribe_start = time.time()
-            segments, info = self.model.transcribe(audio_path)
-            text = " ".join(segment.text for segment in segments)
+            segments = self.model.transcribe(audio_path, language=self._language)
+            text = " ".join(segment.text.strip() for segment in segments if segment.text.strip())
             with open(txt_path, "w", encoding="utf-8") as f:
                 f.write(text)
             self.last_transcribe_sec = time.time() - transcribe_start
-            print(f"[Whisper] 변환 완료 (언어: {info.language}, 확률: {info.language_probability:.2f}): {txt_path}")
-            print(f"[Whisper] STT 소요 시간: {self.last_transcribe_sec:.1f}초")
+            print(f"[whisper.cpp] 변환 완료: {txt_path}")
+            print(f"[whisper.cpp] STT 소요 시간: {self.last_transcribe_sec:.1f}초")
         except Exception as e:
             print(f"[ERROR] 변환 실패: {e}")
             raise e

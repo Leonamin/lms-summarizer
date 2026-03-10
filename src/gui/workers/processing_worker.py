@@ -13,8 +13,8 @@ from typing import Dict, List, Callable, Optional
 from src.gui.config.constants import Messages
 from src.gui.core.file_manager import (
     create_config_files, extract_urls_from_input, ensure_downloads_directory,
-    get_summary_prompt, get_chrome_path, get_debug_mode, add_history_entry,
-    get_app_data_dir,
+    get_summary_prompt, get_chrome_path, get_debug_mode, get_stt_engine,
+    add_history_entry, get_app_data_dir,
 )
 from src.gui.core.module_loader import check_required_modules
 
@@ -58,6 +58,7 @@ class ProcessingWorker:
         self.summary_prompt = get_summary_prompt()
         self.chrome_path = get_chrome_path()
         self.debug_mode = get_debug_mode()
+        self.stt_engine = get_stt_engine()
         self._cancel_event = threading.Event()
         self._thread: Optional[threading.Thread] = None
 
@@ -243,7 +244,8 @@ class ProcessingWorker:
     def _convert_audio_to_text(self, video_paths: List[str]) -> List[str]:
         self._emit_log(Messages.AUDIO_CONVERTING)
 
-        audio_pipeline = self.modules['AudioToTextPipeline']()
+        audio_pipeline = self.modules['AudioToTextPipeline'](engine=self.stt_engine)
+        self._emit_log(f"STT 엔진: {self.stt_engine}")
         text_paths = []
 
         for i, video_path in enumerate(video_paths, 1):
