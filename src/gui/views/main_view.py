@@ -267,6 +267,7 @@ class MainView:
                     ),
                 ],
                 spacing=Spacing.XS,
+                horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
             ),
             padding=ft.padding.only(top=4),
         )

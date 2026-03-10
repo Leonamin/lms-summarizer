@@ -72,6 +72,7 @@ class LogArea:
             controls=[header_row, self._log_container],
             spacing=Spacing.XS,
             expand=self._expanded,
+            horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
         )
 
     def _toggle(self, e=None):

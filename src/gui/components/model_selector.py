@@ -53,6 +53,7 @@ class ModelSelector:
         self.control = ft.Column(
             controls=[self._dropdown, self._custom_input],
             spacing=4,
+            horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
         )
 
     def _handle_change(self, e):
