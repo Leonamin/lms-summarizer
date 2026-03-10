@@ -23,21 +23,6 @@ if ! command -v uv &> /dev/null; then
     exit 1
 fi
 
-# ffmpeg 확인
-FFMPEG_PATH=""
-for path in "/opt/homebrew/bin/ffmpeg" "/usr/local/bin/ffmpeg" "/usr/bin/ffmpeg"; do
-    if [ -f "$path" ]; then
-        FFMPEG_PATH="$path"
-        break
-    fi
-done
-if [ -z "$FFMPEG_PATH" ]; then
-    echo "❌ ffmpeg를 찾을 수 없습니다."
-    echo "   설치: brew install ffmpeg"
-    exit 1
-fi
-echo "✅ ffmpeg: $FFMPEG_PATH"
-
 # Whisper 모델 사전 다운로드 (base 모델 ~142MB)
 echo "📥 Whisper base 모델 확인 중..."
 uv run python -c "from pywhispercpp.model import Model; Model('base'); print('✅ 모델 준비 완료')"

@@ -4,7 +4,6 @@
 # 사전 요구사항:
 #   - Python 3.9-3.12 설치 (python.org)
 #   - uv 설치: winget install astral-sh.uv
-#   - ffmpeg 설치: winget install Gyan.FFmpeg (또는 PATH에 추가)
 
 $ErrorActionPreference = "Stop"
 
@@ -25,25 +24,6 @@ if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
     Write-Host "   설치: winget install astral-sh.uv" -ForegroundColor Yellow
     exit 1
 }
-
-# ffmpeg 확인
-$ffmpegPath = (Get-Command ffmpeg -ErrorAction SilentlyContinue)?.Source
-if (-not $ffmpegPath) {
-    $candidates = @(
-        "$env:LOCALAPPDATA\Microsoft\WinGet\Links\ffmpeg.exe",
-        "C:\ffmpeg\bin\ffmpeg.exe",
-        "C:\Program Files\ffmpeg\bin\ffmpeg.exe"
-    )
-    foreach ($c in $candidates) {
-        if (Test-Path $c) { $ffmpegPath = $c; break }
-    }
-}
-if (-not $ffmpegPath) {
-    Write-Host "❌ ffmpeg를 찾을 수 없습니다." -ForegroundColor Red
-    Write-Host "   설치: winget install Gyan.FFmpeg" -ForegroundColor Yellow
-    exit 1
-}
-Write-Host "✅ ffmpeg: $ffmpegPath" -ForegroundColor Green
 
 # Whisper 모델 사전 다운로드
 Write-Host "📥 Whisper base 모델 확인 중..."

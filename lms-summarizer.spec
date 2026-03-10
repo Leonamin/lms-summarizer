@@ -104,7 +104,7 @@ a = Analysis(
         # torch (불필요)
         "torch", "torch._C", "torch.nn", "torch.backends",
         # faster-whisper / CTranslate2 (whisper.cpp로 대체)
-        "faster_whisper", "ctranslate2", "tokenizers", "huggingface_hub", "av",
+        "faster_whisper", "ctranslate2", "tokenizers", "huggingface_hub",
         # PyQt5 (더 이상 사용하지 않음)
         "PyQt5", "PyQt5.QtCore", "PyQt5.QtWidgets", "PyQt5.QtGui",
         "qtawesome",
