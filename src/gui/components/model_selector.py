@@ -46,7 +46,7 @@ class ModelSelector:
             focused_border_color=Colors.PRIMARY,
             text_size=Typography.BODY,
             label_style=ft.TextStyle(size=Typography.CAPTION, color=Colors.TEXT_SECONDARY),
-            on_change=self._handle_change,
+            on_select=self._handle_change,
             dense=True,
         )
 
