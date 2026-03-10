@@ -103,13 +103,13 @@ def open_settings_dialog(page: ft.Page):
 
     file_picker = ft.FilePicker()
 
-    def _browse_chrome(e):
-        result = file_picker.pick_files(
+    async def _browse_chrome(e):
+        files = await file_picker.pick_files(
             dialog_title="Chrome 실행 파일 선택",
             allowed_extensions=["app", "exe", ""],
         )
-        if result and result.files:
-            _set_chrome_path(result.files[0].path)
+        if files:
+            _set_chrome_path(files[0].path)
 
     dialog = ft.AlertDialog(
         modal=True,

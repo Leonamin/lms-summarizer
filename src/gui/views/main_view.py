@@ -121,6 +121,7 @@ class MainView:
                     ],
                     spacing=Spacing.SM,
                     expand=True,
+                    horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
                 ),
                 padding=ft.padding.symmetric(horizontal=20, vertical=16),
                 expand=True,
@@ -281,8 +282,8 @@ class MainView:
         else:
             subprocess.Popen(['xdg-open', path])
 
-    def _change_path(self, e=None):
-        path = self._folder_picker.get_directory_path(
+    async def _change_path(self, e=None):
+        path = await self._folder_picker.get_directory_path(
             dialog_title="저장 경로 선택",
             initial_directory=ensure_downloads_directory(),
         )
