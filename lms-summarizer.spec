@@ -20,15 +20,20 @@ APP_NAME = "LMS-Summarizer"
 APP_VERSION = "1.3.0"
 
 # faster-whisper 모델 캐시 경로 (huggingface hub 캐시)
+# 심볼릭 링크를 해제하여 실제 파일을 복사
 def find_whisper_models():
     home = Path.home()
-    # faster-whisper는 huggingface_hub 캐시를 사용
     hf_cache = home / ".cache" / "huggingface" / "hub"
     if hf_cache.exists():
         for d in hf_cache.iterdir():
             if d.is_dir() and "whisper" in d.name:
+                # snapshots 내부의 최신 디렉토리를 찾아 실제 파일 경로 반환
+                snapshots = d / "snapshots"
+                if snapshots.exists():
+                    for snap in sorted(snapshots.iterdir(), reverse=True):
+                        if snap.is_dir():
+                            return str(snap)
                 return str(d)
-    # openai-whisper 레거시 캐시도 확인
     whisper_cache = home / ".cache" / "whisper"
     if whisper_cache.exists():
         return str(whisper_cache)
@@ -81,9 +86,28 @@ if whisper_cache:
 if certifi_cacert:
     datas.append((certifi_cacert, "certifi"))
 
-# 바이너리: CTranslate2 네이티브 라이브러리
+# pywhispercpp 네이티브 라이브러리 수집
+def collect_pywhispercpp_libs():
+    """pywhispercpp의 네이티브 바이너리를 수집"""
+    binaries = []
+    try:
+        import pywhispercpp
+        pwc_dir = os.path.dirname(pywhispercpp.__file__)
+        for f in os.listdir(pwc_dir):
+            full = os.path.join(pwc_dir, f)
+            if os.path.isfile(full) and (
+                f.endswith(".dll") or f.endswith(".pyd") or
+                f.endswith(".so") or f.endswith(".dylib")
+            ):
+                binaries.append((full, "pywhispercpp"))
+    except ImportError:
+        print("[WARNING] pywhispercpp not found, skipping lib collection")
+    return binaries
+
+# 바이너리: CTranslate2 + pywhispercpp 네이티브 라이브러리
 binaries = []
 binaries.extend(collect_ctranslate2_libs())
+binaries.extend(collect_pywhispercpp_libs())
 
 a = Analysis(
     ["src/gui/main.py"],
@@ -112,10 +136,12 @@ a = Analysis(
         "src.gui.config.settings",
         "src.gui.config.course_models",
         # 외부 라이브러리
-        "openai", "faster_whisper", "playwright", "requests",
+        "openai", "faster_whisper", "pywhispercpp", "playwright", "requests",
         "dotenv", "google.generativeai", "certifi",
         # faster-whisper 의존성
         "ctranslate2", "tokenizers", "huggingface_hub", "av",
+        # pywhispercpp 의존성
+        "pywhispercpp.model", "pywhispercpp.utils",
         # 표준 라이브러리
         "json", "threading", "pathlib",
     ],
