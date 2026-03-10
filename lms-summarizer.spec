@@ -101,8 +101,12 @@ a = Analysis(
         "tkinter", "matplotlib", "PIL", "Pillow",
         "scipy", "pandas", "notebook", "jupyter",
         "IPython", "cv2", "sklearn",
-        # torch (불필요)
+        # torch 및 관련 (~275MB 절감)
         "torch", "torch._C", "torch.nn", "torch.backends",
+        "torch.cuda", "torch.distributed", "torch.utils",
+        "torchvision", "torchaudio", "caffe2",
+        # numba / llvmlite (~100MB 절감)
+        "numba", "llvmlite",
         # faster-whisper / CTranslate2 (whisper.cpp로 대체)
         "faster_whisper", "ctranslate2", "tokenizers", "huggingface_hub",
         # PyQt5 (더 이상 사용하지 않음)
@@ -134,6 +138,16 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
 )
+
+# 불필요한 대용량 네이티브 라이브러리 필터링 (excludes는 Python 모듈만 차단)
+_bloat_prefixes = ('torch', 'libtorch', 'numba', 'llvmlite', 'caffe2')
+
+def _is_bloat(name):
+    parts = name.replace('\\', '/').split('/')
+    return any(p.startswith(_bloat_prefixes) for p in parts)
+
+a.binaries = [b for b in a.binaries if not _is_bloat(b[0])]
+a.datas = [d for d in a.datas if not _is_bloat(d[0])]
 
 coll = COLLECT(
     exe,
