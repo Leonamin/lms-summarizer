@@ -188,6 +188,7 @@ def open_settings_dialog(page: ft.Page):
                 spacing=Spacing.MD,
                 tight=True,
                 scroll=ft.ScrollMode.AUTO,
+                horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
             ),
         ),
         actions=[
