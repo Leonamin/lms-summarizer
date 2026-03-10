@@ -231,7 +231,6 @@ class ProcessingWorker:
 
     def _convert_audio_to_text(self, video_paths: List[str]) -> List[str]:
         self._emit_log(Messages.AUDIO_CONVERTING)
-        self._check_ffmpeg()
 
         audio_pipeline = self.modules['AudioToTextPipeline']()
         text_paths = []
@@ -281,32 +280,6 @@ class ProcessingWorker:
 
         return summary_paths
 
-    def _check_ffmpeg(self):
-        import shutil
-        import sys
-        import os
-
-        ffmpeg_path = shutil.which('ffmpeg')
-        if ffmpeg_path:
-            self._emit_log(f"ffmpeg 찾음: {ffmpeg_path}")
-            return
-
-        if getattr(sys, 'frozen', False):
-            bundle_ffmpeg = os.path.join(sys._MEIPASS, 'ffmpeg')
-            if os.path.exists(bundle_ffmpeg):
-                os.environ['PATH'] = f"{os.path.dirname(bundle_ffmpeg)}:{os.environ.get('PATH', '')}"
-                self._emit_log(f"번들된 ffmpeg 사용: {bundle_ffmpeg}")
-                return
-
-        possible_paths = ['/usr/local/bin', '/opt/homebrew/bin', '/usr/bin']
-        for path in possible_paths:
-            if os.path.exists(os.path.join(path, 'ffmpeg')):
-                os.environ['PATH'] = f"{path}:{os.environ.get('PATH', '')}"
-                self._emit_log(f"ffmpeg PATH 추가: {path}")
-                return
-
-        self._emit_log("ffmpeg를 찾을 수 없습니다. 설치가 필요합니다.")
-        raise RuntimeError("ffmpeg가 설치되어 있지 않습니다.")
 
     def _save_processing_history(
         self, urls: List[str], video_paths: List[str],
