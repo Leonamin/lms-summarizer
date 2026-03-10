@@ -147,10 +147,15 @@ class ProcessingWorker:
         user_setting = self.modules['UserSetting'](self.user_inputs)
         pipeline_start = _time.time()
 
+        # 단계별 성능 측정
+        step_timings = {}
+
         # 1. 비디오 다운로드
         self._check_cancelled()
         self._on_step_changed(1, "영상 다운로드")
+        step_start = _time.time()
         video_paths = self._download_videos(urls, user_setting)
+        step_timings["download_sec"] = round(_time.time() - step_start, 1)
 
         if not video_paths:
             raise ValueError(f"다운로드된 영상이 없습니다. ({len(urls)}개 URL 중 0개 성공)")
@@ -166,16 +171,22 @@ class ProcessingWorker:
         # 2. 오디오 → 텍스트
         self._check_cancelled()
         self._on_step_changed(2, "음성 → 텍스트 변환")
+        step_start = _time.time()
         text_paths = self._convert_audio_to_text(video_paths)
+        step_timings["stt_sec"] = round(_time.time() - step_start, 1)
 
         # 3. AI 요약
         self._check_cancelled()
         self._on_step_changed(3, "AI 요약 생성")
+        step_start = _time.time()
         summary_paths = self._summarize_texts(text_paths)
+        step_timings["summary_sec"] = round(_time.time() - step_start, 1)
 
         # 히스토리 저장
         duration_sec = _time.time() - pipeline_start
-        self._save_processing_history(urls, video_paths, video_sizes, summary_paths, duration_sec)
+        step_timings["total_sec"] = round(duration_sec, 1)
+        self._emit_log(f"⏱ 성능: 다운로드 {step_timings['download_sec']}초 | STT {step_timings['stt_sec']}초 | 요약 {step_timings['summary_sec']}초 | 전체 {step_timings['total_sec']}초")
+        self._save_processing_history(urls, video_paths, video_sizes, summary_paths, duration_sec, step_timings)
 
         if not self.save_video_dir:
             self._delete_video_files(video_paths)
@@ -284,7 +295,7 @@ class ProcessingWorker:
     def _save_processing_history(
         self, urls: List[str], video_paths: List[str],
         video_sizes: Dict[str, float], summary_paths: List[str],
-        duration_sec: float,
+        duration_sec: float, step_timings: Dict[str, float] = None,
     ):
         """처리 완료된 강의 히스토리를 저장"""
         from datetime import datetime
@@ -301,6 +312,7 @@ class ProcessingWorker:
                 "duration_sec": round(duration_sec, 1),
                 "summary_path": summary_path or "",
                 "processed_at": timestamp,
+                "step_timings": step_timings or {},
             }
             try:
                 add_history_entry(entry)
