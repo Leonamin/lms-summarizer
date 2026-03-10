@@ -1,6 +1,6 @@
 [project]
 name = "lms-summarizer"
-version = "1.4.2"
+version = "1.4.3"
 description = "숭실대학교 LMS 강의 동영상 다운로드 및 AI 요약 도구"
 requires-python = ">=3.11,<3.13"
 
