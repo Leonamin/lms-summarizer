@@ -66,7 +66,7 @@ class CourseListView:
         )
         self._lecture_status = ft.Text("", size=Typography.CAPTION, color=Colors.TEXT_MUTED)
         self._confirm_btn = ft.ElevatedButton(
-            text="선택한 강의 추가",
+            content=ft.Text("선택한 강의 추가"),
             icon=ft.Icons.CHECK,
             disabled=True,
             on_click=self._confirm_selection,
@@ -145,13 +145,13 @@ class CourseListView:
                         self._course_status,
                         ft.Container(expand=True),
                         ft.TextButton(
-                            "새로고침",
+                            content=ft.Text("새로고침"),
                             icon=ft.Icons.REFRESH,
                             style=ft.ButtonStyle(color=Colors.PRIMARY),
                             on_click=lambda e: self._start_loading_courses(),
                         ),
                         ft.OutlinedButton(
-                            "닫기",
+                            content=ft.Text("닫기"),
                             icon=ft.Icons.CLOSE,
                             on_click=lambda e: self.close(),
                             style=ft.ButtonStyle(
@@ -235,7 +235,7 @@ class CourseListView:
         return ft.Column(
             controls=[
                 ft.TextButton(
-                    "과목 목록으로",
+                    content=ft.Text("과목 목록으로"),
                     icon=ft.Icons.ARROW_BACK,
                     style=ft.ButtonStyle(color=Colors.PRIMARY),
                     on_click=lambda e: self._go_back_to_courses(),
@@ -245,13 +245,13 @@ class CourseListView:
                         self._video_only_checkbox,
                         ft.Container(expand=True),
                         ft.TextButton(
-                            "전체 선택",
+                            content=ft.Text("전체 선택"),
                             icon=ft.Icons.SELECT_ALL,
                             style=ft.ButtonStyle(color=Colors.PRIMARY),
                             on_click=lambda e: self._select_all(),
                         ),
                         ft.TextButton(
-                            "전체 해제",
+                            content=ft.Text("전체 해제"),
                             icon=ft.Icons.DESELECT,
                             style=ft.ButtonStyle(color=Colors.TEXT_SECONDARY),
                             on_click=lambda e: self._deselect_all(),
@@ -272,7 +272,7 @@ class CourseListView:
                         self._lecture_status,
                         ft.Container(expand=True),
                         ft.OutlinedButton(
-                            "취소",
+                            content=ft.Text("취소"),
                             icon=ft.Icons.CLOSE,
                             on_click=lambda e: self.close(),
                             style=ft.ButtonStyle(
@@ -405,7 +405,7 @@ class CourseListView:
         count = len(self._selected_lectures)
         self._lecture_status.value = f"{total_videos}개 동영상 중 {count}개 선택"
         self._confirm_btn.disabled = count == 0
-        self._confirm_btn.text = f"선택한 강의 추가 ({count})"
+        self._confirm_btn.content.value = f"선택한 강의 추가 ({count})"
 
     def _select_all(self):
         for control in self._lecture_list.controls:

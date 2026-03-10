@@ -60,7 +60,7 @@ class MainView:
         )
 
         self._start_btn = ft.ElevatedButton(
-            text="요약 시작",
+            content=ft.Text("요약 시작"),
             icon=ft.Icons.PLAY_ARROW,
             on_click=self._handle_start,
             expand=True,
@@ -75,7 +75,7 @@ class MainView:
         )
 
         self._clear_btn = ft.OutlinedButton(
-            text="초기화",
+            content=ft.Text("초기화"),
             icon=ft.Icons.DELETE_OUTLINE,
             on_click=self._handle_clear,
             style=ft.ButtonStyle(
@@ -183,7 +183,7 @@ class MainView:
                         expand=True,
                     ),
                     ft.OutlinedButton(
-                        "열기",
+                        content=ft.Text("열기"),
                         icon=ft.Icons.FOLDER_OPEN,
                         on_click=self._open_in_finder,
                         style=ft.ButtonStyle(
@@ -194,7 +194,7 @@ class MainView:
                         ),
                     ),
                     ft.OutlinedButton(
-                        "변경",
+                        content=ft.Text("변경"),
                         on_click=self._change_path,
                         style=ft.ButtonStyle(
                             color=Colors.PRIMARY,
@@ -224,7 +224,7 @@ class MainView:
                         controls=[
                             ft.Container(expand=True),
                             ft.OutlinedButton(
-                                "강의 목록에서 선택",
+                                content=ft.Text("강의 목록에서 선택"),
                                 icon=ft.Icons.MENU_BOOK,
                                 on_click=self._open_course_list,
                                 style=ft.ButtonStyle(
@@ -454,8 +454,8 @@ class MainView:
             title=ft.Text("확인"),
             content=ft.Text("진행 중인 작업을 중지하시겠습니까?"),
             actions=[
-                ft.TextButton("아니오", on_click=cancel),
-                ft.ElevatedButton("예", on_click=do_stop,
+                ft.TextButton(content=ft.Text("아니오"), on_click=cancel),
+                ft.ElevatedButton(content=ft.Text("예"), on_click=do_stop,
                     style=ft.ButtonStyle(color=ft.Colors.WHITE, bgcolor=Colors.ERROR)),
             ],
             actions_alignment=ft.MainAxisAlignment.END,
@@ -484,8 +484,8 @@ class MainView:
             title=ft.Text("확인"),
             content=ft.Text("모든 입력 필드를 초기화하시겠습니까?"),
             actions=[
-                ft.TextButton("아니오", on_click=cancel),
-                ft.ElevatedButton("예", on_click=do_clear,
+                ft.TextButton(content=ft.Text("아니오"), on_click=cancel),
+                ft.ElevatedButton(content=ft.Text("예"), on_click=do_clear,
                     style=ft.ButtonStyle(color=ft.Colors.WHITE, bgcolor=Colors.ERROR)),
             ],
             actions_alignment=ft.MainAxisAlignment.END,

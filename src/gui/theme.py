@@ -149,7 +149,7 @@ def divider() -> ft.Divider:
 def primary_button(text: str, icon: ft.Icons = None, on_click=None, **kwargs) -> ft.ElevatedButton:
     """Primary 버튼"""
     return ft.ElevatedButton(
-        text=text,
+        content=ft.Text(text),
         icon=icon,
         on_click=on_click,
         style=ft.ButtonStyle(
@@ -167,7 +167,7 @@ def primary_button(text: str, icon: ft.Icons = None, on_click=None, **kwargs) ->
 def outline_button(text: str, icon: ft.Icons = None, on_click=None, **kwargs) -> ft.OutlinedButton:
     """Outline 버튼"""
     return ft.OutlinedButton(
-        text=text,
+        content=ft.Text(text),
         icon=icon,
         on_click=on_click,
         style=ft.ButtonStyle(
@@ -184,7 +184,7 @@ def outline_button(text: str, icon: ft.Icons = None, on_click=None, **kwargs) ->
 def text_button(text: str, icon: ft.Icons = None, on_click=None, **kwargs) -> ft.TextButton:
     """Text 버튼"""
     return ft.TextButton(
-        text=text,
+        content=ft.Text(text),
         icon=icon,
         on_click=on_click,
         style=ft.ButtonStyle(
@@ -200,7 +200,7 @@ def text_button(text: str, icon: ft.Icons = None, on_click=None, **kwargs) -> ft
 def danger_button(text: str, icon: ft.Icons = None, on_click=None, **kwargs) -> ft.ElevatedButton:
     """Danger 버튼"""
     return ft.ElevatedButton(
-        text=text,
+        content=ft.Text(text),
         icon=icon,
         on_click=on_click,
         style=ft.ButtonStyle(

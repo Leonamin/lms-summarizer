@@ -52,7 +52,7 @@ def open_settings_dialog(page: ft.Page):
         for p in detected_paths:
             detected_controls.append(
                 ft.TextButton(
-                    text=p,
+                    content=ft.Text(p),
                     style=ft.ButtonStyle(
                         color=Colors.PRIMARY,
                         padding=ft.padding.symmetric(horizontal=4, vertical=2),
@@ -132,7 +132,7 @@ def open_settings_dialog(page: ft.Page):
                     ),
                     prompt_field,
                     ft.TextButton(
-                        text="기본값 복원",
+                        content=ft.Text("기본값 복원"),
                         icon=ft.Icons.RESTORE,
                         style=ft.ButtonStyle(
                             color=Colors.PRIMARY,
@@ -151,7 +151,7 @@ def open_settings_dialog(page: ft.Page):
                         controls=[
                             ft.Container(content=chrome_field, expand=True),
                             ft.OutlinedButton(
-                                text="찾아보기",
+                                content=ft.Text("찾아보기"),
                                 icon=ft.Icons.FOLDER_OPEN,
                                 on_click=_browse_chrome,
                                 style=ft.ButtonStyle(
@@ -191,9 +191,9 @@ def open_settings_dialog(page: ft.Page):
             ),
         ),
         actions=[
-            ft.TextButton("취소", on_click=_close),
+            ft.TextButton(content=ft.Text("취소"), on_click=_close),
             ft.ElevatedButton(
-                "저장",
+                content=ft.Text("저장"),
                 icon=ft.Icons.SAVE,
                 on_click=_save,
                 style=ft.ButtonStyle(
