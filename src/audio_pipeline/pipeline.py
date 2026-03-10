@@ -6,7 +6,7 @@ from src.audio_pipeline.transcriber import transcribe_audio_to_text
 
 
 class AudioToTextPipeline:
-    def __init__(self, sample_rate=16000, engine="whisper"):
+    def __init__(self, sample_rate=16000, engine="whisper-cpp"):
         self.sample_rate = sample_rate
         self.engine = engine
         self.downloads_dir = None  # 다운로드 경로는 나중에 설정됨
@@ -21,18 +21,14 @@ class AudioToTextPipeline:
         print(f"[INFO] 변환 시작: {mp4_path}")
         start_time = time.time()
 
-        if self.engine in ("returnzero", "whisper-cpp"):
-            # ReturnZero, whisper.cpp는 WAV 입력이 필요
-            from src.audio_pipeline.converter import convert_mp4_to_wav
-            wav_path = os.path.join(self.downloads_dir, f"{filename}.wav")
-            convert_mp4_to_wav(mp4_path, wav_path, self.sample_rate)
-            transcribe_audio_to_text(wav_path, txt_path, engine=self.engine)
-            if remove_wav:
-                os.remove(wav_path)
-                print(f"[INFO] 임시 파일 삭제됨: {wav_path}")
-        else:
-            # faster-whisper: MP4 직접 입력 (ffmpeg 불필요)
-            transcribe_audio_to_text(mp4_path, txt_path, engine=self.engine)
+        # whisper.cpp, ReturnZero 모두 WAV 입력 필요
+        from src.audio_pipeline.converter import convert_mp4_to_wav
+        wav_path = os.path.join(self.downloads_dir, f"{filename}.wav")
+        convert_mp4_to_wav(mp4_path, wav_path, self.sample_rate)
+        transcribe_audio_to_text(wav_path, txt_path, engine=self.engine)
+        if remove_wav:
+            os.remove(wav_path)
+            print(f"[INFO] 임시 파일 삭제됨: {wav_path}")
 
         end_time = time.time()
         print(f"[DONE] 텍스트 저장 완료: {txt_path}")

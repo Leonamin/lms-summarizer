@@ -7,64 +7,17 @@
 #   Windows: pyinstaller lms-summarizer.spec
 #
 # 용량 최적화 참고:
-#   - faster-whisper (CTranslate2): ~80MB (torch 대비 대폭 절감)
-#   - whisper base 모델: ~142MB → 번들에 포함
+#   - whisper.cpp (pywhispercpp): ~2MB (faster-whisper/CTranslate2 대비 대폭 절감)
+#   - whisper base ggml 모델: ~142MB → 자동 다운로드 (번들 미포함)
 #   - Flet: ~20MB
-#   - 전체 예상: ~250-350MB (압축 전), ZIP 시 ~150-200MB
+#   - 전체 예상: ~150-200MB (압축 전)
 
 import sys
 import os
 from pathlib import Path
 
 APP_NAME = "LMS-Summarizer"
-APP_VERSION = "1.3.0"
-
-# faster-whisper 모델 캐시 경로 (huggingface hub 캐시)
-# 심볼릭 링크를 해제하여 실제 파일을 복사
-def find_whisper_models():
-    home = Path.home()
-    hf_cache = home / ".cache" / "huggingface" / "hub"
-    if hf_cache.exists():
-        for d in hf_cache.iterdir():
-            if d.is_dir() and "whisper" in d.name:
-                # snapshots 내부의 최신 디렉토리를 찾아 실제 파일 경로 반환
-                snapshots = d / "snapshots"
-                if snapshots.exists():
-                    for snap in sorted(snapshots.iterdir(), reverse=True):
-                        if snap.is_dir():
-                            return str(snap)
-                return str(d)
-    whisper_cache = home / ".cache" / "whisper"
-    if whisper_cache.exists():
-        return str(whisper_cache)
-    return None
-
-# CTranslate2 라이브러리 수집
-def collect_ctranslate2_libs():
-    """CTranslate2의 네이티브 바이너리를 수집"""
-    binaries = []
-    try:
-        import ctranslate2
-        ct2_dir = os.path.dirname(ctranslate2.__file__)
-        for f in os.listdir(ct2_dir):
-            full = os.path.join(ct2_dir, f)
-            if os.path.isfile(full) and (
-                f.endswith(".dll") or f.endswith(".pyd") or
-                f.endswith(".so") or f.endswith(".dylib")
-            ):
-                binaries.append((full, "ctranslate2"))
-        lib_dir = os.path.join(ct2_dir, "lib")
-        if os.path.isdir(lib_dir):
-            for f in os.listdir(lib_dir):
-                full = os.path.join(lib_dir, f)
-                if os.path.isfile(full):
-                    binaries.append((full, "ctranslate2/lib"))
-    except ImportError:
-        print("[WARNING] ctranslate2 not found, skipping lib collection")
-    return binaries
-
-
-whisper_cache = find_whisper_models()
+APP_VERSION = "1.4.0"
 
 # SSL 인증서 번들 경로 (PyInstaller에서 requests HTTPS 요청에 필요)
 def find_certifi_cacert():
@@ -75,16 +28,6 @@ def find_certifi_cacert():
         return None
 
 certifi_cacert = find_certifi_cacert()
-
-# 추가 데이터 파일
-datas = [
-    ("src", "src"),
-    ("assets", "assets"),
-]
-if whisper_cache:
-    datas.append((whisper_cache, "whisper_models"))
-if certifi_cacert:
-    datas.append((certifi_cacert, "certifi"))
 
 # pywhispercpp 네이티브 라이브러리 수집
 def collect_pywhispercpp_libs():
@@ -104,9 +47,16 @@ def collect_pywhispercpp_libs():
         print("[WARNING] pywhispercpp not found, skipping lib collection")
     return binaries
 
-# 바이너리: CTranslate2 + pywhispercpp 네이티브 라이브러리
+# 추가 데이터 파일
+datas = [
+    ("src", "src"),
+    ("assets", "assets"),
+]
+if certifi_cacert:
+    datas.append((certifi_cacert, "certifi"))
+
+# 바이너리: pywhispercpp 네이티브 라이브러리
 binaries = []
-binaries.extend(collect_ctranslate2_libs())
 binaries.extend(collect_pywhispercpp_libs())
 
 a = Analysis(
@@ -136,10 +86,8 @@ a = Analysis(
         "src.gui.config.settings",
         "src.gui.config.course_models",
         # 외부 라이브러리
-        "openai", "faster_whisper", "pywhispercpp", "playwright", "requests",
+        "openai", "pywhispercpp", "playwright", "requests",
         "dotenv", "google.generativeai", "certifi",
-        # faster-whisper 의존성
-        "ctranslate2", "tokenizers", "huggingface_hub", "av",
         # pywhispercpp 의존성
         "pywhispercpp.model", "pywhispercpp.utils",
         # 표준 라이브러리
@@ -153,8 +101,10 @@ a = Analysis(
         "tkinter", "matplotlib", "PIL", "Pillow",
         "scipy", "pandas", "notebook", "jupyter",
         "IPython", "cv2", "sklearn",
-        # torch (faster-whisper로 대체하여 불필요)
+        # torch (불필요)
         "torch", "torch._C", "torch.nn", "torch.backends",
+        # faster-whisper / CTranslate2 (whisper.cpp로 대체)
+        "faster_whisper", "ctranslate2", "tokenizers", "huggingface_hub", "av",
         # PyQt5 (더 이상 사용하지 않음)
         "PyQt5", "PyQt5.QtCore", "PyQt5.QtWidgets", "PyQt5.QtGui",
         "qtawesome",

@@ -11,7 +11,6 @@ from src.gui.core.file_manager import (
     get_summary_prompt, set_summary_prompt,
     get_chrome_path, set_chrome_path, detect_chrome_paths,
     get_debug_mode, set_debug_mode,
-    STT_ENGINES, get_stt_engine, set_stt_engine,
 )
 
 
@@ -63,23 +62,6 @@ def open_settings_dialog(page: ft.Page):
                 )
             )
 
-    # STT 엔진 선택
-    current_engine = get_stt_engine()
-    engine_dropdown = ft.Dropdown(
-        value=current_engine,
-        options=[
-            ft.dropdown.Option(key=key, text=label)
-            for key, label in STT_ENGINES.items()
-        ],
-        label="STT 엔진",
-        label_style=ft.TextStyle(size=Typography.CAPTION, color=Colors.TEXT_SECONDARY),
-        border_radius=Radius.SM,
-        border_color=Colors.BORDER,
-        focused_border_color=Colors.PRIMARY,
-        text_size=Typography.BODY,
-        leading_icon=ft.Icons.RECORD_VOICE_OVER,
-    )
-
     def _set_chrome_path(path):
         chrome_field.value = path
         chrome_field.update()
@@ -102,7 +84,6 @@ def open_settings_dialog(page: ft.Page):
         chrome_path = (chrome_field.value or "").strip()
 
         set_summary_prompt(prompt if prompt else DEFAULT_PROMPT)
-        set_stt_engine(engine_dropdown.value or current_engine)
         set_debug_mode(debug_switch.value)
 
         if chrome_path:
@@ -159,14 +140,6 @@ def open_settings_dialog(page: ft.Page):
                         ),
                         on_click=_reset_prompt,
                     ),
-                    divider(),
-                    # STT 엔진 섹션
-                    ft.Text(
-                        "음성 → 텍스트 변환에 사용할 엔진을 선택합니다.",
-                        size=Typography.SMALL,
-                        color=Colors.TEXT_MUTED,
-                    ),
-                    engine_dropdown,
                     divider(),
                     # Chrome 경로 섹션
                     ft.Text(

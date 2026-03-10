@@ -194,25 +194,9 @@ def set_summary_prompt(prompt: str) -> None:
 
 # ── STT 엔진 ──────────────────────────────────────────────
 
-STT_ENGINES = {
-    "whisper": "faster-whisper (기본, GPU 가속)",
-    "whisper-cpp": "whisper.cpp (경량, Apple Silicon 최적화)",
-}
-
-DEFAULT_STT_ENGINE = "whisper"
-
-
 def get_stt_engine() -> str:
-    """저장된 STT 엔진 반환. 없으면 기본값."""
-    engine = load_settings().get("stt_engine", DEFAULT_STT_ENGINE)
-    return engine if engine in STT_ENGINES else DEFAULT_STT_ENGINE
-
-
-def set_stt_engine(engine: str) -> None:
-    """STT 엔진을 settings.json에 저장"""
-    settings = load_settings()
-    settings["stt_engine"] = engine
-    save_settings(settings)
+    """STT 엔진 반환. whisper.cpp 단일 엔진."""
+    return "whisper-cpp"
 
 
 # ── Chrome 경로 ────────────────────────────────────────────
