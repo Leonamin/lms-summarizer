@@ -21,12 +21,12 @@ class AudioToTextPipeline:
         print(f"[INFO] 변환 시작: {mp4_path}")
         start_time = time.time()
 
-        if self.engine == "returnzero":
-            # ReturnZero는 WAV 입력이 필요
+        if self.engine in ("returnzero", "whisper-cpp"):
+            # ReturnZero, whisper.cpp는 WAV 입력이 필요
             from src.audio_pipeline.converter import convert_mp4_to_wav
             wav_path = os.path.join(self.downloads_dir, f"{filename}.wav")
             convert_mp4_to_wav(mp4_path, wav_path, self.sample_rate)
-            transcribe_audio_to_text(wav_path, txt_path, engine="returnzero")
+            transcribe_audio_to_text(wav_path, txt_path, engine=self.engine)
             if remove_wav:
                 os.remove(wav_path)
                 print(f"[INFO] 임시 파일 삭제됨: {wav_path}")
