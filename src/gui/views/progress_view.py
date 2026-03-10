@@ -76,7 +76,7 @@ class ProgressModal:
 
         # 로그 토글 버튼
         self._log_toggle = ft.TextButton(
-            text="상세 로그 보기",
+            content=ft.Text("상세 로그 보기"),
             icon=ft.Icons.EXPAND_MORE,
             style=ft.ButtonStyle(
                 color=Colors.PRIMARY,
@@ -87,7 +87,7 @@ class ProgressModal:
 
         # 중지 버튼
         self._stop_btn = ft.ElevatedButton(
-            text="중지",
+            content=ft.Text("중지"),
             icon=ft.Icons.STOP,
             on_click=self._handle_stop,
             style=ft.ButtonStyle(
@@ -132,7 +132,7 @@ class ProgressModal:
         )
 
     def show(self):
-        self._page.open(self.dialog)
+        self._page.show_dialog(self.dialog)
 
     def close(self):
         self.dialog.open = False
@@ -142,10 +142,10 @@ class ProgressModal:
         self._log_visible = not self._log_visible
         self._log_container.visible = self._log_visible
         if self._log_visible:
-            self._log_toggle.text = "상세 로그 숨기기"
+            self._log_toggle.content.value = "상세 로그 숨기기"
             self._log_toggle.icon = ft.Icons.EXPAND_LESS
         else:
-            self._log_toggle.text = "상세 로그 보기"
+            self._log_toggle.content.value = "상세 로그 보기"
             self._log_toggle.icon = ft.Icons.EXPAND_MORE
         self._page.update()
 
@@ -154,7 +154,7 @@ class ProgressModal:
             self.close()
             return
         self._stop_btn.disabled = True
-        self._stop_btn.text = "중지 중..."
+        self._stop_btn.content.value = "중지 중..."
         self._page.update()
         if self._on_stop:
             self._on_stop()
@@ -217,7 +217,7 @@ class ProgressModal:
         self._progress_bar.value = 1.0
         self._status_text.value = "모든 작업이 완료되었습니다!"
         self._status_text.color = Colors.SUCCESS
-        self._stop_btn.text = "닫기"
+        self._stop_btn.content.value = "닫기"
         self._stop_btn.disabled = False
         self._stop_btn.style = ft.ButtonStyle(
             color=ft.Colors.WHITE,
@@ -228,7 +228,7 @@ class ProgressModal:
 
     def mark_cancelled(self):
         self._is_finished = True
-        self._stop_btn.text = "닫기"
+        self._stop_btn.content.value = "닫기"
         self._stop_btn.disabled = False
         self._safe_update()
 

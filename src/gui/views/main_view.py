@@ -60,7 +60,7 @@ class MainView:
         )
 
         self._start_btn = ft.ElevatedButton(
-            text="요약 시작",
+            content=ft.Text("요약 시작"),
             icon=ft.Icons.PLAY_ARROW,
             on_click=self._handle_start,
             expand=True,
@@ -75,7 +75,7 @@ class MainView:
         )
 
         self._clear_btn = ft.OutlinedButton(
-            text="초기화",
+            content=ft.Text("초기화"),
             icon=ft.Icons.DELETE_OUTLINE,
             on_click=self._handle_clear,
             style=ft.ButtonStyle(
@@ -96,8 +96,7 @@ class MainView:
             overflow=ft.TextOverflow.ELLIPSIS,
         )
 
-        self._folder_picker = ft.FilePicker(on_result=self._on_folder_picked)
-        page.overlay.append(self._folder_picker)
+        self._folder_picker = ft.FilePicker()
 
         # 입력 필드 생성
         for name, config in INPUT_FIELD_CONFIGS.items():
@@ -122,6 +121,7 @@ class MainView:
                     ],
                     spacing=Spacing.SM,
                     expand=True,
+                    horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
                 ),
                 padding=ft.padding.symmetric(horizontal=20, vertical=16),
                 expand=True,
@@ -184,7 +184,7 @@ class MainView:
                         expand=True,
                     ),
                     ft.OutlinedButton(
-                        "열기",
+                        content=ft.Text("열기"),
                         icon=ft.Icons.FOLDER_OPEN,
                         on_click=self._open_in_finder,
                         style=ft.ButtonStyle(
@@ -195,7 +195,7 @@ class MainView:
                         ),
                     ),
                     ft.OutlinedButton(
-                        "변경",
+                        content=ft.Text("변경"),
                         on_click=self._change_path,
                         style=ft.ButtonStyle(
                             color=Colors.PRIMARY,
@@ -225,7 +225,7 @@ class MainView:
                         controls=[
                             ft.Container(expand=True),
                             ft.OutlinedButton(
-                                "강의 목록에서 선택",
+                                content=ft.Text("강의 목록에서 선택"),
                                 icon=ft.Icons.MENU_BOOK,
                                 on_click=self._open_course_list,
                                 style=ft.ButtonStyle(
@@ -250,6 +250,7 @@ class MainView:
                 controls=form_controls,
                 spacing=Spacing.SM,
                 scroll=ft.ScrollMode.AUTO,
+                horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
             ),
             expand=True,
         )
@@ -266,6 +267,7 @@ class MainView:
                     ),
                 ],
                 spacing=Spacing.XS,
+                horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
             ),
             padding=ft.padding.only(top=4),
         )
@@ -281,18 +283,16 @@ class MainView:
         else:
             subprocess.Popen(['xdg-open', path])
 
-    def _change_path(self, e=None):
-        self._folder_picker.get_directory_path(
+    async def _change_path(self, e=None):
+        path = await self._folder_picker.get_directory_path(
             dialog_title="저장 경로 선택",
             initial_directory=ensure_downloads_directory(),
         )
-
-    def _on_folder_picked(self, e: ft.FilePickerResultEvent):
-        if e.path:
+        if path:
             try:
-                set_downloads_directory(e.path)
-                self._path_text.value = e.path
-                self.log_area.append_message(f"저장 경로 변경: {e.path}")
+                set_downloads_directory(path)
+                self._path_text.value = path
+                self.log_area.append_message(f"저장 경로 변경: {path}")
                 self.page.update()
             except Exception as ex:
                 self._show_snackbar(f"경로 변경 오류: {str(ex)}", Colors.ERROR)
@@ -357,7 +357,7 @@ class MainView:
         save_user_inputs({**inputs, 'ai_model': model_name})
 
         self._is_processing = True
-        self._start_btn.text = "중지"
+        self._start_btn.content.value = "중지"
         self._start_btn.icon = ft.Icons.STOP
         self._start_btn.style = ft.ButtonStyle(
             color=ft.Colors.WHITE,
@@ -387,7 +387,7 @@ class MainView:
         def on_finished(success, message):
             try:
                 self._is_processing = False
-                self._start_btn.text = "요약 시작"
+                self._start_btn.content.value = "요약 시작"
                 self._start_btn.icon = ft.Icons.PLAY_ARROW
                 self._start_btn.style = ft.ButtonStyle(
                     color=ft.Colors.WHITE,
@@ -457,13 +457,13 @@ class MainView:
             title=ft.Text("확인"),
             content=ft.Text("진행 중인 작업을 중지하시겠습니까?"),
             actions=[
-                ft.TextButton("아니오", on_click=cancel),
-                ft.ElevatedButton("예", on_click=do_stop,
+                ft.TextButton(content=ft.Text("아니오"), on_click=cancel),
+                ft.ElevatedButton(content=ft.Text("예"), on_click=do_stop,
                     style=ft.ButtonStyle(color=ft.Colors.WHITE, bgcolor=Colors.ERROR)),
             ],
             actions_alignment=ft.MainAxisAlignment.END,
         )
-        self.page.open(confirm_dialog)
+        self.page.show_dialog(confirm_dialog)
 
     def _on_modal_stop(self):
         if self.worker:
@@ -487,13 +487,13 @@ class MainView:
             title=ft.Text("확인"),
             content=ft.Text("모든 입력 필드를 초기화하시겠습니까?"),
             actions=[
-                ft.TextButton("아니오", on_click=cancel),
-                ft.ElevatedButton("예", on_click=do_clear,
+                ft.TextButton(content=ft.Text("아니오"), on_click=cancel),
+                ft.ElevatedButton(content=ft.Text("예"), on_click=do_clear,
                     style=ft.ButtonStyle(color=ft.Colors.WHITE, bgcolor=Colors.ERROR)),
             ],
             actions_alignment=ft.MainAxisAlignment.END,
         )
-        self.page.open(confirm_dialog)
+        self.page.show_dialog(confirm_dialog)
 
     # ── 유틸리티 ─────────────────────────────────────────────
 

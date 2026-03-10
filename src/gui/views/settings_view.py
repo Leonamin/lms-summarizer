@@ -52,7 +52,7 @@ def open_settings_dialog(page: ft.Page):
         for p in detected_paths:
             detected_controls.append(
                 ft.TextButton(
-                    text=p,
+                    content=ft.Text(p),
                     style=ft.ButtonStyle(
                         color=Colors.PRIMARY,
                         padding=ft.padding.symmetric(horizontal=4, vertical=2),
@@ -88,28 +88,28 @@ def open_settings_dialog(page: ft.Page):
 
         if chrome_path:
             if not os.path.exists(chrome_path):
-                page.open(ft.SnackBar(
+                snackbar = ft.SnackBar(
                     content=ft.Text(f"Chrome 경로가 존재하지 않습니다: {chrome_path}"),
                     bgcolor=Colors.ERROR,
-                ))
+                    open=True,
+                )
+                page.overlay.append(snackbar)
+                page.update()
                 return
             set_chrome_path(chrome_path)
 
         dialog.open = False
         page.update()
 
-    file_picker = ft.FilePicker(
-        on_result=lambda e: (
-            _set_chrome_path(e.files[0].path) if e.files else None
-        ),
-    )
-    page.overlay.append(file_picker)
+    file_picker = ft.FilePicker()
 
-    def _browse_chrome(e):
-        file_picker.pick_files(
+    async def _browse_chrome(e):
+        files = await file_picker.pick_files(
             dialog_title="Chrome 실행 파일 선택",
             allowed_extensions=["app", "exe", ""],
         )
+        if files:
+            _set_chrome_path(files[0].path)
 
     dialog = ft.AlertDialog(
         modal=True,
@@ -132,7 +132,7 @@ def open_settings_dialog(page: ft.Page):
                     ),
                     prompt_field,
                     ft.TextButton(
-                        text="기본값 복원",
+                        content=ft.Text("기본값 복원"),
                         icon=ft.Icons.RESTORE,
                         style=ft.ButtonStyle(
                             color=Colors.PRIMARY,
@@ -151,7 +151,7 @@ def open_settings_dialog(page: ft.Page):
                         controls=[
                             ft.Container(content=chrome_field, expand=True),
                             ft.OutlinedButton(
-                                text="찾아보기",
+                                content=ft.Text("찾아보기"),
                                 icon=ft.Icons.FOLDER_OPEN,
                                 on_click=_browse_chrome,
                                 style=ft.ButtonStyle(
@@ -188,12 +188,13 @@ def open_settings_dialog(page: ft.Page):
                 spacing=Spacing.MD,
                 tight=True,
                 scroll=ft.ScrollMode.AUTO,
+                horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
             ),
         ),
         actions=[
-            ft.TextButton("취소", on_click=_close),
+            ft.TextButton(content=ft.Text("취소"), on_click=_close),
             ft.ElevatedButton(
-                "저장",
+                content=ft.Text("저장"),
                 icon=ft.Icons.SAVE,
                 on_click=_save,
                 style=ft.ButtonStyle(
@@ -206,4 +207,4 @@ def open_settings_dialog(page: ft.Page):
         actions_alignment=ft.MainAxisAlignment.END,
     )
 
-    page.open(dialog)
+    page.show_dialog(dialog)

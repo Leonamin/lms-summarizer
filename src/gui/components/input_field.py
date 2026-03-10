@@ -52,7 +52,7 @@ class InputField:
                 text_size=Typography.BODY,
                 label_style=ft.TextStyle(size=Typography.CAPTION, color=Colors.TEXT_SECONDARY),
             )
-            self.container = ft.Column(controls=[self.control], spacing=Spacing.XS)
+            self.container = ft.Column(controls=[self.control], spacing=Spacing.XS, horizontal_alignment=ft.CrossAxisAlignment.STRETCH)
         elif config.is_password:
             self.control = ft.TextField(
                 label=config.label.rstrip(":"),
@@ -71,6 +71,7 @@ class InputField:
             self.container = ft.Column(
                 controls=[self.control, self._korean_warning],
                 spacing=Spacing.XS,
+                horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
             )
         else:
             self.control = ft.TextField(
@@ -84,7 +85,7 @@ class InputField:
                 text_size=Typography.BODY,
                 label_style=ft.TextStyle(size=Typography.CAPTION, color=Colors.TEXT_SECONDARY),
             )
-            self.container = ft.Column(controls=[self.control], spacing=Spacing.XS)
+            self.container = ft.Column(controls=[self.control], spacing=Spacing.XS, horizontal_alignment=ft.CrossAxisAlignment.STRETCH)
 
     def _check_korean_input(self, e):
         """비밀번호 필드에서 한글 입력 감지 → 경고 표시 + 한글 제거"""
