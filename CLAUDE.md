@@ -10,9 +10,9 @@
 ## 설계 의도
 
 - **GUI 중심 개발**: CLI(`src/main.py`)는 폐기 예정. 단, 각 파이프라인 모듈은 독립 실행/테스트 가능하도록 추상화를 유지한다.
-- **기본 엔진**: STT는 Whisper(로컬), 요약은 Gemini. 나머지(ReturnZero, OpenAI, ChatGPT)는 대안 옵션이다.
+- **기본 엔진**: STT는 faster-whisper(로컬, CTranslate2 기반), 요약은 Gemini. 나머지(ReturnZero, OpenAI, ChatGPT)는 대안 옵션이다.
 - **ChatGPTSummarizer**: API 호출이 아니라 클립보드 복사 + 브라우저 열기 방식이다. 의도된 동작이다.
-- **Python >=3.9,<3.13**: Whisper 호환성 때문. `.python-version`에 `3.9`로 설정되어 있고 uv가 자동 관리한다.
+- **Python >=3.11,<3.13**: faster-whisper/onnxruntime 호환성 때문. `.python-version`에 `3.11`로 설정되어 있고 uv가 자동 관리한다.
 
 ## 알려진 버그 (미수정)
 
@@ -22,7 +22,7 @@
 ## 배포
 
 - **패키지 매니저**: uv 사용. 의존성 추가는 `uv add`, 설치는 `uv sync`.
-- PyInstaller 빌드 시 torch 포함으로 ~1GB. 해결 방안 미정.
+- PyInstaller 빌드 시 faster-whisper(CTranslate2) 포함으로 ~250-350MB.
 - Chrome 경로가 Mac용(`/Applications/Google Chrome.app/...`)으로 하드코딩되어 있다. Windows 배포 시 경로 분기 필요.
 
 ## 커밋 메시지 컨벤션
@@ -43,5 +43,5 @@
 
 ## 외부 의존성 (시스템 설치 필수)
 
-- `ffmpeg`: 시스템에 설치되어 있어야 한다.
 - `playwright install`: Playwright 브라우저 드라이버 설치가 별도로 필요하다. 단, 내장 Chromium이 아닌 시스템 Chrome을 사용한다.
+- `ffmpeg`: ReturnZero 엔진 사용 시에만 필요 (WAV 변환용). faster-whisper는 PyAV를 내장하므로 불필요.
