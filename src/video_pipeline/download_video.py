@@ -62,7 +62,7 @@ def download_video(
             print(f"[SUCCESS] 다운로드 완료: {filepath}")
             return os.path.abspath(filepath)
 
-        except (IncompleteRead, requests.exceptions.ChunkedEncodingError) as e:
+        except (IncompleteRead, requests.exceptions.ChunkedEncodingError, DownloadIntegrityError) as e:
             last_error = e
             _remove_partial_file(filepath)
             if attempt < _MAX_RETRIES:
@@ -79,6 +79,11 @@ def download_video(
             break  # 네트워크 끊김이 아닌 오류는 재시도 안 함
 
     raise last_error
+
+
+class DownloadIntegrityError(Exception):
+    """다운로드된 파일의 크기가 서버 응답과 일치하지 않을 때 발생"""
+    pass
 
 
 def _download_with_progress(
@@ -107,6 +112,12 @@ def _download_with_progress(
                 downloaded += len(chunk)
                 if progress_callback and total_size > 0:
                     progress_callback(downloaded, total_size)
+
+    # 무결성 검증: 서버가 알려준 크기와 실제 다운로드 크기 비교
+    if total_size > 0 and downloaded != total_size:
+        raise DownloadIntegrityError(
+            f"파일 크기 불일치: 예상 {total_size} bytes, 실제 {downloaded} bytes"
+        )
 
 
 def _remove_partial_file(filepath: str):
