@@ -31,33 +31,30 @@ class AISettingsSection:
             on_engine_change=self._handle_engine_change,
         )
 
-        # 클립보드 모드 안내 텍스트
+        # 클립보드 모드 안내 (HTML: bg-amber-50 border-amber-200)
         self._clipboard_notice = ft.Container(
-            content=ft.Row(
-                controls=[
-                    ft.Icon(ft.Icons.INFO_OUTLINE, size=14, color=Colors.INFO),
-                    ft.Text(
-                        "클립보드에 복사 후 ChatGPT를 엽니다.",
-                        size=Typography.SMALL,
-                        color=Colors.INFO,
-                    ),
-                ],
-                spacing=Spacing.XS,
+            content=ft.Text(
+                "요약 결과를 클립보드에 복사합니다. 브라우저에서 AI에 직접 붙여넣기 하여 사용하세요.",
+                size=Typography.SMALL,
+                color="#B45309",  # amber-700
             ),
             visible=False,
-            padding=ft.padding.only(left=4),
+            bgcolor="#FFFBEB",  # amber-50
+            border=ft.border.all(1, "#FDE68A"),  # amber-200
+            border_radius=Radius.MD,
+            padding=ft.padding.symmetric(horizontal=12, vertical=8),
         )
 
         self.control = ft.Column(
             controls=[
                 ft.Row(
                     controls=[
-                        ft.Icon(ft.Icons.AUTO_AWESOME, size=14, color=Colors.TEXT_MUTED),
+                        ft.Icon(ft.Icons.SMART_TOY, size=13, color=Colors.TEXT_MUTED),
                         ft.Text(
                             "AI 설정",
-                            size=Typography.CAPTION,
+                            size=Typography.SMALL,
                             weight=Typography.SEMI_BOLD,
-                            color=Colors.TEXT_SECONDARY,
+                            color=Colors.TEXT_MUTED,
                         ),
                     ],
                     spacing=Spacing.XS,

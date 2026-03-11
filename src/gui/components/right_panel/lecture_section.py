@@ -32,36 +32,48 @@ class LectureSection:
         self._list_tab_content = ft.Container(
             content=ft.Column(
                 controls=[
+                    # 강의 목록에서 선택 버튼 (상단 정렬)
+                    ft.Row(
+                        controls=[
+                            ft.OutlinedButton(
+                                content=ft.Text("강의 목록에서 선택"),
+                                icon=ft.Icons.ADD,
+                                on_click=self._handle_open_course_list,
+                                style=ft.ButtonStyle(
+                                    color=Colors.PRIMARY,
+                                    shape=ft.RoundedRectangleBorder(radius=Radius.LG),
+                                    padding=ft.padding.symmetric(horizontal=12, vertical=6),
+                                    text_style=ft.TextStyle(size=Typography.BODY, weight=Typography.SEMI_BOLD),
+                                    side=ft.BorderSide(width=2, color=ft.Colors.with_opacity(0.3, Colors.PRIMARY)),
+                                ),
+                            ),
+                        ],
+                        alignment=ft.MainAxisAlignment.END,
+                    ),
+                    # 빈 상태 (HTML: border-2 border-dashed rounded-2xl)
                     ft.Container(
                         content=ft.Column(
                             controls=[
-                                ft.Icon(ft.Icons.MENU_BOOK, size=32, color=Colors.TEXT_MUTED),
+                                ft.Icon(ft.Icons.VIDEO_LIBRARY, size=36, color=ft.Colors.with_opacity(0.2, Colors.TEXT_MUTED)),
                                 self._selected_count,
-                                ft.ElevatedButton(
-                                    content=ft.Text("강의 목록에서 선택"),
-                                    icon=ft.Icons.MENU_BOOK,
-                                    on_click=self._handle_open_course_list,
-                                    style=ft.ButtonStyle(
-                                        color=ft.Colors.WHITE,
-                                        bgcolor=Colors.PRIMARY,
-                                        shape=ft.RoundedRectangleBorder(radius=Radius.LG),
-                                        padding=ft.padding.symmetric(horizontal=20, vertical=10),
-                                        text_style=ft.TextStyle(size=Typography.BODY),
-                                    ),
-                                ),
                             ],
                             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                            spacing=Spacing.SM,
+                            spacing=Spacing.XS,
+                            alignment=ft.MainAxisAlignment.CENTER,
                         ),
                         alignment=ft.Alignment.CENTER,
                         expand=True,
+                        border_radius=Radius.XL,
+                        border=ft.border.all(2, Colors.BORDER),
+                        bgcolor="#F8FAFC",  # slate-50/30
                     ),
                 ],
                 expand=True,
+                spacing=Spacing.SM,
                 horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
             ),
             expand=True,
-            padding=Spacing.MD,
+            padding=Spacing.SM,
         )
 
         # URL 직접 입력 탭 콘텐츠
@@ -101,21 +113,15 @@ class LectureSection:
 
         self.control = ft.Column(
             controls=[
-                ft.Row(
-                    controls=[
-                        ft.Icon(ft.Icons.MOVIE, size=14, color=Colors.TEXT_MUTED),
-                        ft.Text(
-                            "강의 선택",
-                            size=Typography.CAPTION,
-                            weight=Typography.SEMI_BOLD,
-                            color=Colors.TEXT_SECONDARY,
-                        ),
-                    ],
-                    spacing=Spacing.XS,
+                ft.Text(
+                    "강의 목록",
+                    size=Typography.BODY,
+                    weight=Typography.BOLD,
+                    color=Colors.TEXT_SECONDARY,
                 ),
                 self._tabs,
             ],
-            spacing=Spacing.XS,
+            spacing=Spacing.SM,
             expand=True,
             horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
         )

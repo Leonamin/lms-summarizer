@@ -57,27 +57,27 @@ class StageSelector:
         # 파일 선택 버튼
         self._pick_btn = ft.OutlinedButton(
             content=ft.Text("파일 선택"),
-            icon=ft.Icons.ATTACH_FILE,
+            icon=ft.Icons.UPLOAD_FILE,
             on_click=self._handle_pick_files,
             visible=False,
             style=ft.ButtonStyle(
                 color=Colors.PRIMARY,
-                shape=ft.RoundedRectangleBorder(radius=Radius.SM),
+                shape=ft.RoundedRectangleBorder(radius=Radius.MD),
                 padding=ft.padding.symmetric(horizontal=12, vertical=6),
-                text_style=ft.TextStyle(size=Typography.CAPTION),
+                text_style=ft.TextStyle(size=Typography.CAPTION, weight=Typography.SEMI_BOLD),
+                side=ft.BorderSide(width=1, color=ft.Colors.with_opacity(0.3, Colors.PRIMARY)),
             ),
         )
 
         # 자동 감지 버튼
-        self._auto_detect_btn = ft.OutlinedButton(
-            content=ft.Text("자동 감지"),
+        self._auto_detect_btn = ft.TextButton(
+            content=ft.Text("저장 폴더에서 자동 감지"),
             icon=ft.Icons.SEARCH,
             on_click=self._handle_auto_detect,
             style=ft.ButtonStyle(
                 color=Colors.TEXT_SECONDARY,
-                shape=ft.RoundedRectangleBorder(radius=Radius.SM),
-                padding=ft.padding.symmetric(horizontal=12, vertical=6),
-                text_style=ft.TextStyle(size=Typography.CAPTION),
+                padding=ft.padding.symmetric(horizontal=8, vertical=4),
+                text_style=ft.TextStyle(size=Typography.SMALL),
             ),
         )
 
@@ -111,23 +111,17 @@ class StageSelector:
 
         self.control = ft.Column(
             controls=[
-                ft.Row(
-                    controls=[
-                        ft.Container(content=self._dropdown, expand=True),
-                        self._auto_detect_btn,
-                    ],
-                    spacing=Spacing.SM,
-                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                ),
+                self._dropdown,
                 ft.Row(
                     controls=[self._pick_btn, self._file_count_text],
                     spacing=Spacing.SM,
                     vertical_alignment=ft.CrossAxisAlignment.CENTER,
                 ),
+                self._auto_detect_btn,
                 self._detect_info,
                 self._file_list,
             ],
-            spacing=Spacing.XS,
+            spacing=Spacing.SM,
             horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
         )
 

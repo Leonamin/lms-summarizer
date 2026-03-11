@@ -173,10 +173,12 @@ def primary_button(text: str, icon: ft.Icons = None, on_click=None, **kwargs) ->
         style=ft.ButtonStyle(
             color=ft.Colors.WHITE,
             bgcolor=Colors.PRIMARY,
-            shape=ft.RoundedRectangleBorder(radius=Radius.SM),
+            shape=ft.RoundedRectangleBorder(radius=Radius.LG),
             padding=ft.padding.symmetric(horizontal=20, vertical=12),
-            text_style=ft.TextStyle(weight=Typography.SEMI_BOLD, size=13),
+            text_style=ft.TextStyle(weight=Typography.BOLD, size=14),
             overlay_color=ft.Colors.with_opacity(0.1, ft.Colors.WHITE),
+            shadow_color=ft.Colors.with_opacity(0.2, Colors.PRIMARY),
+            elevation=4,
         ),
         **kwargs,
     )
@@ -190,7 +192,7 @@ def outline_button(text: str, icon: ft.Icons = None, on_click=None, **kwargs) ->
         on_click=on_click,
         style=ft.ButtonStyle(
             color=Colors.PRIMARY,
-            shape=ft.RoundedRectangleBorder(radius=Radius.SM),
+            shape=ft.RoundedRectangleBorder(radius=Radius.LG),
             padding=ft.padding.symmetric(horizontal=16, vertical=10),
             text_style=ft.TextStyle(weight=Typography.SEMI_BOLD, size=13),
             side=ft.BorderSide(width=1.5, color=Colors.PRIMARY),
@@ -224,7 +226,7 @@ def danger_button(text: str, icon: ft.Icons = None, on_click=None, **kwargs) -> 
         style=ft.ButtonStyle(
             color=ft.Colors.WHITE,
             bgcolor=Colors.ERROR,
-            shape=ft.RoundedRectangleBorder(radius=Radius.SM),
+            shape=ft.RoundedRectangleBorder(radius=Radius.LG),
             padding=ft.padding.symmetric(horizontal=20, vertical=12),
             text_style=ft.TextStyle(weight=Typography.SEMI_BOLD, size=13),
             overlay_color=ft.Colors.with_opacity(0.1, ft.Colors.WHITE),

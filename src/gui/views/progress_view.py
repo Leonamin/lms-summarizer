@@ -60,7 +60,7 @@ class ProgressModal:
         # ── 진행률 카드 ──────────────────────────────────
         self._progress_pct = ft.Text(
             "0%",
-            size=20,
+            size=24,
             weight=Typography.BOLD,
             color=Colors.PRIMARY,
         )
@@ -72,9 +72,9 @@ class ProgressModal:
         self._progress_bar = ft.ProgressBar(
             value=0,
             color=Colors.PRIMARY,
-            bgcolor=Colors.PRIMARY_BG,
-            bar_height=6,
-            border_radius=3,
+            bgcolor="#E2E8F0",  # slate-200
+            bar_height=10,
+            border_radius=5,
         )
 
         progress_card = ft.Container(
@@ -82,25 +82,32 @@ class ProgressModal:
                 controls=[
                     ft.Row(
                         controls=[
-                            ft.Text(
-                                "전체 공정률",
-                                size=Typography.CAPTION,
-                                color=Colors.TEXT_SECONDARY,
+                            ft.Column(
+                                controls=[
+                                    ft.Text(
+                                        "전체 공정률",
+                                        size=Typography.BODY,
+                                        weight=Typography.SEMI_BOLD,
+                                        color=Colors.TEXT_SECONDARY,
+                                    ),
+                                    self._progress_desc,
+                                ],
+                                spacing=2,
                                 expand=True,
                             ),
                             self._progress_pct,
                         ],
                         alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
                     ),
-                    self._progress_desc,
                     self._progress_bar,
                 ],
-                spacing=Spacing.XS,
+                spacing=Spacing.SM,
             ),
-            bgcolor=Colors.SURFACE,
-            border_radius=Radius.MD,
-            border=ft.border.all(1, Colors.BORDER),
-            padding=ft.padding.all(Spacing.MD),
+            bgcolor="#F8FAFC",  # slate-50
+            border_radius=Radius.LG,
+            border=ft.border.all(1, "#F1F5F9"),  # slate-100
+            padding=ft.padding.all(Spacing.LG),
         )
 
         # ── 다크 콘솔 로그 (항상 표시) ───────────────────
@@ -119,22 +126,24 @@ class ProgressModal:
         )
         self._log_container = ft.Container(
             content=self._log_field,
-            bgcolor=LogDarkColors.BG,
-            border_radius=Radius.SM,
-            border=ft.border.all(1, LogDarkColors.BORDER),
-            padding=Spacing.SM,
+            bgcolor="#1E1E1E",  # HTML dark console
+            border_radius=Radius.MD,
+            border=ft.border.all(1, "#374151"),  # slate-700
+            padding=ft.padding.all(Spacing.LG),
             height=128,
         )
 
-        # ── 중지 버튼 ───────────────────────────────────
-        self._stop_btn = ft.ElevatedButton(
+        # ── 중지 버튼 (HTML: border-2 border-danger text-danger)
+        self._stop_btn = ft.OutlinedButton(
             content=ft.Text("중지"),
-            icon=ft.Icons.STOP,
+            icon=ft.Icons.STOP_CIRCLE,
             on_click=self._handle_stop,
             style=ft.ButtonStyle(
-                color=ft.Colors.WHITE,
-                bgcolor=Colors.ERROR,
-                shape=ft.RoundedRectangleBorder(radius=Radius.SM),
+                color=Colors.ERROR,
+                shape=ft.RoundedRectangleBorder(radius=Radius.MD),
+                padding=ft.padding.symmetric(horizontal=24, vertical=10),
+                text_style=ft.TextStyle(weight=Typography.BOLD, size=14),
+                side=ft.BorderSide(width=2, color=Colors.ERROR),
             ),
         )
 
@@ -157,9 +166,12 @@ class ProgressModal:
         self._complete_content = ft.Column(
             controls=[
                 ft.Container(height=Spacing.LG),
-                # 큰 초록색 체크 아이콘
+                # 큰 초록색 체크 아이콘 (green-100 배경)
                 ft.Container(
-                    content=ft.Icon(ft.Icons.CHECK_CIRCLE, size=64, color=Colors.SUCCESS),
+                    content=ft.Icon(ft.Icons.CHECK_CIRCLE, size=40, color="#16A34A"),
+                    width=64, height=64,
+                    border_radius=32,
+                    bgcolor="#DCFCE7",  # green-100
                     alignment=ft.Alignment.CENTER,
                 ),
                 ft.Container(height=Spacing.SM),
@@ -183,18 +195,27 @@ class ProgressModal:
                             content=ft.Text("결과 폴더 열기"),
                             icon=ft.Icons.FOLDER_OPEN,
                             on_click=self._handle_open_folder,
+                            expand=True,
                             style=ft.ButtonStyle(
                                 color=ft.Colors.WHITE,
                                 bgcolor=Colors.PRIMARY,
-                                shape=ft.RoundedRectangleBorder(radius=Radius.SM),
+                                shape=ft.RoundedRectangleBorder(radius=Radius.LG),
+                                padding=ft.padding.symmetric(vertical=12),
+                                text_style=ft.TextStyle(weight=Typography.BOLD),
+                                shadow_color=ft.Colors.with_opacity(0.2, Colors.PRIMARY),
+                                elevation=4,
                             ),
                         ),
                         ft.OutlinedButton(
                             content=ft.Text("닫기"),
                             on_click=lambda e: self.close(),
+                            expand=True,
                             style=ft.ButtonStyle(
                                 color=Colors.TEXT_SECONDARY,
-                                shape=ft.RoundedRectangleBorder(radius=Radius.SM),
+                                shape=ft.RoundedRectangleBorder(radius=Radius.LG),
+                                padding=ft.padding.symmetric(vertical=12),
+                                text_style=ft.TextStyle(weight=Typography.BOLD),
+                                side=ft.BorderSide(width=2, color=Colors.BORDER),
                             ),
                         ),
                     ],
@@ -226,7 +247,10 @@ class ProgressModal:
             controls=[
                 ft.Container(height=Spacing.LG),
                 ft.Container(
-                    content=ft.Icon(ft.Icons.CANCEL, size=64, color=Colors.WARNING),
+                    content=ft.Icon(ft.Icons.CANCEL, size=40, color=Colors.WARNING),
+                    width=64, height=64,
+                    border_radius=32,
+                    bgcolor="#FFF7ED",  # orange-50
                     alignment=ft.Alignment.CENTER,
                 ),
                 ft.Container(height=Spacing.SM),
@@ -243,7 +267,10 @@ class ProgressModal:
                     on_click=lambda e: self.close(),
                     style=ft.ButtonStyle(
                         color=Colors.TEXT_SECONDARY,
-                        shape=ft.RoundedRectangleBorder(radius=Radius.SM),
+                        shape=ft.RoundedRectangleBorder(radius=Radius.LG),
+                        padding=ft.padding.symmetric(vertical=12, horizontal=24),
+                        text_style=ft.TextStyle(weight=Typography.BOLD),
+                        side=ft.BorderSide(width=2, color=Colors.BORDER),
                     ),
                 ),
                 ft.Container(height=Spacing.SM),
@@ -266,6 +293,8 @@ class ProgressModal:
         # ── 다이얼로그 ──────────────────────────────────
         self.dialog = ft.AlertDialog(
             modal=True,
+            bgcolor="#F8FAFC",  # background-light
+            shape=ft.RoundedRectangleBorder(radius=Radius.LG),
             title=ft.Row(
                 controls=[
                     self._title_text,
@@ -291,7 +320,7 @@ class ProgressModal:
                 ),
             ),
             actions=[self._stop_btn],
-            actions_alignment=ft.MainAxisAlignment.END,
+            actions_alignment=ft.MainAxisAlignment.START,
         )
 
     # ── 타임라인 빌드 ────────────────────────────────────
@@ -327,12 +356,12 @@ class ProgressModal:
 
             # 연결선
             if not is_last:
-                line_color = Colors.PRIMARY if item["state"] in ("completed", "active") else Colors.BORDER
+                line_color = ft.Colors.with_opacity(0.3, Colors.PRIMARY) if item["state"] in ("completed", "active") else Colors.BORDER
                 line = ft.Container(
                     width=2,
-                    height=20,
+                    height=24,
                     bgcolor=line_color,
-                    margin=ft.margin.only(left=11),
+                    margin=ft.margin.only(left=17),
                 )
                 item["line"] = line
             else:
@@ -359,10 +388,10 @@ class ProgressModal:
 
     def _make_circle(self, state: str) -> ft.Container:
         """타임라인 원형 아이콘 생성"""
-        size = 24
+        size = 36
         if state == "completed":
             return ft.Container(
-                content=ft.Icon(ft.Icons.CHECK, size=14, color=ft.Colors.WHITE),
+                content=ft.Icon(ft.Icons.CHECK_CIRCLE, size=18, color=ft.Colors.WHITE),
                 width=size, height=size,
                 border_radius=size // 2,
                 bgcolor=Colors.PRIMARY,
@@ -370,14 +399,16 @@ class ProgressModal:
             )
         elif state == "active":
             return ft.Container(
-                content=ft.Icon(ft.Icons.SYNC, size=14, color=ft.Colors.WHITE),
+                content=ft.Icon(ft.Icons.SYNC, size=18, color=Colors.PRIMARY),
                 width=size, height=size,
                 border_radius=size // 2,
-                bgcolor=Colors.PRIMARY,
+                border=ft.border.all(2, Colors.PRIMARY),
+                bgcolor=Colors.PRIMARY_BG,
                 alignment=ft.Alignment.CENTER,
             )
         else:  # pending
             return ft.Container(
+                content=ft.Icon(ft.Icons.AUTO_AWESOME, size=18, color="#CBD5E1"),
                 width=size, height=size,
                 border_radius=size // 2,
                 border=ft.border.all(2, Colors.BORDER),
@@ -548,7 +579,8 @@ class ProgressModal:
             self.close()
             return
         self._stop_btn.disabled = True
-        self._stop_btn.content.value = "중지 중..."
+        if hasattr(self._stop_btn, 'content') and self._stop_btn.content:
+            self._stop_btn.content.value = "중지 중..."
         self._page.update()
         if self._on_stop:
             self._on_stop()

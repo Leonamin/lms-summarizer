@@ -37,11 +37,10 @@ class OptionsSection:
         self._header = ft.Container(
             content=ft.Row(
                 controls=[
-                    ft.Icon(ft.Icons.TUNE, size=14, color=Colors.TEXT_MUTED),
                     ft.Text(
-                        "처리 옵션",
-                        size=Typography.CAPTION,
-                        weight=Typography.SEMI_BOLD,
+                        "옵션",
+                        size=Typography.BODY,
+                        weight=Typography.BOLD,
                         color=Colors.TEXT_SECONDARY,
                         expand=True,
                     ),
@@ -51,18 +50,44 @@ class OptionsSection:
                 vertical_alignment=ft.CrossAxisAlignment.CENTER,
             ),
             on_click=self._handle_toggle,
-            padding=ft.padding.symmetric(vertical=4, horizontal=2),
+            padding=ft.padding.symmetric(vertical=6, horizontal=4),
             border_radius=Radius.SM,
             ink=True,
+        )
+
+        # 파이프라인 시작 단계 컨테이너 (HTML: bg-slate-50 rounded-xl border)
+        self._stage_container = ft.Container(
+            content=ft.Column(
+                controls=[
+                    ft.Row(
+                        controls=[
+                            ft.Icon(ft.Icons.ALT_ROUTE, size=16, color=Colors.TEXT_SECONDARY),
+                            ft.Text(
+                                "파이프라인 시작 단계",
+                                size=Typography.CAPTION,
+                                weight=Typography.SEMI_BOLD,
+                                color=Colors.TEXT_SECONDARY,
+                            ),
+                        ],
+                        spacing=Spacing.XS,
+                    ),
+                    self.stage_selector.control,
+                ],
+                spacing=Spacing.SM,
+            ),
+            bgcolor="#F8FAFC",  # slate-50
+            border_radius=Radius.LG,
+            border=ft.border.all(1, Colors.BORDER),
+            padding=ft.padding.all(Spacing.MD),
         )
 
         # 옵션 본문 (접혀있을 때 숨김)
         self._body = ft.Column(
             controls=[
                 self._save_video_checkbox,
-                self.stage_selector.control,
+                self._stage_container,
             ],
-            spacing=Spacing.XS,
+            spacing=Spacing.SM,
             visible=False,
             horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
         )

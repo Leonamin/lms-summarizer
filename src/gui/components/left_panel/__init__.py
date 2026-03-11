@@ -20,21 +20,37 @@ class LeftPanel:
         self.ai_settings = AISettingsSection(on_engine_change=on_engine_change)
         self.storage_path = StoragePath(on_path_changed=on_path_changed)
 
-        self.control = ft.Container(
+        # 상단 스크롤 영역 (계정 + AI 설정)
+        _scrollable_content = ft.Container(
             content=ft.Column(
                 controls=[
                     self.account.control,
                     ft.Divider(height=1, color=Colors.BORDER),
                     self.ai_settings.control,
-                    ft.Divider(height=1, color=Colors.BORDER),
-                    self.storage_path.control,
                 ],
-                spacing=Spacing.MD,
+                spacing=Spacing.LG,
                 scroll=ft.ScrollMode.AUTO,
                 horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
             ),
+            expand=True,
+            padding=ft.padding.all(Spacing.LG),
+        )
+
+        # 하단 고정 영역 (저장 경로 — HTML: border-t bg-slate-50)
+        _bottom_pinned = ft.Container(
+            content=self.storage_path.control,
+            padding=ft.padding.all(Spacing.LG),
+            border=ft.border.only(top=ft.BorderSide(1, Colors.BORDER)),
+            bgcolor="#F8FAFC",  # slate-50
+        )
+
+        self.control = ft.Container(
+            content=ft.Column(
+                controls=[_scrollable_content, _bottom_pinned],
+                spacing=0,
+                horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
+            ),
             width=270,
-            padding=ft.padding.all(Spacing.MD),
             bgcolor=Colors.LEFT_PANEL_BG,
         )
 

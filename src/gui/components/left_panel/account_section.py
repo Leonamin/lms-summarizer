@@ -26,12 +26,12 @@ class AccountSection:
             controls=[
                 ft.Row(
                     controls=[
-                        ft.Icon(ft.Icons.PERSON, size=14, color=Colors.TEXT_MUTED),
+                        ft.Icon(ft.Icons.ACCOUNT_CIRCLE, size=13, color=Colors.TEXT_MUTED),
                         ft.Text(
-                            "계정 정보",
-                            size=Typography.CAPTION,
+                            "계정",
+                            size=Typography.SMALL,
                             weight=Typography.SEMI_BOLD,
-                            color=Colors.TEXT_SECONDARY,
+                            color=Colors.TEXT_MUTED,
                         ),
                     ],
                     spacing=Spacing.XS,

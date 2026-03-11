@@ -40,14 +40,16 @@ class CourseListView:
         # ── 공통 UI ──────────────────────────────────────
         self._step_text = ft.Text(
             "1 / 2",
-            size=Typography.CAPTION,
-            color=Colors.TEXT_MUTED,
+            size=Typography.BODY,
+            weight=Typography.BOLD,
+            color=Colors.PRIMARY,
         )
         self._step_bar = ft.ProgressBar(
             value=0.5,
             color=Colors.PRIMARY,
-            bgcolor=Colors.PRIMARY_BG,
-            bar_height=3,
+            bgcolor="#F1F5F9",  # slate-100
+            bar_height=4,
+            border_radius=2,
         )
 
         # ── Step 1: 과목 목록 ────────────────────────────
@@ -78,7 +80,10 @@ class CourseListView:
             style=ft.ButtonStyle(
                 color=ft.Colors.WHITE,
                 bgcolor=Colors.PRIMARY,
-                shape=ft.RoundedRectangleBorder(radius=Radius.SM),
+                shape=ft.RoundedRectangleBorder(radius=Radius.MD),
+                text_style=ft.TextStyle(weight=Typography.BOLD),
+                shadow_color=ft.Colors.with_opacity(0.2, Colors.PRIMARY),
+                elevation=4,
             ),
         )
 
@@ -114,6 +119,7 @@ class CourseListView:
         # ── 다이얼로그 ──────────────────────────────────
         self.dialog = ft.AlertDialog(
             modal=True,
+            shape=ft.RoundedRectangleBorder(radius=Radius.LG),
             title=ft.Column(
                 controls=[
                     ft.Row(
@@ -178,11 +184,12 @@ class CourseListView:
                         ),
                         ft.OutlinedButton(
                             content=ft.Text("닫기"),
-                            icon=ft.Icons.CLOSE,
                             on_click=lambda e: self.close(),
                             style=ft.ButtonStyle(
                                 color=Colors.TEXT_SECONDARY,
-                                shape=ft.RoundedRectangleBorder(radius=Radius.SM),
+                                shape=ft.RoundedRectangleBorder(radius=Radius.MD),
+                                text_style=ft.TextStyle(weight=Typography.SEMI_BOLD),
+                                side=ft.BorderSide(width=1, color="#CBD5E1"),  # slate-300
                             ),
                         ),
                     ],

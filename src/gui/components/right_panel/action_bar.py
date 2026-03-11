@@ -36,10 +36,10 @@ class ActionBar:
             on_click=self._handle_clear,
             style=ft.ButtonStyle(
                 color=Colors.ERROR,
-                shape=ft.RoundedRectangleBorder(radius=Radius.SM),
+                shape=ft.RoundedRectangleBorder(radius=Radius.LG),
                 padding=ft.padding.symmetric(vertical=14, horizontal=16),
                 text_style=ft.TextStyle(weight=Typography.SEMI_BOLD, size=13),
-                side=ft.BorderSide(width=1, color=Colors.ERROR),
+                side=ft.BorderSide(width=2, color=ft.Colors.with_opacity(0.3, Colors.ERROR)),
             ),
         )
 
