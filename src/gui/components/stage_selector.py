@@ -7,6 +7,8 @@ from pathlib import Path
 import flet as ft
 
 from src.gui.theme import Colors, Typography, Radius, Spacing
+from src.gui.core.file_manager import ensure_downloads_directory
+from src.gui.core.artifact_detector import ArtifactDetector
 from src.pipeline_stage import PipelineStage, STAGE_LABELS
 
 # 각 단계에서 입력으로 받을 파일 확장자
@@ -66,6 +68,27 @@ class StageSelector:
             ),
         )
 
+        # 자동 감지 버튼
+        self._auto_detect_btn = ft.OutlinedButton(
+            content=ft.Text("자동 감지"),
+            icon=ft.Icons.SEARCH,
+            on_click=self._handle_auto_detect,
+            style=ft.ButtonStyle(
+                color=Colors.TEXT_SECONDARY,
+                shape=ft.RoundedRectangleBorder(radius=Radius.SM),
+                padding=ft.padding.symmetric(horizontal=12, vertical=6),
+                text_style=ft.TextStyle(size=Typography.CAPTION),
+            ),
+        )
+
+        # 자동 감지 결과 메시지
+        self._detect_info = ft.Text(
+            "",
+            size=Typography.SMALL,
+            color=Colors.INFO,
+            visible=False,
+        )
+
         # 선택된 파일 목록 표시
         self._file_list = ft.Column(
             controls=[],
@@ -86,12 +109,20 @@ class StageSelector:
 
         self.control = ft.Column(
             controls=[
-                self._dropdown,
+                ft.Row(
+                    controls=[
+                        ft.Container(content=self._dropdown, expand=True),
+                        self._auto_detect_btn,
+                    ],
+                    spacing=Spacing.SM,
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                ),
                 ft.Row(
                     controls=[self._pick_btn, self._file_count_text],
                     spacing=Spacing.SM,
                     vertical_alignment=ft.CrossAxisAlignment.CENTER,
                 ),
+                self._detect_info,
                 self._file_list,
             ],
             spacing=Spacing.XS,
@@ -102,20 +133,49 @@ class StageSelector:
         stage = self.get_stage()
         show_picker = stage != PipelineStage.DOWNLOAD
         self._pick_btn.visible = show_picker
-        # 단계 변경 시 파일 목록 초기화
+        # 단계 변경 시 파일 목록 및 감지 메시지 초기화
         self._selected_files.clear()
         self._file_list.controls.clear()
         self._file_list.visible = False
         self._file_count_text.visible = False
         self._file_count_text.value = ""
+        self._detect_info.visible = False
+        self._detect_info.value = ""
 
         if self._pick_btn.page:
-            self._pick_btn.update()
-            self._file_list.update()
-            self._file_count_text.update()
+            self._pick_btn.page.update()
 
         if self._on_change:
             self._on_change(stage)
+
+    def _handle_auto_detect(self, e):
+        """다운로드 디렉토리를 스캔하여 시작 단계와 파일을 자동 설정"""
+        downloads_dir = ensure_downloads_directory()
+        detector = ArtifactDetector(downloads_dir)
+        recommended_stage, files = detector.recommend_start_stage()
+
+        if recommended_stage == PipelineStage.DOWNLOAD and not files:
+            self._detect_info.value = "감지된 산출물이 없습니다. 1단계부터 시작합니다."
+            self._detect_info.color = Colors.TEXT_MUTED
+            self._detect_info.visible = True
+            self.set_stage(PipelineStage.DOWNLOAD)
+            self._selected_files.clear()
+            self._file_list.controls.clear()
+            self._file_list.visible = False
+            self._file_count_text.visible = False
+            self._pick_btn.visible = False
+        else:
+            self.set_stage(recommended_stage)
+            self.set_files(files)
+            stage_name = STAGE_LABELS[recommended_stage]
+            self._detect_info.value = (
+                f"{len(files)}개 파일 감지 → {recommended_stage.value}단계: {stage_name}부터 시작"
+            )
+            self._detect_info.color = Colors.INFO
+            self._detect_info.visible = True
+
+        if self._detect_info.page:
+            self._detect_info.page.update()
 
     def _handle_pick_files(self, e):
         stage = self.get_stage()
@@ -205,6 +265,7 @@ class StageSelector:
         """활성/비활성 설정"""
         self._dropdown.disabled = not enabled
         self._pick_btn.disabled = not enabled
+        self._auto_detect_btn.disabled = not enabled
 
     def get_files(self) -> list[str]:
         """선택된 입력 파일 목록 반환"""
