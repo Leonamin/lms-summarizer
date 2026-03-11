@@ -1,12 +1,17 @@
 """
 처리 진행 모달 (Flet AlertDialog)
+- 세로 타임라인 스텝퍼
+- 진행률 카드
+- 다크 콘솔 로그 (항상 표시)
+- 완료 화면 (State B)
 """
 
 import time
+from datetime import datetime
 
 import flet as ft
 
-from src.gui.theme import Colors, Typography, Spacing, Radius, divider
+from src.gui.theme import Colors, LogDarkColors, Typography, Spacing, Radius, divider
 from src.gui.core.file_manager import (
     open_in_file_explorer, ensure_downloads_directory, get_auto_open_folder,
 )
@@ -17,46 +22,53 @@ _STEPS = [(stage.value, STAGE_LABELS[stage]) for stage in PipelineStage]
 
 
 class ProgressModal:
-    """처리 진행 상황을 표시하는 모달"""
+    """처리 진행 상황을 표시하는 모달 (타임라인 + 진행률 + 로그)"""
 
     def __init__(self, page: ft.Page, on_stop=None, start_stage: PipelineStage = PipelineStage.DOWNLOAD):
         self._page = page
         self._on_stop = on_stop
         self._start_stage = start_stage
         self._is_finished = False
-        self._log_visible = False
         self._log_messages: list[str] = []
         self._last_progress_update: float = 0.0
+        self._start_time = time.monotonic()
+        self._current_step = start_stage.value
+        self._step_timestamps: dict[int, str] = {}
 
-        # 단계 인디케이터
-        self._step_rows: list[ft.Row] = []
+        # ── 타임라인 스텝퍼 ──────────────────────────────
+        self._timeline_items: list[dict] = []
+        self._timeline_column = ft.Column(spacing=0)
+
         for num, name in _STEPS:
-            # start_stage 이전 단계는 건너뜀 표시 (회색 대시)
             if num < start_stage:
-                icon = ft.Text("—", size=14, color=Colors.DISABLED)
-                label = ft.Text(
-                    f"{num}단계: {name}",
-                    size=Typography.BODY,
-                    color=Colors.DISABLED,
-                )
+                state = "skipped"
             else:
-                icon = ft.Text("○", size=14, color=Colors.TEXT_MUTED)
-                label = ft.Text(
-                    f"{num}단계: {name}",
-                    size=Typography.BODY,
-                    color=Colors.TEXT_MUTED,
-                )
-            row = ft.Row(controls=[icon, label], spacing=Spacing.SM)
-            self._step_rows.append(row)
+                state = "pending"
+            item = {
+                "num": num,
+                "name": name,
+                "state": state,
+                "circle": None,
+                "line": None,
+                "label": None,
+                "subtitle": None,
+            }
+            self._timeline_items.append(item)
 
-        # 상태 텍스트
-        self._status_text = ft.Text(
+        self._build_timeline()
+
+        # ── 진행률 카드 ──────────────────────────────────
+        self._progress_pct = ft.Text(
+            "0%",
+            size=20,
+            weight=Typography.BOLD,
+            color=Colors.PRIMARY,
+        )
+        self._progress_desc = ft.Text(
             "작업을 시작하는 중...",
             size=Typography.CAPTION,
             color=Colors.TEXT_SECONDARY,
         )
-
-        # 프로그레스 바
         self._progress_bar = ft.ProgressBar(
             value=0,
             color=Colors.PRIMARY,
@@ -65,7 +77,33 @@ class ProgressModal:
             border_radius=3,
         )
 
-        # 로그 영역
+        progress_card = ft.Container(
+            content=ft.Column(
+                controls=[
+                    ft.Row(
+                        controls=[
+                            ft.Text(
+                                "전체 공정률",
+                                size=Typography.CAPTION,
+                                color=Colors.TEXT_SECONDARY,
+                                expand=True,
+                            ),
+                            self._progress_pct,
+                        ],
+                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                    ),
+                    self._progress_desc,
+                    self._progress_bar,
+                ],
+                spacing=Spacing.XS,
+            ),
+            bgcolor=Colors.SURFACE,
+            border_radius=Radius.MD,
+            border=ft.border.all(1, Colors.BORDER),
+            padding=ft.padding.all(Spacing.MD),
+        )
+
+        # ── 다크 콘솔 로그 (항상 표시) ───────────────────
         self._log_field = ft.TextField(
             value="",
             read_only=True,
@@ -73,46 +111,22 @@ class ProgressModal:
             min_lines=1,
             max_lines=None,
             text_size=Typography.SMALL,
-            color=Colors.TEXT_SECONDARY,
+            color=LogDarkColors.TEXT,
             border=ft.InputBorder.NONE,
             content_padding=0,
             expand=True,
+            text_style=ft.TextStyle(font_family="Courier New, monospace"),
         )
         self._log_container = ft.Container(
             content=self._log_field,
-            bgcolor=Colors.SURFACE,
+            bgcolor=LogDarkColors.BG,
             border_radius=Radius.SM,
-            border=ft.border.all(1, Colors.BORDER),
+            border=ft.border.all(1, LogDarkColors.BORDER),
             padding=Spacing.SM,
-            height=120,
-            visible=False,
+            height=128,
         )
 
-        # 로그 토글 버튼
-        self._log_toggle = ft.TextButton(
-            content=ft.Text("상세 로그 보기"),
-            icon=ft.Icons.EXPAND_MORE,
-            style=ft.ButtonStyle(
-                color=Colors.PRIMARY,
-                text_style=ft.TextStyle(size=Typography.CAPTION),
-            ),
-            on_click=self._toggle_log,
-        )
-
-        # 결과 폴더 열기 버튼 (완료 시 표시)
-        self._open_folder_btn = ft.ElevatedButton(
-            content=ft.Text("결과 폴더 열기"),
-            icon=ft.Icons.FOLDER_OPEN,
-            on_click=self._handle_open_folder,
-            visible=False,
-            style=ft.ButtonStyle(
-                color=ft.Colors.WHITE,
-                bgcolor=Colors.SUCCESS,
-                shape=ft.RoundedRectangleBorder(radius=Radius.SM),
-            ),
-        )
-
-        # 중지 버튼
+        # ── 중지 버튼 ───────────────────────────────────
         self._stop_btn = ft.ElevatedButton(
             content=ft.Text("중지"),
             icon=ft.Icons.STOP,
@@ -124,40 +138,302 @@ class ProgressModal:
             ),
         )
 
-        # 다이얼로그
+        # ── 진행 중 콘텐츠 (State A) ────────────────────
+        self._progress_content = ft.Column(
+            controls=[
+                self._timeline_column,
+                progress_card,
+                self._log_container,
+            ],
+            spacing=Spacing.MD,
+            tight=True,
+            horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
+        )
+
+        # ── 완료 콘텐츠 (State B) ───────────────────────
+        self._complete_elapsed = ft.Text("", size=Typography.CAPTION, color=Colors.TEXT_SECONDARY)
+        self._complete_path = ft.Text("", size=Typography.CAPTION, color=Colors.TEXT_MUTED)
+
+        self._complete_content = ft.Column(
+            controls=[
+                ft.Container(height=Spacing.LG),
+                # 큰 초록색 체크 아이콘
+                ft.Container(
+                    content=ft.Icon(ft.Icons.CHECK_CIRCLE, size=64, color=Colors.SUCCESS),
+                    alignment=ft.alignment.center,
+                ),
+                ft.Container(height=Spacing.SM),
+                ft.Text(
+                    "작업 완료!",
+                    size=Typography.TITLE,
+                    weight=Typography.BOLD,
+                    color=Colors.TEXT,
+                    text_align=ft.TextAlign.CENTER,
+                ),
+                ft.Text(
+                    "결과 파일이 생성되었습니다.",
+                    size=Typography.BODY,
+                    color=Colors.TEXT_SECONDARY,
+                    text_align=ft.TextAlign.CENTER,
+                ),
+                ft.Container(height=Spacing.MD),
+                ft.Row(
+                    controls=[
+                        ft.ElevatedButton(
+                            content=ft.Text("결과 폴더 열기"),
+                            icon=ft.Icons.FOLDER_OPEN,
+                            on_click=self._handle_open_folder,
+                            style=ft.ButtonStyle(
+                                color=ft.Colors.WHITE,
+                                bgcolor=Colors.PRIMARY,
+                                shape=ft.RoundedRectangleBorder(radius=Radius.SM),
+                            ),
+                        ),
+                        ft.OutlinedButton(
+                            content=ft.Text("닫기"),
+                            on_click=lambda e: self.close(),
+                            style=ft.ButtonStyle(
+                                color=Colors.TEXT_SECONDARY,
+                                shape=ft.RoundedRectangleBorder(radius=Radius.SM),
+                            ),
+                        ),
+                    ],
+                    alignment=ft.MainAxisAlignment.CENTER,
+                    spacing=Spacing.SM,
+                ),
+                ft.Container(height=Spacing.SM),
+                divider(),
+                ft.Container(
+                    content=ft.Column(
+                        controls=[
+                            self._complete_elapsed,
+                            self._complete_path,
+                        ],
+                        spacing=2,
+                    ),
+                    padding=ft.padding.symmetric(vertical=Spacing.XS),
+                ),
+            ],
+            spacing=Spacing.XS,
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            visible=False,
+        )
+
+        # ── 취소 콘텐츠 (State C) ───────────────────────
+        self._cancel_elapsed = ft.Text("", size=Typography.CAPTION, color=Colors.TEXT_SECONDARY)
+
+        self._cancel_content = ft.Column(
+            controls=[
+                ft.Container(height=Spacing.LG),
+                ft.Container(
+                    content=ft.Icon(ft.Icons.CANCEL, size=64, color=Colors.WARNING),
+                    alignment=ft.alignment.center,
+                ),
+                ft.Container(height=Spacing.SM),
+                ft.Text(
+                    "작업이 중지되었습니다.",
+                    size=Typography.TITLE,
+                    weight=Typography.BOLD,
+                    color=Colors.TEXT,
+                    text_align=ft.TextAlign.CENTER,
+                ),
+                ft.Container(height=Spacing.MD),
+                ft.OutlinedButton(
+                    content=ft.Text("닫기"),
+                    on_click=lambda e: self.close(),
+                    style=ft.ButtonStyle(
+                        color=Colors.TEXT_SECONDARY,
+                        shape=ft.RoundedRectangleBorder(radius=Radius.SM),
+                    ),
+                ),
+                ft.Container(height=Spacing.SM),
+                divider(),
+                self._cancel_elapsed,
+            ],
+            spacing=Spacing.XS,
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            visible=False,
+        )
+
+        # ── 다이얼로그 타이틀 ────────────────────────────
+        self._title_text = ft.Text(
+            "작업 진행 중...",
+            size=Typography.HEADING,
+            weight=Typography.SEMI_BOLD,
+            expand=True,
+        )
+
+        # ── 다이얼로그 ──────────────────────────────────
         self.dialog = ft.AlertDialog(
             modal=True,
-            title=ft.Text(
-                "강의 처리 중...",
-                size=Typography.HEADING,
-                weight=Typography.SEMI_BOLD,
+            title=ft.Row(
+                controls=[
+                    self._title_text,
+                    ft.IconButton(
+                        icon=ft.Icons.CLOSE,
+                        icon_size=18,
+                        icon_color=Colors.TEXT_MUTED,
+                        on_click=self._handle_stop,
+                        tooltip="닫기",
+                    ),
+                ],
             ),
             content=ft.Container(
-                width=440,
+                width=560,
                 content=ft.Column(
                     controls=[
-                        # 단계 표시
-                        ft.Container(
-                            content=ft.Column(
-                                controls=self._step_rows,
-                                spacing=Spacing.XS,
-                            ),
-                            padding=ft.padding.symmetric(vertical=Spacing.SM),
-                        ),
-                        divider(),
-                        self._status_text,
-                        self._progress_bar,
-                        self._log_toggle,
-                        self._log_container,
+                        self._progress_content,
+                        self._complete_content,
+                        self._cancel_content,
                     ],
-                    spacing=Spacing.SM,
-                    tight=True,
+                    scroll=ft.ScrollMode.AUTO,
                     horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
                 ),
             ),
-            actions=[self._open_folder_btn, self._stop_btn],
+            actions=[self._stop_btn],
             actions_alignment=ft.MainAxisAlignment.END,
         )
+
+    # ── 타임라인 빌드 ────────────────────────────────────
+
+    def _build_timeline(self):
+        """타임라인 컨트롤 생성"""
+        self._timeline_column.controls.clear()
+        active_items = [item for item in self._timeline_items if item["state"] != "skipped"]
+
+        for idx, item in enumerate(active_items):
+            is_last = (idx == len(active_items) - 1)
+
+            # 원형 아이콘
+            circle = self._make_circle(item["state"])
+            item["circle"] = circle
+
+            # 라벨
+            label = ft.Text(
+                item["name"],
+                size=Typography.BODY,
+                weight=Typography.SEMI_BOLD if item["state"] == "active" else Typography.REGULAR,
+                color=self._label_color(item["state"]),
+            )
+            item["label"] = label
+
+            # 부제 (타임스탬프 또는 상태)
+            subtitle = ft.Text(
+                self._subtitle_text(item),
+                size=Typography.SMALL,
+                color=Colors.TEXT_MUTED,
+            )
+            item["subtitle"] = subtitle
+
+            # 연결선
+            if not is_last:
+                line_color = Colors.PRIMARY if item["state"] in ("completed", "active") else Colors.BORDER
+                line = ft.Container(
+                    width=2,
+                    height=20,
+                    bgcolor=line_color,
+                    margin=ft.margin.only(left=11),
+                )
+                item["line"] = line
+            else:
+                item["line"] = None
+
+            # 행 조립: 원형 + 텍스트
+            row = ft.Row(
+                controls=[
+                    circle,
+                    ft.Column(
+                        controls=[label, subtitle],
+                        spacing=0,
+                        expand=True,
+                    ),
+                ],
+                spacing=Spacing.SM,
+                vertical_alignment=ft.CrossAxisAlignment.START,
+            )
+            self._timeline_column.controls.append(row)
+
+            # 연결선 행
+            if item["line"]:
+                self._timeline_column.controls.append(item["line"])
+
+    def _make_circle(self, state: str) -> ft.Container:
+        """타임라인 원형 아이콘 생성"""
+        size = 24
+        if state == "completed":
+            return ft.Container(
+                content=ft.Icon(ft.Icons.CHECK, size=14, color=ft.Colors.WHITE),
+                width=size, height=size,
+                border_radius=size // 2,
+                bgcolor=Colors.PRIMARY,
+                alignment=ft.alignment.center,
+            )
+        elif state == "active":
+            return ft.Container(
+                content=ft.Icon(ft.Icons.SYNC, size=14, color=ft.Colors.WHITE),
+                width=size, height=size,
+                border_radius=size // 2,
+                bgcolor=Colors.PRIMARY,
+                alignment=ft.alignment.center,
+            )
+        else:  # pending
+            return ft.Container(
+                width=size, height=size,
+                border_radius=size // 2,
+                border=ft.border.all(2, Colors.BORDER),
+                bgcolor=Colors.CARD,
+                alignment=ft.alignment.center,
+            )
+
+    def _label_color(self, state: str) -> str:
+        if state == "completed":
+            return Colors.PRIMARY
+        elif state == "active":
+            return Colors.PRIMARY
+        return Colors.TEXT_MUTED
+
+    def _subtitle_text(self, item: dict) -> str:
+        state = item["state"]
+        num = item["num"]
+        if state == "completed":
+            ts = self._step_timestamps.get(num, "")
+            return f"{ts} - 처리 완료" if ts else "처리 완료"
+        elif state == "active":
+            return "진행 중..."
+        return "대기 중"
+
+    def _refresh_timeline(self):
+        """타임라인 UI 갱신 (상태 변경 후 호출)"""
+        active_items = [item for item in self._timeline_items if item["state"] != "skipped"]
+
+        ctrl_idx = 0
+        for idx, item in enumerate(active_items):
+            is_last = (idx == len(active_items) - 1)
+
+            # 원형 교체
+            new_circle = self._make_circle(item["state"])
+            item["circle"] = new_circle
+            row = self._timeline_column.controls[ctrl_idx]
+            row.controls[0] = new_circle
+
+            # 라벨 업데이트
+            item["label"].color = self._label_color(item["state"])
+            item["label"].weight = Typography.SEMI_BOLD if item["state"] == "active" else Typography.REGULAR
+
+            # 부제 업데이트
+            item["subtitle"].value = self._subtitle_text(item)
+
+            ctrl_idx += 1
+
+            # 연결선 업데이트
+            if not is_last:
+                line_color = Colors.PRIMARY if item["state"] in ("completed", "active") else Colors.BORDER
+                line_ctrl = self._timeline_column.controls[ctrl_idx]
+                line_ctrl.bgcolor = line_color
+                item["line"] = line_ctrl
+                ctrl_idx += 1
+
+    # ── Public API ───────────────────────────────────────
 
     def show(self):
         self._page.show_dialog(self.dialog)
@@ -166,16 +442,103 @@ class ProgressModal:
         self.dialog.open = False
         self._page.update()
 
-    def _toggle_log(self, e=None):
-        self._log_visible = not self._log_visible
-        self._log_container.visible = self._log_visible
-        if self._log_visible:
-            self._log_toggle.content.value = "상세 로그 숨기기"
-            self._log_toggle.icon = ft.Icons.EXPAND_LESS
+    def update_step(self, step_num: int, step_name: str):
+        """현재 단계 업데이트 (step_num: 1-indexed)"""
+        self._current_step = step_num
+        now_ts = datetime.now().strftime("%H:%M")
+
+        for item in self._timeline_items:
+            if item["state"] == "skipped":
+                continue
+            if item["num"] < step_num:
+                if item["state"] != "completed":
+                    item["state"] = "completed"
+                    if item["num"] not in self._step_timestamps:
+                        self._step_timestamps[item["num"]] = now_ts
+            elif item["num"] == step_num:
+                item["state"] = "active"
+            else:
+                item["state"] = "pending"
+
+        self._refresh_timeline()
+        self._progress_bar.value = 0
+        self._progress_pct.value = "0%"
+        self._progress_desc.value = f"{step_name} 중..."
+        self._safe_update()
+
+    def update_progress(self, current: int, total: int):
+        if total > 0:
+            pct = current / total
+            self._progress_bar.value = pct
+            pct_int = int(pct * 100)
+            self._progress_pct.value = f"{pct_int}%"
+            mb_cur = current / (1024 * 1024)
+            mb_tot = total / (1024 * 1024)
+            self._progress_desc.value = (
+                f"다운로드 중... {pct_int}%  ({mb_cur:.1f} / {mb_tot:.1f} MB)"
+            )
+            now = time.monotonic()
+            if pct >= 1.0 or (now - self._last_progress_update) >= 0.15:
+                self._last_progress_update = now
+                self._safe_update()
+
+    def append_log(self, message: str):
+        ts = datetime.now().strftime("%H:%M:%S")
+        formatted = f"[{ts}] {message}"
+        self._log_messages.append(formatted)
+        if self._log_field.value:
+            self._log_field.value += "\n" + formatted
         else:
-            self._log_toggle.content.value = "상세 로그 보기"
-            self._log_toggle.icon = ft.Icons.EXPAND_MORE
-        self._page.update()
+            self._log_field.value = formatted
+        self._safe_update()
+
+    def mark_complete(self):
+        self._is_finished = True
+
+        # 타임라인 전체 완료
+        now_ts = datetime.now().strftime("%H:%M")
+        for item in self._timeline_items:
+            if item["state"] == "skipped":
+                continue
+            item["state"] = "completed"
+            if item["num"] not in self._step_timestamps:
+                self._step_timestamps[item["num"]] = now_ts
+
+        # State B 전환
+        self._progress_content.visible = False
+        self._stop_btn.visible = False
+        self._title_text.value = ""
+
+        # 소요 시간 계산
+        elapsed = time.monotonic() - self._start_time
+        elapsed_str = self._format_elapsed(elapsed)
+        save_path = ensure_downloads_directory()
+
+        self._complete_elapsed.value = f"총 소요 시간: {elapsed_str}"
+        self._complete_path.value = f"저장 위치: {save_path}"
+        self._complete_content.visible = True
+
+        if get_auto_open_folder():
+            open_in_file_explorer(save_path)
+
+        self._safe_update()
+
+    def mark_cancelled(self):
+        self._is_finished = True
+
+        # State C 전환
+        self._progress_content.visible = False
+        self._stop_btn.visible = False
+        self._title_text.value = ""
+
+        elapsed = time.monotonic() - self._start_time
+        elapsed_str = self._format_elapsed(elapsed)
+        self._cancel_elapsed.value = f"경과 시간: {elapsed_str}"
+        self._cancel_content.visible = True
+
+        self._safe_update()
+
+    # ── Private ──────────────────────────────────────────
 
     def _handle_open_folder(self, e=None):
         open_in_file_explorer(ensure_downloads_directory())
@@ -190,94 +553,14 @@ class ProgressModal:
         if self._on_stop:
             self._on_stop()
 
-    # ── 외부 업데이트 메서드 (워커 스레드에서 호출) ──
-
-    def update_step(self, step_num: int, step_name: str):
-        """현재 단계 업데이트 (step_num: 1-indexed)"""
-        for i, (num, name) in enumerate(_STEPS):
-            icon_ctrl = self._step_rows[i].controls[0]
-            label_ctrl = self._step_rows[i].controls[1]
-
-            # 건너뛴 단계는 유지
-            if num < self._start_stage:
-                continue
-
-            if num < step_num:
-                icon_ctrl.value = "✓"
-                icon_ctrl.color = Colors.SUCCESS
-                label_ctrl.color = Colors.SUCCESS
-            elif num == step_num:
-                icon_ctrl.value = "●"
-                icon_ctrl.color = Colors.PRIMARY
-                icon_ctrl.weight = Typography.BOLD
-                label_ctrl.color = Colors.PRIMARY
-                label_ctrl.weight = Typography.SEMI_BOLD
-            else:
-                icon_ctrl.value = "○"
-                icon_ctrl.color = Colors.TEXT_MUTED
-                label_ctrl.color = Colors.TEXT_MUTED
-
-        self._progress_bar.value = 0
-        self._status_text.value = f"{step_name} 중..."
-        self._safe_update()
-
-    def update_progress(self, current: int, total: int):
-        if total > 0:
-            pct = current / total
-            self._progress_bar.value = pct
-            mb_cur = current / (1024 * 1024)
-            mb_tot = total / (1024 * 1024)
-            self._status_text.value = (
-                f"다운로드 중... {int(pct * 100)}%  ({mb_cur:.1f} / {mb_tot:.1f} MB)"
-            )
-            now = time.monotonic()
-            if pct >= 1.0 or (now - self._last_progress_update) >= 0.15:
-                self._last_progress_update = now
-                self._safe_update()
-
-    def append_log(self, message: str):
-        self._log_messages.append(message)
-        if self._log_field.value:
-            self._log_field.value += "\n" + message
-        else:
-            self._log_field.value = message
-        self._safe_update()
-
-    def mark_complete(self):
-        self._is_finished = True
-        for i, (num, name) in enumerate(_STEPS):
-            # 건너뛴 단계는 유지
-            if num < self._start_stage:
-                continue
-            icon_ctrl = self._step_rows[i].controls[0]
-            label_ctrl = self._step_rows[i].controls[1]
-            icon_ctrl.value = "✓"
-            icon_ctrl.color = Colors.SUCCESS
-            label_ctrl.color = Colors.SUCCESS
-
-        self._progress_bar.value = 1.0
-        self._status_text.value = "모든 작업이 완료되었습니다!"
-        self._status_text.color = Colors.SUCCESS
-        self._open_folder_btn.visible = True
-        if get_auto_open_folder():
-            open_in_file_explorer(ensure_downloads_directory())
-        self._stop_btn.content.value = "닫기"
-        self._stop_btn.disabled = False
-        self._stop_btn.style = ft.ButtonStyle(
-            color=ft.Colors.WHITE,
-            bgcolor=Colors.PRIMARY,
-            shape=ft.RoundedRectangleBorder(radius=Radius.SM),
-        )
-        self._safe_update()
-
-    def mark_cancelled(self):
-        self._is_finished = True
-        self._stop_btn.content.value = "닫기"
-        self._stop_btn.disabled = False
-        self._safe_update()
+    def _format_elapsed(self, seconds: float) -> str:
+        m, s = divmod(int(seconds), 60)
+        if m >= 60:
+            h, m = divmod(m, 60)
+            return f"{h:02d}:{m:02d}:{s:02d}"
+        return f"{m:02d}:{s:02d}"
 
     def _safe_update(self):
-        """스레드 안전한 UI 업데이트"""
         try:
             self._page.update()
         except Exception:
