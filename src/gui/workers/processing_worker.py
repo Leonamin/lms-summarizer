@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Dict, List, Callable, Optional
 
 from src.gui.config.constants import Messages
+from src.video_pipeline.login import LoginFailedError
 from src.gui.core.file_manager import (
     create_config_files, extract_urls_from_input, ensure_downloads_directory,
     get_summary_prompt, get_chrome_path, get_debug_mode, get_stt_engine,
@@ -126,6 +127,11 @@ class ProcessingWorker:
         except CancelledException:
             self._emit_log("⚠️ 사용자에 의해 작업이 취소되었습니다.")
             self._on_finished(False, "작업이 취소되었습니다.")
+
+        except LoginFailedError as e:
+            reason_msg = e.detail
+            self._emit_log(f"로그인 실패: {reason_msg}")
+            self._on_finished(False, f"login_failed:{e.reason}:{reason_msg}")
 
         except Exception as e:
             error_msg = f"작업 중 오류 발생: {str(e)}"

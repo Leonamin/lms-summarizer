@@ -11,7 +11,7 @@ from typing import List, Optional, Callable
 
 from playwright.async_api import async_playwright, Playwright, Page, Frame
 
-from src.video_pipeline.login import perform_login_if_needed
+from src.video_pipeline.login import perform_login_if_needed, LoginFailedError
 from src.gui.config.course_models import (
     Course, LectureItem, Week, CourseDetail,
     LectureType, VIDEO_LECTURE_TYPES,
@@ -95,11 +95,9 @@ class CourseScraper:
 
         if "login" in self._page.url:
             self._log("로그인 진행 중...")
-            result = await perform_login_if_needed(
+            await perform_login_if_needed(
                 self._page, self.username, self.password
             )
-            if not result:
-                raise RuntimeError("LMS 로그인 실패. 학번/비밀번호를 확인하세요.")
             self._log("로그인 완료")
         else:
             self._log("이미 로그인 상태")
