@@ -39,7 +39,7 @@ class AccountSection:
                 self._fields['student_id'].container,
                 self._fields['password'].container,
             ],
-            spacing=Spacing.XS,
+            spacing=Spacing.SM,
             horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
         )
 

@@ -66,7 +66,7 @@ class AISettingsSection:
                 self._api_field.container,
                 self._clipboard_notice,
             ],
-            spacing=Spacing.XS,
+            spacing=Spacing.SM,
             horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
         )
 

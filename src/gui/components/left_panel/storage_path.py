@@ -75,7 +75,7 @@ class StoragePath:
                         spacing=Spacing.XS,
                     ),
                 ],
-                spacing=Spacing.XS,
+                spacing=Spacing.SM,
                 horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
             ),
         )

@@ -84,6 +84,7 @@ class LectureSection:
 
         self._tab_view = ft.TabBarView(
             controls=[self._list_tab_content, self._url_tab_content],
+            expand=True,
         )
 
         self._tabs = ft.Tabs(
@@ -95,6 +96,7 @@ class LectureSection:
             length=2,
             selected_index=0,
             on_change=self._handle_tab_change,
+            expand=True,
         )
 
         self.control = ft.Column(
