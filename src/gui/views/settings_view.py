@@ -11,6 +11,7 @@ from src.gui.core.file_manager import (
     get_summary_prompt, set_summary_prompt,
     get_chrome_path, set_chrome_path, detect_chrome_paths,
     get_debug_mode, set_debug_mode,
+    get_auto_open_folder, set_auto_open_folder,
 )
 
 
@@ -79,12 +80,18 @@ def open_settings_dialog(page: ft.Page):
         active_color=Colors.PRIMARY,
     )
 
+    auto_open_switch = ft.Switch(
+        value=get_auto_open_folder(),
+        active_color=Colors.PRIMARY,
+    )
+
     def _save(e):
         prompt = (prompt_field.value or "").strip()
         chrome_path = (chrome_field.value or "").strip()
 
         set_summary_prompt(prompt if prompt else DEFAULT_PROMPT)
         set_debug_mode(debug_switch.value)
+        set_auto_open_folder(auto_open_switch.value)
 
         if chrome_path:
             if not os.path.exists(chrome_path):
@@ -180,6 +187,27 @@ def open_settings_dialog(page: ft.Page):
                                 expand=True,
                             ),
                             debug_switch,
+                        ],
+                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                    ),
+                    divider(),
+                    # 완료 후 폴더 자동 열기 섹션
+                    ft.Row(
+                        controls=[
+                            ft.Column(
+                                controls=[
+                                    ft.Text("완료 후 폴더 자동 열기", size=Typography.BODY, weight=Typography.SEMI_BOLD),
+                                    ft.Text(
+                                        "작업 완료 시 결과 폴더를 자동으로 엽니다.",
+                                        size=Typography.SMALL,
+                                        color=Colors.TEXT_MUTED,
+                                    ),
+                                ],
+                                spacing=2,
+                                expand=True,
+                            ),
+                            auto_open_switch,
                         ],
                         alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                         vertical_alignment=ft.CrossAxisAlignment.CENTER,

@@ -362,3 +362,26 @@ def clear_history() -> None:
     settings = load_settings()
     settings.pop("history", None)
     save_settings(settings)
+
+
+# ── 파일 탐색기 / 자동 열기 ─────────────────────────────
+
+def open_in_file_explorer(path: str) -> None:
+    """플랫폼별 파일 탐색기로 경로 열기"""
+    import subprocess, sys
+    if sys.platform == 'darwin':
+        subprocess.Popen(['open', path])
+    elif sys.platform == 'win32':
+        subprocess.Popen(['explorer', path])
+    else:
+        subprocess.Popen(['xdg-open', path])
+
+
+def get_auto_open_folder() -> bool:
+    return load_settings().get("auto_open_folder", False)
+
+
+def set_auto_open_folder(enabled: bool) -> None:
+    settings = load_settings()
+    settings["auto_open_folder"] = enabled
+    save_settings(settings)
