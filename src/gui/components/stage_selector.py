@@ -89,13 +89,11 @@ class StageSelector:
             visible=False,
         )
 
-        # 선택된 파일 목록 표시 (최대 높이 제한 + 스크롤)
+        # 선택된 파일 목록 표시 (모두 표시, 외부 스크롤에 위임)
         self._file_list = ft.Column(
             controls=[],
             spacing=2,
             visible=False,
-            scroll=ft.ScrollMode.AUTO,
-            height=None,  # _rebuild_file_list에서 동적 설정
         )
 
         # 파일 개수 요약 텍스트
@@ -106,6 +104,27 @@ class StageSelector:
             visible=False,
         )
 
+        # 모두 제거 버튼
+        self._clear_all_btn = ft.TextButton(
+            content=ft.Text("모두 제거"),
+            icon=ft.Icons.DELETE_SWEEP,
+            on_click=self._handle_clear_all,
+            visible=False,
+            style=ft.ButtonStyle(
+                color=Colors.ERROR,
+                padding=ft.padding.symmetric(horizontal=8, vertical=4),
+                text_style=ft.TextStyle(size=Typography.SMALL),
+            ),
+        )
+
+        # 확장자 불일치 경고 메시지
+        self._ext_warning = ft.Text(
+            "",
+            size=Typography.SMALL,
+            color=Colors.WARNING,
+            visible=False,
+        )
+
         # FilePicker (Flet 0.81+에서는 async 직접 반환)
         self.file_picker = ft.FilePicker()
 
@@ -113,12 +132,13 @@ class StageSelector:
             controls=[
                 self._dropdown,
                 ft.Row(
-                    controls=[self._pick_btn, self._file_count_text],
+                    controls=[self._pick_btn, self._file_count_text, self._clear_all_btn],
                     spacing=Spacing.SM,
                     vertical_alignment=ft.CrossAxisAlignment.CENTER,
                 ),
                 self._auto_detect_btn,
                 self._detect_info,
+                self._ext_warning,
                 self._file_list,
             ],
             spacing=Spacing.SM,
@@ -137,6 +157,8 @@ class StageSelector:
         self._file_count_text.value = ""
         self._detect_info.visible = False
         self._detect_info.value = ""
+        self._ext_warning.visible = False
+        self._ext_warning.value = ""
 
         if self._pick_btn.page:
             self._pick_btn.page.update()
@@ -145,33 +167,71 @@ class StageSelector:
             self._on_change(stage)
 
     def _handle_auto_detect(self, e):
-        """다운로드 디렉토리를 스캔하여 시작 단계와 파일을 자동 설정"""
+        """1단계: 전체 자동 추천 / 2~4단계: 현재 단계에 맞는 파일만 검색"""
         downloads_dir = ensure_downloads_directory()
-        detector = ArtifactDetector(downloads_dir)
-        recommended_stage, files = detector.recommend_start_stage()
+        current_stage = self.get_stage()
 
-        if recommended_stage == PipelineStage.DOWNLOAD and not files:
-            self._detect_info.value = "감지된 산출물이 없습니다. 1단계부터 시작합니다."
-            self._detect_info.color = Colors.TEXT_MUTED
-            self._detect_info.visible = True
-            self.set_stage(PipelineStage.DOWNLOAD)
-            self._selected_files.clear()
-            self._file_list.controls.clear()
-            self._file_list.visible = False
-            self._file_count_text.visible = False
-            self._pick_btn.visible = False
+        if current_stage == PipelineStage.DOWNLOAD:
+            # 1단계: 전체 자동 추천 (단계까지 변경)
+            detector = ArtifactDetector(downloads_dir)
+            recommended_stage, files = detector.recommend_start_stage()
+
+            if recommended_stage == PipelineStage.DOWNLOAD and not files:
+                self._detect_info.value = "감지된 산출물이 없습니다. 1단계부터 시작합니다."
+                self._detect_info.color = Colors.TEXT_MUTED
+                self._detect_info.visible = True
+            else:
+                self.set_stage(recommended_stage)
+                self.set_files(files)
+                stage_name = STAGE_LABELS[recommended_stage]
+                self._detect_info.value = (
+                    f"{len(files)}개 파일 감지 → {recommended_stage.value}단계: {stage_name}부터 시작"
+                )
+                self._detect_info.color = Colors.INFO
+                self._detect_info.visible = True
         else:
-            self.set_stage(recommended_stage)
-            self.set_files(files)
-            stage_name = STAGE_LABELS[recommended_stage]
-            self._detect_info.value = (
-                f"{len(files)}개 파일 감지 → {recommended_stage.value}단계: {stage_name}부터 시작"
-            )
-            self._detect_info.color = Colors.INFO
-            self._detect_info.visible = True
+            # 2~4단계: 현재 단계에 맞는 파일만 검색 (단계 변경 안 함)
+            extensions = _STAGE_INPUT_EXTENSIONS.get(current_stage, [])
+            found_files = self._scan_for_extensions(downloads_dir, extensions)
+
+            if found_files:
+                self.set_files(found_files)
+                self._detect_info.value = f"{len(found_files)}개 파일 감지됨"
+                self._detect_info.color = Colors.INFO
+                self._detect_info.visible = True
+            else:
+                ext_str = ", ".join(extensions)
+                self._detect_info.value = f"저장 폴더에서 {ext_str} 파일을 찾을 수 없습니다."
+                self._detect_info.color = Colors.TEXT_MUTED
+                self._detect_info.visible = True
 
         if self._detect_info.page:
             self._detect_info.page.update()
+
+    @staticmethod
+    def _scan_for_extensions(directory: str, extensions: list[str]) -> list[str]:
+        """디렉토리를 재귀 스캔하여 특정 확장자 파일 목록 반환"""
+        import os
+        found = []
+        if not os.path.isdir(directory):
+            return found
+        for root, _dirs, files in os.walk(directory):
+            for filename in files:
+                lower = filename.lower()
+                if lower.endswith("_summarized.txt"):
+                    continue
+                if any(lower.endswith(ext) for ext in extensions):
+                    found.append(os.path.join(root, filename))
+        return sorted(found)
+
+    def _handle_clear_all(self, e):
+        """선택된 파일 모두 제거"""
+        self._selected_files.clear()
+        self._rebuild_file_list()
+        self._ext_warning.visible = False
+        self._ext_warning.value = ""
+        if self._ext_warning.page:
+            self._ext_warning.page.update()
 
     async def _handle_pick_files(self, e):
         stage = self.get_stage()
@@ -189,6 +249,24 @@ class StageSelector:
         new_paths = [f.path for f in files if f.path]
         existing = set(self._selected_files)
         added = [p for p in new_paths if p not in existing]
+
+        # 확장자 필터링
+        stage = self.get_stage()
+        valid_exts = _STAGE_INPUT_EXTENSIONS.get(stage)
+        if valid_exts:
+            matched = [p for p in added if any(p.lower().endswith(ext) for ext in valid_exts)]
+            skipped_count = len(added) - len(matched)
+            added = matched
+
+            if skipped_count > 0:
+                ext_str = ", ".join(valid_exts)
+                self._ext_warning.value = (
+                    f"{skipped_count}개 파일이 현재 단계({ext_str})와 맞지 않아 제외됨"
+                )
+                self._ext_warning.visible = True
+            else:
+                self._ext_warning.visible = False
+                self._ext_warning.value = ""
 
         self._selected_files.extend(added)
         self._rebuild_file_list()
@@ -236,10 +314,9 @@ class StageSelector:
 
         has_files = len(self._selected_files) > 0
         self._file_list.visible = has_files
-        # 파일 4개 초과 시 높이 제한 + 스크롤 활성화 (행 높이 ~28px)
-        self._file_list.height = min(len(self._selected_files), 5) * 28 if has_files else None
         self._file_count_text.visible = has_files
         self._file_count_text.value = f"{len(self._selected_files)}개 파일 선택됨" if has_files else ""
+        self._clear_all_btn.visible = has_files
 
         if self._file_list.page:
             self._file_list.page.update()
@@ -268,6 +345,34 @@ class StageSelector:
         return list(self._selected_files)
 
     def set_files(self, files: list[str]):
-        """입력 파일 목록 설정"""
-        self._selected_files = list(files)
+        """입력 파일 목록 설정 (확장자 불일치 파일은 필터링)"""
+        stage = self.get_stage()
+        valid_exts = _STAGE_INPUT_EXTENSIONS.get(stage)
+
+        if valid_exts:
+            matched = []
+            skipped = []
+            for f in files:
+                lower = f.lower()
+                if any(lower.endswith(ext) for ext in valid_exts):
+                    matched.append(f)
+                else:
+                    skipped.append(f)
+
+            self._selected_files = matched
+
+            if skipped:
+                ext_str = ", ".join(valid_exts)
+                self._ext_warning.value = (
+                    f"{len(skipped)}개 파일이 현재 단계({ext_str})와 맞지 않아 제외됨"
+                )
+                self._ext_warning.visible = True
+            else:
+                self._ext_warning.visible = False
+                self._ext_warning.value = ""
+        else:
+            self._selected_files = list(files)
+            self._ext_warning.visible = False
+            self._ext_warning.value = ""
+
         self._rebuild_file_list()

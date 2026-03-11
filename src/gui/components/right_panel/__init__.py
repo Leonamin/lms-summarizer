@@ -66,6 +66,15 @@ class RightPanel:
     def set_processing(self, is_processing: bool):
         self.action_bar.set_processing(is_processing)
 
+    def get_summary_mode(self) -> str:
+        return self.options.get_summary_mode()
+
+    def get_subject_category(self) -> str:
+        return self.options.get_subject_category()
+
+    def get_subject_custom(self) -> str:
+        return self.options.get_subject_custom()
+
     def set_enabled(self, enabled: bool):
         self.lecture.set_enabled(enabled)
         self.options.set_enabled(enabled)
