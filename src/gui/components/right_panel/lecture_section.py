@@ -71,25 +71,31 @@ class LectureSection:
             padding=Spacing.SM,
         )
 
-        # 탭
-        self._tabs = ft.Tabs(
-            selected_index=0,
+        # 탭 (Flet 0.81: Tabs = TabBar + TabBarView)
+        self._tab_bar = ft.TabBar(
             tabs=[
                 ft.Tab(label="목록에서 선택", icon=ft.Icons.LIST),
                 ft.Tab(label="URL 직접 입력", icon=ft.Icons.LINK),
             ],
-            on_change=self._handle_tab_change,
             indicator_color=Colors.PRIMARY,
             label_color=Colors.PRIMARY,
             unselected_label_color=Colors.TEXT_MUTED,
         )
 
-        # 탭 콘텐츠 컨테이너
-        self._tab_contents = ft.Stack(
+        self._tab_view = ft.TabBarView(
             controls=[self._list_tab_content, self._url_tab_content],
-            expand=True,
         )
-        self._url_tab_content.visible = False
+
+        self._tabs = ft.Tabs(
+            content=ft.Column(
+                controls=[self._tab_bar, self._tab_view],
+                spacing=0,
+                expand=True,
+            ),
+            length=2,
+            selected_index=0,
+            on_change=self._handle_tab_change,
+        )
 
         self.control = ft.Column(
             controls=[
@@ -106,7 +112,6 @@ class LectureSection:
                     spacing=Spacing.XS,
                 ),
                 self._tabs,
-                self._tab_contents,
             ],
             spacing=Spacing.XS,
             expand=True,
@@ -114,11 +119,8 @@ class LectureSection:
         )
 
     def _handle_tab_change(self, e):
-        idx = self._tabs.selected_index
-        self._list_tab_content.visible = (idx == 0)
-        self._url_tab_content.visible = (idx == 1)
-        if self._tab_contents.page:
-            self._tab_contents.page.update()
+        # TabBarView가 자동으로 콘텐츠 전환 처리
+        pass
 
     def _handle_open_course_list(self, e):
         if self._on_open_course_list:
