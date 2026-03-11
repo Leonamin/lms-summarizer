@@ -262,6 +262,8 @@ class OptionsSection:
     def _handle_toggle(self, e=None):
         self._expanded = not self._expanded
         self._body.visible = self._expanded
+        # body가 expand 되어야 높이가 제한되고 스크롤이 작동함
+        self._body.expand = self._expanded
         self._chevron.icon = ft.Icons.EXPAND_MORE if self._expanded else ft.Icons.EXPAND_LESS
 
         if self._on_toggle:
