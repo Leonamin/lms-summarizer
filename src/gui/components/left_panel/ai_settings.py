@@ -75,11 +75,10 @@ class AISettingsSection:
         self._api_field.set_enabled(not is_clipboard)
         self._clipboard_notice.visible = is_clipboard
 
-        # 엔진별 저장된 API 키 복원
+        # 엔진별 저장된 API 키 복원 (없으면 필드 비움)
         if not is_clipboard:
             saved_key = get_api_key_for_engine(engine)
-            if saved_key:
-                self._api_field.set_value(saved_key)
+            self._api_field.set_value(saved_key)
 
         if self._api_field.control.page:
             self._api_field.control.update()
