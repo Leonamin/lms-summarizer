@@ -35,7 +35,7 @@ def open_settings_dialog(page: ft.Page):
         multiline=True,
         min_lines=3,
         max_lines=6,
-        border_radius=Radius.SM,
+        border_radius=Radius.MD,
         border_color=Colors.BORDER,
         focused_border_color=Colors.PRIMARY,
         text_size=Typography.BODY,
@@ -51,7 +51,7 @@ def open_settings_dialog(page: ft.Page):
     chrome_field = ft.TextField(
         value=get_chrome_path(),
         hint_text="Chrome 실행 파일 경로",
-        border_radius=Radius.SM,
+        border_radius=Radius.MD,
         border_color=Colors.BORDER,
         focused_border_color=Colors.PRIMARY,
         text_size=Typography.BODY,
@@ -97,7 +97,7 @@ def open_settings_dialog(page: ft.Page):
         value=current_stt,
         label="STT 엔진",
         leading_icon=ft.Icons.MIC,
-        border_radius=Radius.SM,
+        border_radius=Radius.MD,
         border_color=Colors.BORDER,
         focused_border_color=Colors.PRIMARY,
         text_size=Typography.BODY,
@@ -109,7 +109,7 @@ def open_settings_dialog(page: ft.Page):
     stt_api_key_field = ft.TextField(
         value=get_stt_api_key(),
         hint_text="client_id:client_secret",
-        border_radius=Radius.SM,
+        border_radius=Radius.MD,
         border_color=Colors.BORDER,
         focused_border_color=Colors.PRIMARY,
         text_size=Typography.BODY,
@@ -246,7 +246,7 @@ def open_settings_dialog(page: ft.Page):
             vertical_alignment=ft.CrossAxisAlignment.CENTER,
         ),
         on_click=_toggle_advanced,
-        border_radius=Radius.SM,
+        border_radius=Radius.MD,
         border=ft.border.all(1, Colors.BORDER),
         padding=ft.padding.symmetric(horizontal=Spacing.MD, vertical=Spacing.SM),
         ink=True,
@@ -289,6 +289,8 @@ def open_settings_dialog(page: ft.Page):
     # ── 다이얼로그 조립 ──────────────────────────────────
     dialog = ft.AlertDialog(
         modal=True,
+        shape=ft.RoundedRectangleBorder(radius=Radius.LG),
+        bgcolor=Colors.BG,
         title=ft.Row(
             controls=[
                 ft.Icon(ft.Icons.SETTINGS, size=20, color=Colors.PRIMARY),
@@ -351,7 +353,7 @@ def open_settings_dialog(page: ft.Page):
                                 on_click=_browse_chrome,
                                 style=ft.ButtonStyle(
                                     color=Colors.PRIMARY,
-                                    shape=ft.RoundedRectangleBorder(radius=Radius.SM),
+                                    shape=ft.RoundedRectangleBorder(radius=Radius.MD),
                                 ),
                             ),
                         ],
@@ -378,7 +380,7 @@ def open_settings_dialog(page: ft.Page):
                 style=ft.ButtonStyle(
                     color=ft.Colors.WHITE,
                     bgcolor=Colors.PRIMARY,
-                    shape=ft.RoundedRectangleBorder(radius=Radius.SM),
+                    shape=ft.RoundedRectangleBorder(radius=Radius.LG),
                 ),
             ),
         ],

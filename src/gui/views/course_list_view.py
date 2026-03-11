@@ -120,6 +120,7 @@ class CourseListView:
         self.dialog = ft.AlertDialog(
             modal=True,
             shape=ft.RoundedRectangleBorder(radius=Radius.LG),
+            bgcolor=Colors.BG,
             title=ft.Column(
                 controls=[
                     ft.Row(

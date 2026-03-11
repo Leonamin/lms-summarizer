@@ -274,13 +274,32 @@ def setup_page_theme(page: ft.Page):
     page.window.min_height = 500
 
     page.theme = ft.Theme(
-        color_scheme_seed=Colors.PRIMARY,
         color_scheme=ft.ColorScheme(
             primary=Colors.PRIMARY,
             on_primary=ft.Colors.WHITE,
+            primary_container=Colors.PRIMARY_BG,
+            on_primary_container=Colors.PRIMARY_DARK,
+            secondary=Colors.TEXT_SECONDARY,
+            on_secondary=ft.Colors.WHITE,
+            secondary_container=Colors.SURFACE,
+            on_secondary_container=Colors.TEXT,
+            tertiary=Colors.ACCENT,
+            on_tertiary=ft.Colors.WHITE,
             surface=Colors.CARD,
             on_surface=Colors.TEXT,
+            surface_container=Colors.SURFACE,
+            surface_container_highest=Colors.SURFACE,
+            on_surface_variant=Colors.TEXT_SECONDARY,
+            surface_tint=ft.Colors.TRANSPARENT,
+            outline=Colors.BORDER,
+            outline_variant=Colors.BORDER,
             error=Colors.ERROR,
+            on_error=ft.Colors.WHITE,
+            error_container="#FEE2E2",
+            on_error_container=Colors.ERROR,
+            inverse_surface=Colors.TEXT,
+            on_inverse_surface=Colors.CARD,
+            shadow=Colors.SHADOW,
         ),
         text_theme=ft.TextTheme(
             body_medium=ft.TextStyle(size=Typography.BODY, color=Colors.TEXT),

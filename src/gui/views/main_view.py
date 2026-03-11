@@ -61,28 +61,36 @@ class MainView:
             on_settings_click=lambda e: open_settings_dialog(self.page),
         )
 
-        self.page.add(
-            ft.Container(
-                content=ft.Column(
-                    controls=[
-                        header,
-                        ft.Row(
-                            controls=[
-                                self.left_panel.control,
-                                ft.VerticalDivider(width=1, color=Colors.BORDER),
-                                self.right_panel.control,
-                            ],
-                            expand=True,
-                            vertical_alignment=ft.CrossAxisAlignment.STRETCH,
-                        ),
-                        self.log_drawer.control,
-                    ],
-                    spacing=Spacing.SM,
-                    expand=True,
-                    horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
-                ),
-                padding=ft.padding.symmetric(horizontal=20, vertical=16),
+        # 메인 콘텐츠 (헤더 + 2-panel) — 패딩 적용
+        main_content = ft.Container(
+            content=ft.Column(
+                controls=[
+                    header,
+                    ft.Row(
+                        controls=[
+                            self.left_panel.control,
+                            ft.VerticalDivider(width=1, color=Colors.BORDER),
+                            self.right_panel.control,
+                        ],
+                        expand=True,
+                        vertical_alignment=ft.CrossAxisAlignment.STRETCH,
+                    ),
+                ],
+                spacing=Spacing.SM,
                 expand=True,
+                horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
+            ),
+            padding=ft.padding.symmetric(horizontal=20, vertical=16),
+            expand=True,
+        )
+
+        # 로그 드로어는 하단 밀착 (패딩 바깥)
+        self.page.add(
+            ft.Column(
+                controls=[main_content, self.log_drawer.control],
+                spacing=0,
+                expand=True,
+                horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
             )
         )
 
@@ -260,10 +268,13 @@ class MainView:
             modal=True,
             title=ft.Text("확인"),
             content=ft.Text("진행 중인 작업을 중지하시겠습니까?"),
+            shape=ft.RoundedRectangleBorder(radius=Radius.LG),
+            bgcolor=Colors.BG,
             actions=[
                 ft.TextButton(content=ft.Text("아니오"), on_click=cancel),
                 ft.ElevatedButton(content=ft.Text("예"), on_click=do_stop,
-                    style=ft.ButtonStyle(color=ft.Colors.WHITE, bgcolor=Colors.ERROR)),
+                    style=ft.ButtonStyle(color=ft.Colors.WHITE, bgcolor=Colors.ERROR,
+                        shape=ft.RoundedRectangleBorder(radius=Radius.MD))),
             ],
             actions_alignment=ft.MainAxisAlignment.END,
         )
@@ -290,10 +301,13 @@ class MainView:
             modal=True,
             title=ft.Text("확인"),
             content=ft.Text("모든 입력 필드를 초기화하시겠습니까?"),
+            shape=ft.RoundedRectangleBorder(radius=Radius.LG),
+            bgcolor=Colors.BG,
             actions=[
                 ft.TextButton(content=ft.Text("아니오"), on_click=cancel),
                 ft.ElevatedButton(content=ft.Text("예"), on_click=do_clear,
-                    style=ft.ButtonStyle(color=ft.Colors.WHITE, bgcolor=Colors.ERROR)),
+                    style=ft.ButtonStyle(color=ft.Colors.WHITE, bgcolor=Colors.ERROR,
+                        shape=ft.RoundedRectangleBorder(radius=Radius.MD))),
             ],
             actions_alignment=ft.MainAxisAlignment.END,
         )
