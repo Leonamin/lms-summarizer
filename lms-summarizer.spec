@@ -87,7 +87,7 @@ a = Analysis(
         "src.gui.config.course_models",
         # 외부 라이브러리
         "openai", "pywhispercpp", "playwright", "requests",
-        "dotenv", "google.generativeai", "certifi",
+        "dotenv", "google.genai", "certifi",
         # pywhispercpp 의존성
         "pywhispercpp.model", "pywhispercpp.utils",
         # 표준 라이브러리

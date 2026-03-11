@@ -89,11 +89,13 @@ class StageSelector:
             visible=False,
         )
 
-        # 선택된 파일 목록 표시
+        # 선택된 파일 목록 표시 (최대 높이 제한 + 스크롤)
         self._file_list = ft.Column(
             controls=[],
             spacing=2,
             visible=False,
+            scroll=ft.ScrollMode.AUTO,
+            height=None,  # _rebuild_file_list에서 동적 설정
         )
 
         # 파일 개수 요약 텍스트
@@ -240,6 +242,8 @@ class StageSelector:
 
         has_files = len(self._selected_files) > 0
         self._file_list.visible = has_files
+        # 파일 4개 초과 시 높이 제한 + 스크롤 활성화 (행 높이 ~28px)
+        self._file_list.height = min(len(self._selected_files), 5) * 28 if has_files else None
         self._file_count_text.visible = has_files
         self._file_count_text.value = f"{len(self._selected_files)}개 파일 선택됨" if has_files else ""
 

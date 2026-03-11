@@ -562,6 +562,7 @@ class ProgressModal:
 
     def _safe_update(self):
         try:
-            self._page.update()
+            # schedule_update: 워커 스레드에서도 안전하게 UI 갱신을 예약
+            self._page.schedule_update()
         except Exception:
             pass
