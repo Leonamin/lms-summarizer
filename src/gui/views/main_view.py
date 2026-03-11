@@ -2,8 +2,6 @@
 메인 뷰 (Flet)
 """
 
-import subprocess
-import sys
 from typing import Dict, List
 
 import flet as ft
@@ -21,6 +19,7 @@ from src.gui.core.module_loader import check_required_modules
 from src.gui.core.file_manager import (
     ensure_downloads_directory, set_downloads_directory,
     save_user_inputs, load_user_inputs,
+    open_in_file_explorer,
 )
 from src.gui.components.input_field import InputField
 from src.gui.components.log_area import LogArea
@@ -275,13 +274,7 @@ class MainView:
     # ── 이벤트 핸들러 ──────────────────────────────────────
 
     def _open_in_finder(self, e=None):
-        path = ensure_downloads_directory()
-        if sys.platform == 'darwin':
-            subprocess.Popen(['open', path])
-        elif sys.platform == 'win32':
-            subprocess.Popen(['explorer', path])
-        else:
-            subprocess.Popen(['xdg-open', path])
+        open_in_file_explorer(ensure_downloads_directory())
 
     async def _change_path(self, e=None):
         path = await self._folder_picker.get_directory_path(
