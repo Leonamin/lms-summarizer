@@ -1,5 +1,9 @@
 """
 오른쪽 패널 - 강의 선택, 옵션, 액션 바
+
+레이아웃:
+- 접힌 상태: 강의 선택(expand) + 옵션 헤더 + 액션 바
+- 펼친 상태: 옵션(expand) + 액션 바 (강의 선택 숨김)
 """
 
 import flet as ft
@@ -16,14 +20,16 @@ class RightPanel:
 
     def __init__(self, on_start=None, on_clear=None, on_open_course_list=None):
         self.lecture = LectureSection(on_open_course_list=on_open_course_list)
-        self.options = OptionsSection()
+        self.options = OptionsSection(on_toggle=self._handle_options_toggle)
         self.action_bar = ActionBar(on_start=on_start, on_clear=on_clear)
+
+        self._divider = ft.Divider(height=1, color=Colors.BORDER)
 
         self.control = ft.Container(
             content=ft.Column(
                 controls=[
                     self.lecture.control,
-                    ft.Divider(height=1, color=Colors.BORDER),
+                    self._divider,
                     self.options.control,
                     self.action_bar.control,
                 ],
@@ -34,6 +40,13 @@ class RightPanel:
             expand=True,
             padding=ft.padding.all(Spacing.MD),
         )
+
+    def _handle_options_toggle(self, expanded: bool):
+        """옵션 펼침/접힘 시 강의 선택 영역 토글"""
+        self.lecture.control.visible = not expanded
+        self._divider.visible = not expanded
+        # 펼침 시 옵션이 남은 공간을 차지
+        self.options.control.expand = expanded
 
     def get_urls(self) -> str:
         return self.lecture.get_urls()
