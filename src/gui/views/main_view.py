@@ -24,7 +24,7 @@ from src.gui.core.file_manager import (
 )
 from src.gui.components.input_field import InputField
 from src.gui.components.log_area import LogArea
-from src.gui.components.model_selector import ModelSelector
+from src.gui.components.model_selector import EngineModelSelector
 from src.gui.views.progress_view import ProgressModal
 from src.gui.views.settings_view import open_settings_dialog
 from src.gui.views.course_list_view import CourseListView
@@ -41,7 +41,9 @@ class MainView:
 
         self.input_fields: Dict[str, InputField] = {}
         self.log_area = LogArea()
-        self.model_selector = ModelSelector()
+        self.model_selector = EngineModelSelector(
+            on_engine_change=self._on_engine_change,
+        )
         self.worker: ProcessingWorker = None
         self.modal: ProgressModal = None
 
@@ -334,13 +336,38 @@ class MainView:
         self.log_area.append_message(msg)
         self.page.update()
 
+    def _on_engine_change(self, engine: str):
+        """엔진 변경 시 API 키 필드 라벨/표시 업데이트"""
+        _ENGINE_LABELS = {
+            "gemini": "Gemini API 키:",
+            "openai": "OpenAI API 키:",
+            "claude": "Anthropic API 키:",
+            "grok": "xAI API 키:",
+            "clipboard": "API 키 (불필요):",
+        }
+        api_field = self.input_fields.get('api_key')
+        if api_field:
+            new_label = _ENGINE_LABELS.get(engine, "AI API 키:")
+            api_field.control.label = new_label
+            is_clipboard = engine == "clipboard"
+            api_field.set_enabled(not is_clipboard)
+            if api_field.control.page:
+                api_field.control.update()
+        try:
+            self.page.update()
+        except Exception:
+            pass
+
     def _handle_start(self, e=None):
         if self._is_processing:
             self._handle_stop()
             return
 
+        current_engine = self.model_selector.get_engine()
         inputs = {name: field.get_value() for name, field in self.input_fields.items()}
-        valid, error_message = InputValidator.validate_all_inputs(inputs)
+        valid, error_message = InputValidator.validate_all_inputs(
+            inputs, skip_api_key=(current_engine == "clipboard"),
+        )
         if not valid:
             self._show_snackbar(error_message, Colors.ERROR)
             return
@@ -353,8 +380,9 @@ class MainView:
         self._start_processing(inputs)
 
     def _start_processing(self, inputs: Dict[str, str]):
+        engine = self.model_selector.get_engine()
         model_name = self.model_selector.get_model()
-        save_user_inputs({**inputs, 'ai_model': model_name})
+        save_user_inputs({**inputs, 'ai_model': model_name, 'ai_engine': engine})
 
         self._is_processing = True
         self._start_btn.content.value = "중지"
@@ -430,6 +458,7 @@ class MainView:
             inputs, self.modules,
             save_video_dir=save_video_dir,
             model_name=model_name,
+            engine=engine,
             on_log=on_log,
             on_finished=on_finished,
             on_step_changed=on_step,
@@ -525,6 +554,8 @@ class MainView:
         for field_name, value in saved.items():
             if field_name in self.input_fields and value:
                 self.input_fields[field_name].set_value(value)
+        if 'ai_engine' in saved:
+            self.model_selector.set_engine(saved['ai_engine'])
         if 'ai_model' in saved:
             self.model_selector.set_model(saved['ai_model'])
         self.page.update()

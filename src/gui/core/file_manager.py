@@ -132,7 +132,7 @@ def extract_urls_from_input(url_input: str) -> List[str]:
     return urls
 
 
-_PERSISTABLE_FIELDS = ['student_id', 'api_key', 'ai_model']
+_PERSISTABLE_FIELDS = ['student_id', 'api_key', 'ai_model', 'ai_engine']
 
 
 def save_user_inputs(inputs: Dict[str, str]) -> None:
