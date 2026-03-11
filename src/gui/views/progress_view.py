@@ -5,13 +5,10 @@
 import flet as ft
 
 from src.gui.theme import Colors, Typography, Spacing, Radius, divider
+from src.pipeline_stage import PipelineStage, STAGE_LABELS
 
-# 처리 단계 정의
-_STEPS = [
-    (1, "영상 다운로드"),
-    (2, "음성 → 텍스트 변환"),
-    (3, "AI 요약 생성"),
-]
+# 처리 단계 정의 (PipelineStage 기반)
+_STEPS = [(stage.value, STAGE_LABELS[stage]) for stage in PipelineStage]
 
 
 class ProgressModal:
