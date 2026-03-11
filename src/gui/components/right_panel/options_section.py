@@ -17,6 +17,36 @@ from src.summarize_pipeline.prompts import (
 )
 
 
+# 모드별 뱃지 색상 (bg, text)
+_MODE_BADGE_COLORS = {
+    SummaryMode.QUICK:    ("#FFF7ED", "#EA580C"),   # orange
+    SummaryMode.NORMAL:   ("#EFF6FF", "#2563EB"),   # blue
+    SummaryMode.DETAILED: ("#F0FDF4", "#16A34A"),   # green
+}
+
+# 모드별 짧은 라벨
+_MODE_SHORT_LABELS = {
+    SummaryMode.QUICK:    "빠른 요약",
+    SummaryMode.NORMAL:   "일반 요약",
+    SummaryMode.DETAILED: "상세 요약",
+}
+
+
+def _build_badge(text: str, bgcolor: str, text_color: str) -> ft.Container:
+    """작은 컬러 뱃지 컨테이너 생성"""
+    return ft.Container(
+        content=ft.Text(
+            text,
+            size=Typography.SMALL,
+            weight=Typography.MEDIUM,
+            color=text_color,
+        ),
+        bgcolor=bgcolor,
+        border_radius=Radius.SM,
+        padding=ft.padding.symmetric(horizontal=6, vertical=2),
+    )
+
+
 class OptionsSection:
     """처리 옵션: 접기/펼치기 가능한 동영상 보관 + 시작 단계 선택"""
 
@@ -24,13 +54,26 @@ class OptionsSection:
         self._on_toggle = on_toggle
         self._expanded = False
 
+        # ── 헤더 뱃지 (접혀있을 때 현재 설정 표시) ──────────
+        initial_mode = get_summary_mode()
+        initial_subject = get_subject_category()
+        initial_custom = get_subject_custom()
+
+        mode_bg, mode_fg = _MODE_BADGE_COLORS.get(initial_mode, _MODE_BADGE_COLORS[SummaryMode.NORMAL])
+        self._mode_badge = _build_badge(
+            _MODE_SHORT_LABELS.get(initial_mode, "일반 요약"), mode_bg, mode_fg,
+        )
+
+        subject_display = initial_custom if initial_custom else initial_subject
+        self._subject_badge = _build_badge(subject_display, "#F5F3FF", "#7C3AED")  # purple
+
         # ── 요약 모드 드롭다운 ──────────────────────────────
         self._summary_mode_dropdown = ft.Dropdown(
             options=[
                 ft.dropdown.Option(key=k, text=v)
                 for k, v in SUMMARY_MODE_LABELS.items()
             ],
-            value=get_summary_mode(),
+            value=initial_mode,
             label="요약 모드",
             border_radius=Radius.MD,
             border_color=Colors.BORDER,
@@ -38,6 +81,7 @@ class OptionsSection:
             text_size=Typography.BODY,
             label_style=ft.TextStyle(size=Typography.CAPTION, color=Colors.TEXT_SECONDARY),
             dense=True,
+            on_select=lambda e: self._update_badges(),
         )
 
         self._summary_mode_container = ft.Container(
@@ -71,7 +115,7 @@ class OptionsSection:
                 ft.dropdown.Option(key=k, text=k)
                 for k in SUBJECT_CATEGORIES.keys()
             ],
-            value=get_subject_category(),
+            value=initial_subject,
             label="강의 분야",
             border_radius=Radius.MD,
             border_color=Colors.BORDER,
@@ -79,10 +123,11 @@ class OptionsSection:
             text_size=Typography.BODY,
             label_style=ft.TextStyle(size=Typography.CAPTION, color=Colors.TEXT_SECONDARY),
             dense=True,
+            on_select=lambda e: self._update_badges(),
         )
 
         self._subject_custom_field = ft.TextField(
-            value=get_subject_custom(),
+            value=initial_custom,
             hint_text="과목명 직접 입력 (선택사항, 드롭다운보다 우선)",
             border_radius=Radius.MD,
             border_color=Colors.BORDER,
@@ -91,6 +136,7 @@ class OptionsSection:
             label="직접 입력",
             label_style=ft.TextStyle(size=Typography.CAPTION, color=Colors.TEXT_SECONDARY),
             dense=True,
+            on_change=lambda e: self._update_badges(),
         )
 
         self._subject_container = ft.Container(
@@ -135,7 +181,7 @@ class OptionsSection:
             color=Colors.TEXT_MUTED,
         )
 
-        # 헤더 바 (클릭으로 토글)
+        # 헤더 바 (클릭으로 토글) — 뱃지 포함
         self._header = ft.Container(
             content=ft.Row(
                 controls=[
@@ -144,8 +190,10 @@ class OptionsSection:
                         size=Typography.BODY,
                         weight=Typography.BOLD,
                         color=Colors.TEXT_SECONDARY,
-                        expand=True,
                     ),
+                    self._mode_badge,
+                    self._subject_badge,
+                    ft.Container(expand=True),
                     self._chevron,
                 ],
                 spacing=Spacing.XS,
@@ -220,6 +268,22 @@ class OptionsSection:
 
         if self._header.page:
             self._header.page.update()
+
+    def _update_badges(self):
+        """드롭다운/텍스트 변경 시 헤더 뱃지 업데이트"""
+        mode = self._summary_mode_dropdown.value or SummaryMode.NORMAL
+        bg, fg = _MODE_BADGE_COLORS.get(mode, _MODE_BADGE_COLORS[SummaryMode.NORMAL])
+        self._mode_badge.bgcolor = bg
+        self._mode_badge.content.value = _MODE_SHORT_LABELS.get(mode, "일반 요약")
+        self._mode_badge.content.color = fg
+
+        custom = (self._subject_custom_field.value or "").strip()
+        category = self._subject_category_dropdown.value or "자동 감지"
+        self._subject_badge.content.value = custom if custom else category
+
+        if self._header.page:
+            self._mode_badge.update()
+            self._subject_badge.update()
 
     def get_save_video(self) -> bool:
         return self._save_video_checkbox.value
