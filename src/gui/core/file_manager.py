@@ -136,15 +136,54 @@ _PERSISTABLE_FIELDS = ['student_id', 'api_key', 'ai_model', 'ai_engine']
 
 
 def save_user_inputs(inputs: Dict[str, str]) -> None:
-    """사용자 입력값을 설정 파일에 저장 (비밀번호 제외)"""
+    """사용자 입력값을 설정 파일에 저장 (비밀번호 제외)
+
+    API 키는 엔진별로 분리하여 저장합니다.
+    예: api_keys = {"gemini": "...", "openai": "...", ...}
+    """
     settings = load_settings()
-    settings['user_inputs'] = {k: inputs[k] for k in _PERSISTABLE_FIELDS if k in inputs}
+    saved = {k: inputs[k] for k in _PERSISTABLE_FIELDS if k in inputs}
+
+    # 엔진별 API 키 저장
+    engine = inputs.get('ai_engine', 'gemini')
+    api_key = inputs.get('api_key', '')
+    api_keys = settings.get('api_keys', {})
+    if api_key:
+        api_keys[engine] = api_key
+    saved['api_keys'] = api_keys
+
+    settings['user_inputs'] = saved
+    settings['api_keys'] = api_keys
     save_settings(settings)
 
 
 def load_user_inputs() -> Dict[str, str]:
-    """저장된 사용자 입력값 로드"""
-    return load_settings().get('user_inputs', {})
+    """저장된 사용자 입력값 로드
+
+    마이그레이션: 기존 api_key만 저장된 경우 gemini 키로 처리합니다.
+    """
+    settings = load_settings()
+    saved = settings.get('user_inputs', {})
+
+    # 마이그레이션: 기존 api_key가 있고 api_keys가 없으면 gemini 키로 간주
+    api_keys = settings.get('api_keys', saved.get('api_keys', {}))
+    if not api_keys and saved.get('api_key'):
+        api_keys = {"gemini": saved['api_key']}
+
+    # 현재 엔진에 맞는 API 키 복원
+    engine = saved.get('ai_engine', 'gemini')
+    if api_keys.get(engine):
+        saved['api_key'] = api_keys[engine]
+
+    saved['api_keys'] = api_keys
+    return saved
+
+
+def get_api_key_for_engine(engine: str) -> str:
+    """특정 엔진의 저장된 API 키 반환"""
+    settings = load_settings()
+    api_keys = settings.get('api_keys', {})
+    return api_keys.get(engine, '')
 
 
 def get_downloads_dir() -> str:

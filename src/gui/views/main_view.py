@@ -20,7 +20,7 @@ from src.gui.core.validators import InputValidator
 from src.gui.core.module_loader import check_required_modules
 from src.gui.core.file_manager import (
     ensure_downloads_directory, set_downloads_directory,
-    save_user_inputs, load_user_inputs,
+    save_user_inputs, load_user_inputs, get_api_key_for_engine,
 )
 from src.gui.components.input_field import InputField
 from src.gui.components.log_area import LogArea
@@ -337,7 +337,7 @@ class MainView:
         self.page.update()
 
     def _on_engine_change(self, engine: str):
-        """엔진 변경 시 API 키 필드 라벨/표시 업데이트"""
+        """엔진 변경 시 API 키 필드 라벨/표시 업데이트 및 저장된 키 복원"""
         _ENGINE_LABELS = {
             "gemini": "Gemini API 키:",
             "openai": "OpenAI API 키:",
@@ -351,6 +351,13 @@ class MainView:
             api_field.control.label = new_label
             is_clipboard = engine == "clipboard"
             api_field.set_enabled(not is_clipboard)
+
+            # 엔진별 저장된 API 키 복원
+            if not is_clipboard:
+                saved_key = get_api_key_for_engine(engine)
+                if saved_key:
+                    api_field.set_value(saved_key)
+
             if api_field.control.page:
                 api_field.control.update()
         try:
