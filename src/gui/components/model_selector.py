@@ -76,7 +76,7 @@ class EngineModelSelector:
 
         self.control = ft.Column(
             controls=[self._engine_dropdown, self._model_dropdown, self._custom_input],
-            spacing=Spacing.XS,
+            spacing=Spacing.SM,
             horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
         )
 

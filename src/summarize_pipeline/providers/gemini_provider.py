@@ -9,13 +9,16 @@ class GeminiProvider(AIProvider):
     """Google Gemini API를 사용한 요약 엔진"""
 
     def __init__(self, api_key: str, model_name: str = None):
-        import google.generativeai as genai
-        genai.configure(api_key=api_key)
-        self.model = genai.GenerativeModel(model_name or self.default_model())
+        from google import genai
+        self._client = genai.Client(api_key=api_key)
+        self._model_name = model_name or self.default_model()
 
     def summarize(self, text: str, prompt: str) -> str:
         full_prompt = f"{prompt}\n\n다음은 전체 텍스트입니다:\n{text}"
-        response = self.model.generate_content(full_prompt)
+        response = self._client.models.generate_content(
+            model=self._model_name,
+            contents=full_prompt,
+        )
         return response.text
 
     @staticmethod

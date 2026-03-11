@@ -57,27 +57,27 @@ class StageSelector:
         # 파일 선택 버튼
         self._pick_btn = ft.OutlinedButton(
             content=ft.Text("파일 선택"),
-            icon=ft.Icons.ATTACH_FILE,
+            icon=ft.Icons.UPLOAD_FILE,
             on_click=self._handle_pick_files,
             visible=False,
             style=ft.ButtonStyle(
                 color=Colors.PRIMARY,
-                shape=ft.RoundedRectangleBorder(radius=Radius.SM),
+                shape=ft.RoundedRectangleBorder(radius=Radius.MD),
                 padding=ft.padding.symmetric(horizontal=12, vertical=6),
-                text_style=ft.TextStyle(size=Typography.CAPTION),
+                text_style=ft.TextStyle(size=Typography.CAPTION, weight=Typography.SEMI_BOLD),
+                side=ft.BorderSide(width=1, color=ft.Colors.with_opacity(0.3, Colors.PRIMARY)),
             ),
         )
 
         # 자동 감지 버튼
-        self._auto_detect_btn = ft.OutlinedButton(
-            content=ft.Text("자동 감지"),
+        self._auto_detect_btn = ft.TextButton(
+            content=ft.Text("저장 폴더에서 자동 감지"),
             icon=ft.Icons.SEARCH,
             on_click=self._handle_auto_detect,
             style=ft.ButtonStyle(
                 color=Colors.TEXT_SECONDARY,
-                shape=ft.RoundedRectangleBorder(radius=Radius.SM),
-                padding=ft.padding.symmetric(horizontal=12, vertical=6),
-                text_style=ft.TextStyle(size=Typography.CAPTION),
+                padding=ft.padding.symmetric(horizontal=8, vertical=4),
+                text_style=ft.TextStyle(size=Typography.SMALL),
             ),
         )
 
@@ -89,11 +89,13 @@ class StageSelector:
             visible=False,
         )
 
-        # 선택된 파일 목록 표시
+        # 선택된 파일 목록 표시 (최대 높이 제한 + 스크롤)
         self._file_list = ft.Column(
             controls=[],
             spacing=2,
             visible=False,
+            scroll=ft.ScrollMode.AUTO,
+            height=None,  # _rebuild_file_list에서 동적 설정
         )
 
         # 파일 개수 요약 텍스트
@@ -104,28 +106,22 @@ class StageSelector:
             visible=False,
         )
 
-        # FilePicker (page overlay에 등록 필요)
-        self.file_picker = ft.FilePicker(on_result=self._on_files_selected)
+        # FilePicker (Flet 0.81+에서는 async 직접 반환)
+        self.file_picker = ft.FilePicker()
 
         self.control = ft.Column(
             controls=[
-                ft.Row(
-                    controls=[
-                        ft.Container(content=self._dropdown, expand=True),
-                        self._auto_detect_btn,
-                    ],
-                    spacing=Spacing.SM,
-                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                ),
+                self._dropdown,
                 ft.Row(
                     controls=[self._pick_btn, self._file_count_text],
                     spacing=Spacing.SM,
                     vertical_alignment=ft.CrossAxisAlignment.CENTER,
                 ),
+                self._auto_detect_btn,
                 self._detect_info,
                 self._file_list,
             ],
-            spacing=Spacing.XS,
+            spacing=Spacing.SM,
             horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
         )
 
@@ -177,22 +173,20 @@ class StageSelector:
         if self._detect_info.page:
             self._detect_info.page.update()
 
-    def _handle_pick_files(self, e):
+    async def _handle_pick_files(self, e):
         stage = self.get_stage()
         allowed = _STAGE_ALLOWED_EXTENSIONS.get(stage, [])
         file_type = ft.FilePickerFileType.CUSTOM if allowed else ft.FilePickerFileType.ANY
-        self.file_picker.pick_files(
+        files = await self.file_picker.pick_files(
             dialog_title="파일 선택",
             allow_multiple=True,
             file_type=file_type,
             allowed_extensions=allowed if allowed else None,
         )
-
-    def _on_files_selected(self, e: ft.FilePickerResultEvent):
-        if not e.files:
+        if not files:
             return
 
-        new_paths = [f.path for f in e.files if f.path]
+        new_paths = [f.path for f in files if f.path]
         existing = set(self._selected_files)
         added = [p for p in new_paths if p not in existing]
 
@@ -242,6 +236,8 @@ class StageSelector:
 
         has_files = len(self._selected_files) > 0
         self._file_list.visible = has_files
+        # 파일 4개 초과 시 높이 제한 + 스크롤 활성화 (행 높이 ~28px)
+        self._file_list.height = min(len(self._selected_files), 5) * 28 if has_files else None
         self._file_count_text.visible = has_files
         self._file_count_text.value = f"{len(self._selected_files)}개 파일 선택됨" if has_files else ""
 

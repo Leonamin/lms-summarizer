@@ -1,30 +1,22 @@
 """
-메인 뷰 (Flet)
+메인 뷰 (Flet) - 컴포넌트 조합 + 콜백 배선 + 워커 관리
 """
 
 from typing import Dict, List
 
 import flet as ft
 
-from src.gui.theme import (
-    Colors, Typography, Spacing, Radius,
-    card_container, section_title, caption_text,
-    primary_button, outline_button, danger_button,
-    CARD_SHADOW,
-)
-from src.gui.config.constants import APP_TITLE, APP_VERSION, Messages
-from src.gui.config.settings import INPUT_FIELD_CONFIGS
+from src.gui.theme import Colors, Typography, Spacing, Radius
+from src.gui.config.constants import Messages
 from src.gui.core.validators import InputValidator
 from src.gui.core.module_loader import check_required_modules
 from src.gui.core.file_manager import (
-    ensure_downloads_directory, set_downloads_directory,
-    save_user_inputs, load_user_inputs, get_api_key_for_engine,
-    open_in_file_explorer,
+    ensure_downloads_directory, save_user_inputs, load_user_inputs,
 )
-from src.gui.components.input_field import InputField
-from src.gui.components.log_area import LogArea
-from src.gui.components.model_selector import EngineModelSelector
-from src.gui.components.stage_selector import StageSelector
+from src.gui.components.header import build_header
+from src.gui.components.left_panel import LeftPanel
+from src.gui.components.right_panel import RightPanel
+from src.gui.components.log_drawer import LogDrawer
 from src.gui.views.progress_view import ProgressModal
 from src.gui.views.settings_view import open_settings_dialog
 from src.gui.views.course_list_view import CourseListView
@@ -33,81 +25,29 @@ from src.pipeline_stage import PipelineStage
 
 
 class MainView:
-    """메인 뷰 클래스"""
+    """메인 뷰 - 컴포넌트 조합 및 비즈니스 로직"""
 
     def __init__(self, page: ft.Page, modules: Dict, module_errors: List[str]):
         self.page = page
         self.modules = modules
         self.module_errors = module_errors
-
-        self.input_fields: Dict[str, InputField] = {}
-        self.log_area = LogArea()
-        self.model_selector = EngineModelSelector(
-            on_engine_change=self._on_engine_change,
-        )
-        self.stage_selector = StageSelector()
         self.worker: ProcessingWorker = None
         self.modal: ProgressModal = None
-
-        # 상태
         self._is_processing = False
 
-        # 스레드 안전한 SnackBar (미리 생성하여 재사용)
+        # SnackBar
         self._snackbar = ft.SnackBar(content=ft.Text(""), duration=3000)
-        page.overlay.append(self._snackbar)
 
-        # StageSelector의 FilePicker를 overlay에 등록
-        page.overlay.append(self.stage_selector.file_picker)
-
-        # 컨트롤 생성
-        self._save_video_checkbox = ft.Checkbox(
-            label="처리 완료 후 원본 동영상 보관 (미선택 시 자동 삭제)",
-            value=False,
-            active_color=Colors.PRIMARY,
+        # 컴포넌트 생성
+        self.left_panel = LeftPanel(
+            on_path_changed=lambda p: self.log_drawer.append_message(f"저장 경로 변경: {p}"),
         )
-
-        self._start_btn = ft.ElevatedButton(
-            content=ft.Text("요약 시작"),
-            icon=ft.Icons.PLAY_ARROW,
-            on_click=self._handle_start,
-            expand=True,
-            style=ft.ButtonStyle(
-                color=ft.Colors.WHITE,
-                bgcolor=Colors.PRIMARY,
-                shape=ft.RoundedRectangleBorder(radius=Radius.SM),
-                padding=ft.padding.symmetric(vertical=14),
-                text_style=ft.TextStyle(weight=Typography.SEMI_BOLD, size=14),
-                overlay_color=ft.Colors.with_opacity(0.1, ft.Colors.WHITE),
-            ),
+        self.right_panel = RightPanel(
+            on_start=self._handle_start,
+            on_clear=self._handle_clear,
+            on_open_course_list=self._open_course_list,
         )
-
-        self._clear_btn = ft.OutlinedButton(
-            content=ft.Text("초기화"),
-            icon=ft.Icons.DELETE_OUTLINE,
-            on_click=self._handle_clear,
-            style=ft.ButtonStyle(
-                color=Colors.ERROR,
-                shape=ft.RoundedRectangleBorder(radius=Radius.SM),
-                padding=ft.padding.symmetric(vertical=14, horizontal=16),
-                text_style=ft.TextStyle(weight=Typography.SEMI_BOLD, size=13),
-                side=ft.BorderSide(width=1, color=Colors.ERROR),
-            ),
-        )
-
-        self._path_text = ft.Text(
-            ensure_downloads_directory(),
-            size=Typography.CAPTION,
-            color=Colors.TEXT_SECONDARY,
-            expand=True,
-            max_lines=1,
-            overflow=ft.TextOverflow.ELLIPSIS,
-        )
-
-        self._folder_picker = ft.FilePicker()
-
-        # 입력 필드 생성
-        for name, config in INPUT_FIELD_CONFIGS.items():
-            self.input_fields[name] = InputField(config)
+        self.log_drawer = LogDrawer()
 
         # UI 빌드
         self._build_ui()
@@ -116,192 +56,50 @@ class MainView:
 
     def _build_ui(self):
         """전체 UI 레이아웃 구성"""
-        self.page.add(
-            ft.Container(
-                content=ft.Column(
-                    controls=[
-                        self._build_header(),
-                        self._build_path_section(),
-                        self._build_form_card(),
-                        self.log_area.control,
-                        self._build_action_bar(),
-                    ],
-                    spacing=Spacing.SM,
-                    expand=True,
-                    horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
-                ),
-                padding=ft.padding.symmetric(horizontal=20, vertical=16),
-                expand=True,
-            )
+        header = build_header(
+            self.page,
+            on_settings_click=lambda e: open_settings_dialog(self.page),
         )
 
-    def _build_header(self) -> ft.Container:
-        return ft.Container(
+        # 메인 콘텐츠 (헤더 + 2-panel) — 패딩 적용
+        main_content = ft.Container(
             content=ft.Column(
                 controls=[
+                    header,
                     ft.Row(
                         controls=[
-                            ft.Icon(ft.Icons.SCHOOL, size=22, color=Colors.PRIMARY),
-                            ft.Text(
-                                APP_TITLE,
-                                size=Typography.TITLE,
-                                weight=Typography.BOLD,
-                                color=Colors.TEXT,
-                                expand=True,
-                            ),
-                            ft.Text(
-                                APP_VERSION,
-                                size=Typography.SMALL,
-                                color=Colors.TEXT_MUTED,
-                            ),
-                            ft.IconButton(
-                                icon=ft.Icons.SETTINGS,
-                                icon_color=Colors.TEXT_SECONDARY,
-                                icon_size=20,
-                                tooltip="설정",
-                                on_click=lambda e: open_settings_dialog(self.page),
-                            ),
+                            self.left_panel.control,
+                            ft.VerticalDivider(width=1, color=Colors.BORDER),
+                            self.right_panel.control,
                         ],
-                        alignment=ft.MainAxisAlignment.START,
-                    ),
-                    ft.Text(
-                        "숭실대학교 LMS 강의 동영상을 다운로드하고 AI로 요약합니다.",
-                        size=Typography.CAPTION,
-                        color=Colors.TEXT_MUTED,
-                        text_align=ft.TextAlign.CENTER,
-                    ),
-                ],
-                spacing=0,
-                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-            ),
-        )
-
-    def _build_path_section(self) -> ft.Container:
-        return ft.Container(
-            content=ft.Row(
-                controls=[
-                    ft.Icon(ft.Icons.FOLDER, size=16, color=Colors.TEXT_MUTED),
-                    ft.Text("저장 경로:", size=Typography.CAPTION, weight=Typography.SEMI_BOLD, color=Colors.TEXT_SECONDARY),
-                    ft.Container(
-                        content=self._path_text,
-                        bgcolor=Colors.CARD,
-                        border_radius=Radius.SM,
-                        border=ft.border.all(1, Colors.BORDER),
-                        padding=ft.padding.symmetric(horizontal=10, vertical=6),
                         expand=True,
-                    ),
-                    ft.OutlinedButton(
-                        content=ft.Text("열기"),
-                        icon=ft.Icons.FOLDER_OPEN,
-                        on_click=self._open_in_finder,
-                        style=ft.ButtonStyle(
-                            color=Colors.PRIMARY,
-                            shape=ft.RoundedRectangleBorder(radius=Radius.SM),
-                            padding=ft.padding.symmetric(horizontal=12, vertical=8),
-                            text_style=ft.TextStyle(size=Typography.CAPTION),
-                        ),
-                    ),
-                    ft.OutlinedButton(
-                        content=ft.Text("변경"),
-                        on_click=self._change_path,
-                        style=ft.ButtonStyle(
-                            color=Colors.PRIMARY,
-                            shape=ft.RoundedRectangleBorder(radius=Radius.SM),
-                            padding=ft.padding.symmetric(horizontal=12, vertical=8),
-                            text_style=ft.TextStyle(size=Typography.CAPTION),
-                        ),
+                        vertical_alignment=ft.CrossAxisAlignment.STRETCH,
                     ),
                 ],
                 spacing=Spacing.SM,
-                vertical_alignment=ft.CrossAxisAlignment.CENTER,
-            ),
-            padding=ft.padding.symmetric(horizontal=4),
-        )
-
-    def _build_form_card(self) -> ft.Container:
-        """입력 폼 카드"""
-        form_controls = [ft.Container(height=2)]
-
-        for name, config in INPUT_FIELD_CONFIGS.items():
-            field = self.input_fields[name]
-
-            if name == 'urls':
-                # URL 필드: 라벨 옆에 "강의 목록에서 선택" 버튼
-                form_controls.append(
-                    ft.Row(
-                        controls=[
-                            ft.Container(expand=True),
-                            ft.OutlinedButton(
-                                content=ft.Text("강의 목록에서 선택"),
-                                icon=ft.Icons.MENU_BOOK,
-                                on_click=self._open_course_list,
-                                style=ft.ButtonStyle(
-                                    color=Colors.PRIMARY,
-                                    shape=ft.RoundedRectangleBorder(radius=Radius.SM),
-                                    padding=ft.padding.symmetric(horizontal=12, vertical=6),
-                                    text_style=ft.TextStyle(size=Typography.CAPTION),
-                                ),
-                            ),
-                        ],
-                    )
-                )
-
-            form_controls.append(field.container)
-
-            # API 키 다음에 모델 선택기 + 시작 단계 선택기
-            if name == 'api_key':
-                form_controls.append(self.model_selector.control)
-                form_controls.append(self.stage_selector.control)
-
-        return card_container(
-            content=ft.Column(
-                controls=form_controls,
-                spacing=Spacing.SM,
-                scroll=ft.ScrollMode.AUTO,
+                expand=True,
                 horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
             ),
+            padding=ft.padding.symmetric(horizontal=20, vertical=16),
             expand=True,
         )
 
-    def _build_action_bar(self) -> ft.Container:
-        """하단 고정 액션 바 (체크박스 + 버튼)"""
-        return ft.Container(
-            content=ft.Column(
-                controls=[
-                    self._save_video_checkbox,
-                    ft.Row(
-                        controls=[self._start_btn, self._clear_btn],
-                        spacing=Spacing.SM,
-                    ),
-                ],
-                spacing=Spacing.XS,
+        # 로그 드로어는 하단 밀착 (패딩 바깥)
+        self.page.add(
+            ft.Column(
+                controls=[main_content, self.log_drawer.control],
+                spacing=0,
+                expand=True,
                 horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
-            ),
-            padding=ft.padding.only(top=4),
+            )
         )
 
     # ── 이벤트 핸들러 ──────────────────────────────────────
 
-    def _open_in_finder(self, e=None):
-        open_in_file_explorer(ensure_downloads_directory())
-
-    async def _change_path(self, e=None):
-        path = await self._folder_picker.get_directory_path(
-            dialog_title="저장 경로 선택",
-            initial_directory=ensure_downloads_directory(),
-        )
-        if path:
-            try:
-                set_downloads_directory(path)
-                self._path_text.value = path
-                self.log_area.append_message(f"저장 경로 변경: {path}")
-                self.page.update()
-            except Exception as ex:
-                self._show_snackbar(f"경로 변경 오류: {str(ex)}", Colors.ERROR)
-
-    def _open_course_list(self, e=None):
-        student_id = self.input_fields['student_id'].get_value().strip()
-        password = self.input_fields['password'].get_value().strip()
+    def _open_course_list(self):
+        values = self.left_panel.account.get_values()
+        student_id = values.get('student_id', '').strip()
+        password = values.get('password', '').strip()
 
         if not student_id or not password:
             self._show_snackbar("학번과 비밀번호를 먼저 입력해주세요.", Colors.WARNING)
@@ -316,86 +114,52 @@ class MainView:
         course_view.show()
 
     def _on_urls_selected(self, urls: List[str]):
-        current = self.input_fields['urls'].get_value().strip()
+        current = self.right_panel.get_urls().strip()
         existing = set(line.strip() for line in current.split('\n') if line.strip()) if current else set()
 
         new_urls = [u for u in urls if u not in existing]
         skipped = len(urls) - len(new_urls)
 
         if new_urls:
-            if current:
-                combined = current + '\n' + '\n'.join(new_urls)
-            else:
-                combined = '\n'.join(new_urls)
-            self.input_fields['urls'].set_value(combined)
-            self.input_fields['urls'].control.update()
+            combined = current + '\n' + '\n'.join(new_urls) if current else '\n'.join(new_urls)
+            self.right_panel.set_urls(combined)
 
         msg = f"강의 목록에서 {len(new_urls)}개 URL이 추가되었습니다."
         if skipped:
             msg += f" (중복 {skipped}개 제외)"
-        self.log_area.append_message(msg)
+        self.log_drawer.append_message(msg)
+        self.right_panel.lecture.update_selected_count(
+            len(existing) + len(new_urls)
+        )
         self.page.update()
 
-    def _on_engine_change(self, engine: str):
-        """엔진 변경 시 API 키 필드 라벨/표시 업데이트 및 저장된 키 복원"""
-        _ENGINE_LABELS = {
-            "gemini": "Gemini API 키:",
-            "openai": "OpenAI API 키:",
-            "claude": "Anthropic API 키:",
-            "grok": "xAI API 키:",
-            "clipboard": "API 키 (불필요):",
-        }
-        api_field = self.input_fields.get('api_key')
-        if api_field:
-            new_label = _ENGINE_LABELS.get(engine, "AI API 키:")
-            api_field.control.label = new_label
-            is_clipboard = engine == "clipboard"
-            api_field.set_enabled(not is_clipboard)
-
-            # 엔진별 저장된 API 키 복원
-            if not is_clipboard:
-                saved_key = get_api_key_for_engine(engine)
-                if saved_key:
-                    api_field.set_value(saved_key)
-
-            if api_field.control.page:
-                api_field.control.update()
-        try:
-            self.page.update()
-        except Exception:
-            pass
-
-    def _handle_start(self, e=None):
+    def _handle_start(self):
         if self._is_processing:
             self._handle_stop()
             return
 
-        # 이전 에러 상태 초기화
-        for key in self.input_fields:
-            self.input_fields[key].clear_error()
+        self.left_panel.clear_errors()
 
-        current_engine = self.model_selector.get_engine()
-        start_stage = self.stage_selector.get_stage()
-        inputs = {name: field.get_value() for name, field in self.input_fields.items()}
+        engine = self.left_panel.ai_settings.get_engine()
+        start_stage = self.right_panel.get_stage()
+        inputs = self.left_panel.get_all_inputs()
+        inputs['urls'] = self.right_panel.get_urls()
 
-        # 다운로드 단계부터 시작할 때만 전체 검증 필요
+        # 검증
         if start_stage == PipelineStage.DOWNLOAD:
             valid, error_message = InputValidator.validate_all_inputs(
-                inputs, skip_api_key=(current_engine == "clipboard"),
+                inputs, skip_api_key=(engine == "clipboard"),
             )
             if not valid:
                 self._show_snackbar(error_message, Colors.ERROR)
                 return
         else:
-            # 다운로드 이후 단계에서는 API 키만 검증 (클립보드 모드 제외)
-            if start_stage <= PipelineStage.SUMMARIZE and current_engine != "clipboard":
+            if start_stage <= PipelineStage.SUMMARIZE and engine != "clipboard":
                 valid, error = InputValidator.validate_api_key(inputs.get('api_key', ''))
                 if not valid:
                     self._show_snackbar(error, Colors.ERROR)
                     return
-
-            # 입력 파일이 있는지 확인
-            input_files = self.stage_selector.get_files()
+            input_files = self.right_panel.get_files()
             if not input_files:
                 self._show_snackbar("시작 단계에 사용할 파일을 선택해주세요.", Colors.ERROR)
                 return
@@ -408,33 +172,22 @@ class MainView:
         self._start_processing(inputs)
 
     def _start_processing(self, inputs: Dict[str, str]):
-        engine = self.model_selector.get_engine()
-        model_name = self.model_selector.get_model()
-        start_stage = self.stage_selector.get_stage()
-        input_files = self.stage_selector.get_files()
+        engine = self.left_panel.ai_settings.get_engine()
+        model_name = self.left_panel.ai_settings.get_model()
+        start_stage = self.right_panel.get_stage()
+        input_files = self.right_panel.get_files()
         save_user_inputs({**inputs, 'ai_model': model_name, 'ai_engine': engine})
 
         self._is_processing = True
-        self._start_btn.content.value = "중지"
-        self._start_btn.icon = ft.Icons.STOP
-        self._start_btn.style = ft.ButtonStyle(
-            color=ft.Colors.WHITE,
-            bgcolor=Colors.ERROR,
-            shape=ft.RoundedRectangleBorder(radius=Radius.SM),
-            padding=ft.padding.symmetric(vertical=14),
-            text_style=ft.TextStyle(weight=Typography.SEMI_BOLD, size=14),
-        )
-        self._clear_btn.disabled = True
+        self.right_panel.set_processing(True)
         self._set_fields_enabled(False)
-        self.log_area.clear()
+        self.log_drawer.clear()
 
-        save_video_dir = ensure_downloads_directory() if self._save_video_checkbox.value else None
-
-        # 프로그레스 모달 생성
+        save_video_dir = self.right_panel.get_save_video_dir()
         self.modal = ProgressModal(self.page, on_stop=self._on_modal_stop, start_stage=start_stage)
 
         def on_log(msg):
-            self.log_area.append_message(msg)
+            self.log_drawer.append_message(msg)
             if self.modal:
                 self.modal.append_log(msg)
             try:
@@ -445,17 +198,7 @@ class MainView:
         def on_finished(success, message):
             try:
                 self._is_processing = False
-                self._start_btn.content.value = "요약 시작"
-                self._start_btn.icon = ft.Icons.PLAY_ARROW
-                self._start_btn.style = ft.ButtonStyle(
-                    color=ft.Colors.WHITE,
-                    bgcolor=Colors.PRIMARY,
-                    shape=ft.RoundedRectangleBorder(radius=Radius.SM),
-                    padding=ft.padding.symmetric(vertical=14),
-                    text_style=ft.TextStyle(weight=Typography.SEMI_BOLD, size=14),
-                    overlay_color=ft.Colors.with_opacity(0.1, ft.Colors.WHITE),
-                )
-                self._clear_btn.disabled = False
+                self.right_panel.set_processing(False)
                 self._set_fields_enabled(True)
 
                 if self.modal:
@@ -470,22 +213,18 @@ class MainView:
                     parts = message.split(":", 2)
                     reason = parts[1] if len(parts) > 1 else "unknown"
                     display_msg = parts[2] if len(parts) > 2 else message
-
                     self._show_snackbar(display_msg, Colors.ERROR)
-
                     if reason == "invalid_credentials":
-                        self.input_fields['student_id'].set_error("학번을 확인하세요")
-                        self.input_fields['password'].set_error("비밀번호를 확인하세요")
+                        self.left_panel.account.set_error('student_id', "학번을 확인하세요")
+                        self.left_panel.account.set_error('password', "비밀번호를 확인하세요")
                     elif reason in ("navigation_timeout", "sso_page_failed"):
-                        self.input_fields['student_id'].set_error("로그인 서버 연결 실패")
+                        self.left_panel.account.set_error('student_id', "로그인 서버 연결 실패")
                 elif "취소" not in message:
                     self._show_snackbar(f"오류: {message}", Colors.ERROR)
                 else:
-                    # 취소 시에도 UI 갱신
                     self.page.update()
             except Exception:
                 pass
-
             self.worker = None
 
         def on_step(step_num, step_name):
@@ -517,7 +256,7 @@ class MainView:
         def do_stop(e):
             if self.worker:
                 self.worker.request_cancel()
-                self.log_area.append_message("⚠️ 작업 중지를 요청했습니다...")
+                self.log_drawer.append_message("작업 중지를 요청했습니다...")
             confirm_dialog.open = False
             self.page.update()
 
@@ -529,10 +268,13 @@ class MainView:
             modal=True,
             title=ft.Text("확인"),
             content=ft.Text("진행 중인 작업을 중지하시겠습니까?"),
+            shape=ft.RoundedRectangleBorder(radius=Radius.LG),
+            bgcolor=Colors.BG,
             actions=[
                 ft.TextButton(content=ft.Text("아니오"), on_click=cancel),
                 ft.ElevatedButton(content=ft.Text("예"), on_click=do_stop,
-                    style=ft.ButtonStyle(color=ft.Colors.WHITE, bgcolor=Colors.ERROR)),
+                    style=ft.ButtonStyle(color=ft.Colors.WHITE, bgcolor=Colors.ERROR,
+                        shape=ft.RoundedRectangleBorder(radius=Radius.MD))),
             ],
             actions_alignment=ft.MainAxisAlignment.END,
         )
@@ -541,13 +283,13 @@ class MainView:
     def _on_modal_stop(self):
         if self.worker:
             self.worker.request_cancel()
-            self.log_area.append_message("⚠️ 작업 중지를 요청했습니다...")
+            self.log_drawer.append_message("작업 중지를 요청했습니다...")
 
-    def _handle_clear(self, e=None):
+    def _handle_clear(self):
         def do_clear(e):
-            for field in self.input_fields.values():
-                field.clear()
-            self.log_area.clear()
+            self.left_panel.clear()
+            self.right_panel.lecture.clear()
+            self.log_drawer.clear()
             confirm_dialog.open = False
             self.page.update()
 
@@ -559,10 +301,13 @@ class MainView:
             modal=True,
             title=ft.Text("확인"),
             content=ft.Text("모든 입력 필드를 초기화하시겠습니까?"),
+            shape=ft.RoundedRectangleBorder(radius=Radius.LG),
+            bgcolor=Colors.BG,
             actions=[
                 ft.TextButton(content=ft.Text("아니오"), on_click=cancel),
                 ft.ElevatedButton(content=ft.Text("예"), on_click=do_clear,
-                    style=ft.ButtonStyle(color=ft.Colors.WHITE, bgcolor=Colors.ERROR)),
+                    style=ft.ButtonStyle(color=ft.Colors.WHITE, bgcolor=Colors.ERROR,
+                        shape=ft.RoundedRectangleBorder(radius=Radius.MD))),
             ],
             actions_alignment=ft.MainAxisAlignment.END,
         )
@@ -571,36 +316,29 @@ class MainView:
     # ── 유틸리티 ─────────────────────────────────────────────
 
     def _show_snackbar(self, message: str, bgcolor: str = Colors.PRIMARY):
-        """스레드 안전한 SnackBar 표시 (미리 생성된 컨트롤 재사용)"""
         try:
             self._snackbar.content.value = message
             self._snackbar.bgcolor = bgcolor
             self._snackbar.open = True
+            if self._snackbar not in self.page.overlay:
+                self.page.overlay.append(self._snackbar)
             self.page.update()
         except Exception:
             pass
 
     def _set_fields_enabled(self, enabled: bool):
-        for field in self.input_fields.values():
-            field.set_enabled(enabled)
-        self.model_selector.set_enabled(enabled)
-        self.stage_selector.set_enabled(enabled)
+        self.left_panel.set_enabled(enabled)
+        self.right_panel.set_enabled(enabled)
 
     def _check_module_status(self):
         if self.module_errors:
-            self.log_area.append_message("⚠️ 일부 모듈 로드 실패:")
+            self.log_drawer.append_message("일부 모듈 로드 실패:")
             for error in self.module_errors:
-                self.log_area.append_message(f"   - {error}")
-            self.log_area.append_message(Messages.INSTALL_REQUIREMENTS)
+                self.log_drawer.append_message(f"   - {error}")
+            self.log_drawer.append_message(Messages.INSTALL_REQUIREMENTS)
             self.page.update()
 
     def _load_saved_inputs(self):
         saved = load_user_inputs()
-        for field_name, value in saved.items():
-            if field_name in self.input_fields and value:
-                self.input_fields[field_name].set_value(value)
-        if 'ai_engine' in saved:
-            self.model_selector.set_engine(saved['ai_engine'])
-        if 'ai_model' in saved:
-            self.model_selector.set_model(saved['ai_model'])
+        self.left_panel.load_saved(saved)
         self.page.update()

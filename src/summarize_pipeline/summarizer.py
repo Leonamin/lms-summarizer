@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-import google.generativeai as genai
 import webbrowser
 from openai import OpenAI
 import pyperclip
@@ -68,10 +67,10 @@ class OpenAISummarizer(Summarizer):
 
 class GeminiSummarizer(Summarizer):
     def __init__(self, model_name: str = "gemini-2.5-flash"):
+        from google import genai
         user_setting = UserSetting()
         self.model_name = model_name
-        genai.configure(api_key=user_setting.GOOGLE_API_KEY)
-        self.model = genai.GenerativeModel(model_name)
+        self._client = genai.Client(api_key=user_setting.GOOGLE_API_KEY)
 
     def summarize(self, txt_path: str, prompt: str) -> str:
         print(f"[DEBUG] 텍스트 파일 읽는 중: {txt_path}")
@@ -84,7 +83,10 @@ class GeminiSummarizer(Summarizer):
 
         print("[DEBUG] Google Gemini API 호출 시작...")
         try:
-            response = self.model.generate_content(full_prompt)
+            response = self._client.models.generate_content(
+                model=self.model_name,
+                contents=full_prompt,
+            )
             print("[DEBUG] Google Gemini API 응답 받음")
 
             summary = response.text
