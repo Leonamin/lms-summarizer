@@ -12,9 +12,10 @@ from .base import AIProvider
 
 
 CHATBOT_URLS = {
-    "chatgpt": "https://chat.openai.com/chat",
-    "claude-web": "https://claude.ai/new",
-    "grok-web": "https://x.com/i/grok",
+    "gemini-web": "https://gemini.google.com/app",
+    "chatgpt": "https://chatgpt.com/",
+    "claude-web": "https://claude.ai/",
+    "grok-web": "https://grok.com/",
 }
 
 
@@ -41,6 +42,7 @@ class ClipboardProvider(AIProvider):
     @staticmethod
     def available_models() -> list[tuple[str, str]]:
         return [
+            ("gemini-web", "Gemini (웹)"),
             ("chatgpt", "ChatGPT (웹)"),
             ("claude-web", "Claude (웹)"),
             ("grok-web", "Grok (웹)"),
