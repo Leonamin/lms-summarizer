@@ -31,5 +31,4 @@ class GeminiProvider(AIProvider):
             ("gemini-2.5-flash", "Gemini 2.5 Flash (추천)"),
             ("gemini-2.5-pro", "Gemini 2.5 Pro"),
             ("gemini-2.5-flash-lite", "Gemini 2.5 Flash Lite"),
-            ("gemini-2.0-flash", "Gemini 2.0 Flash"),
         ]

@@ -24,11 +24,11 @@ class ClaudeProvider(AIProvider):
 
     @staticmethod
     def default_model() -> str:
-        return "claude-sonnet-4-20250514"
+        return "claude-sonnet-4-6"
 
     @staticmethod
     def available_models() -> list[tuple[str, str]]:
         return [
-            ("claude-sonnet-4-20250514", "Claude Sonnet 4 (추천)"),
-            ("claude-haiku-4-5-20241022", "Claude Haiku 4.5"),
+            ("claude-sonnet-4-6", "Claude Sonnet 4.6 (추천)"),
+            ("claude-haiku-4-5", "Claude Haiku 4.5"),
         ]

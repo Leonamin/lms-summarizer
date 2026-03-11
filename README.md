@@ -29,11 +29,18 @@
 
 | 엔진 | 지원 모델 | 비용 |
 | --- | --- | --- |
-| **Gemini** (Google) | 2.5 Flash (권장), 2.5 Pro, 2.5 Flash Lite, 2.0 Flash | 무료 티어 제공 |
-| **OpenAI** | GPT-4o (권장), GPT-4o Mini, o3-mini | 유료 |
-| **Claude** (Anthropic) | Claude Sonnet 4 (권장), Claude Haiku 4.5 | 유료 |
-| **Grok** (xAI) | Grok 3 (권장), Grok 3 Mini | 유료 |
-| **클립보드 모드** | ChatGPT / Claude / Grok 웹 | 무료 (API 키 불필요, 브라우저에서 수동 붙여넣기) |
+| **Gemini** (Google) | 2.5 Flash (권장), 2.5 Pro, 2.5 Flash Lite | 무료 티어 제공 |
+| **OpenAI** | GPT-5.4 (권장), GPT-5 Mini, GPT-4o, GPT-4o Mini | 유료 |
+| **Claude** (Anthropic) | Claude Sonnet 4.6 (권장), Claude Haiku 4.5 | 유료 |
+| **Grok** (xAI) | Grok 4.1 Fast (권장), Grok 4.1 Fast Reasoning, Grok 3 | 유료 |
+| **클립보드 모드** | Gemini / ChatGPT / Claude / Grok 웹 | 무료 (API 키 불필요, 브라우저에서 수동 붙여넣기) |
+
+> ⚠️ **모델 목록은 각 AI 공급자의 최신 상황에 따라 달라질 수 있습니다.** 사용 가능한 모델이 변경되었거나 오류가 발생하는 경우, 각 공급자의 공식 문서를 확인하세요.
+>
+> - [Gemini 모델](https://ai.google.dev/gemini-api/docs/models)
+> - [OpenAI 모델](https://developers.openai.com/api/docs/models)
+> - [Claude 모델](https://platform.claude.com/docs/en/about-claude/models/overview)
+> - [Grok 모델](https://docs.x.ai/developers/models)
 
 ### 기타 기능
 
