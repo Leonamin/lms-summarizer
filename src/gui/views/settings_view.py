@@ -74,6 +74,47 @@ def open_settings_dialog(page: ft.Page):
                     on_click=lambda e, path=p: _set_chrome_path(path),
                 )
             )
+    else:
+        detected_controls.append(
+            ft.Container(
+                content=ft.Column(
+                    controls=[
+                        ft.Row(
+                            controls=[
+                                ft.Icon(ft.Icons.WARNING_AMBER_ROUNDED, size=16, color="#B45309"),
+                                ft.Text(
+                                    "Chrome이 감지되지 않았습니다.",
+                                    size=Typography.BODY,
+                                    weight=Typography.SEMI_BOLD,
+                                    color="#B45309",
+                                ),
+                            ],
+                            spacing=Spacing.XS,
+                        ),
+                        ft.Text(
+                            "LMS 영상 재생을 위해 Google Chrome이 필요합니다.\n"
+                            "아래 버튼으로 Chrome을 다운로드하거나, 이미 설치된 경우 '찾아보기'로 직접 경로를 지정하세요.",
+                            size=Typography.SMALL,
+                            color="#92400E",
+                        ),
+                        ft.TextButton(
+                            content=ft.Text("Chrome 다운로드 페이지 열기", size=Typography.SMALL),
+                            icon=ft.Icons.OPEN_IN_NEW,
+                            style=ft.ButtonStyle(
+                                color=Colors.PRIMARY,
+                                padding=ft.padding.symmetric(horizontal=4, vertical=2),
+                            ),
+                            url="https://www.google.com/chrome/",
+                        ),
+                    ],
+                    spacing=4,
+                ),
+                bgcolor="#FFFBEB",
+                border=ft.border.all(1, "#FDE68A"),
+                border_radius=Radius.MD,
+                padding=ft.padding.all(Spacing.SM),
+            )
+        )
 
     def _set_chrome_path(path):
         chrome_field.value = path

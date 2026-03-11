@@ -127,4 +127,22 @@ class InputValidator:
         if not valid:
             return False, error
 
+        # Chrome 경로 검증
+        valid, error = InputValidator.validate_chrome()
+        if not valid:
+            return False, error
+
+        return True, ""
+
+    @staticmethod
+    def validate_chrome() -> Tuple[bool, str]:
+        """Chrome 설치 여부 검증"""
+        from src.gui.core.file_manager import get_chrome_path
+        chrome_path = get_chrome_path()
+        if not chrome_path:
+            return False, (
+                "Chrome이 설치되지 않았거나 경로를 찾을 수 없습니다. "
+                "설정에서 Chrome 경로를 직접 지정하거나, "
+                "https://www.google.com/chrome/ 에서 Chrome을 설치해주세요."
+            )
         return True, ""
