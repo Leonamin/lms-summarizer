@@ -23,12 +23,13 @@ class OpenAIProvider(AIProvider):
 
     @staticmethod
     def default_model() -> str:
-        return "gpt-4o"
+        return "gpt-5.4"
 
     @staticmethod
     def available_models() -> list[tuple[str, str]]:
         return [
-            ("gpt-4o", "GPT-4o (추천)"),
+            ("gpt-5.4", "GPT-5.4 (추천)"),
+            ("gpt-5-mini-2025-08-07", "GPT-5 Mini"),
+            ("gpt-4o", "GPT-4o"),
             ("gpt-4o-mini", "GPT-4o Mini"),
-            ("o3-mini", "o3-mini"),
         ]

@@ -23,11 +23,13 @@ class GrokProvider(AIProvider):
 
     @staticmethod
     def default_model() -> str:
-        return "grok-3"
+        return "grok-4-1-fast-non-reasoning"
 
     @staticmethod
     def available_models() -> list[tuple[str, str]]:
         return [
-            ("grok-3", "Grok 3 (추천)"),
+            ("grok-4-1-fast-non-reasoning", "Grok 4.1 Fast (추천)"),
+            ("grok-4-1-fast-reasoning", "Grok 4.1 Fast Reasoning"),
+            ("grok-3", "Grok 3"),
             ("grok-3-mini", "Grok 3 Mini"),
         ]
