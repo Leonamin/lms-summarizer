@@ -339,6 +339,10 @@ class MainView:
             self._handle_stop()
             return
 
+        # 이전 에러 상태 초기화
+        for key in self.input_fields:
+            self.input_fields[key].clear_error()
+
         inputs = {name: field.get_value() for name, field in self.input_fields.items()}
         valid, error_message = InputValidator.validate_all_inputs(inputs)
         if not valid:
@@ -408,6 +412,18 @@ class MainView:
 
                 if success:
                     self._show_snackbar("작업이 완료되었습니다!", Colors.SUCCESS)
+                elif message and message.startswith("login_failed:"):
+                    parts = message.split(":", 2)
+                    reason = parts[1] if len(parts) > 1 else "unknown"
+                    display_msg = parts[2] if len(parts) > 2 else message
+
+                    self._show_snackbar(display_msg, Colors.ERROR)
+
+                    if reason == "invalid_credentials":
+                        self.input_fields['student_id'].set_error("학번을 확인하세요")
+                        self.input_fields['password'].set_error("비밀번호를 확인하세요")
+                    elif reason in ("navigation_timeout", "sso_page_failed"):
+                        self.input_fields['student_id'].set_error("로그인 서버 연결 실패")
                 elif "취소" not in message:
                     self._show_snackbar(f"오류: {message}", Colors.ERROR)
                 else:

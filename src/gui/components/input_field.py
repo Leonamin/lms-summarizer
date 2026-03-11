@@ -113,5 +113,13 @@ class InputField:
         if self.config.is_password:
             self._korean_warning.visible = False
 
+    def set_error(self, error_text: str = None):
+        """에러 상태 설정"""
+        self.control.error_text = error_text
+
+    def clear_error(self):
+        """에러 상태 해제"""
+        self.control.error_text = None
+
     def set_enabled(self, enabled: bool):
         self.control.disabled = not enabled
