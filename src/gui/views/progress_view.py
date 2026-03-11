@@ -160,7 +160,7 @@ class ProgressModal:
                 # 큰 초록색 체크 아이콘
                 ft.Container(
                     content=ft.Icon(ft.Icons.CHECK_CIRCLE, size=64, color=Colors.SUCCESS),
-                    alignment=ft.alignment.center,
+                    alignment=ft.Alignment(0, 0),
                 ),
                 ft.Container(height=Spacing.SM),
                 ft.Text(
@@ -227,7 +227,7 @@ class ProgressModal:
                 ft.Container(height=Spacing.LG),
                 ft.Container(
                     content=ft.Icon(ft.Icons.CANCEL, size=64, color=Colors.WARNING),
-                    alignment=ft.alignment.center,
+                    alignment=ft.Alignment(0, 0),
                 ),
                 ft.Container(height=Spacing.SM),
                 ft.Text(
@@ -366,7 +366,7 @@ class ProgressModal:
                 width=size, height=size,
                 border_radius=size // 2,
                 bgcolor=Colors.PRIMARY,
-                alignment=ft.alignment.center,
+                alignment=ft.Alignment(0, 0),
             )
         elif state == "active":
             return ft.Container(
@@ -374,7 +374,7 @@ class ProgressModal:
                 width=size, height=size,
                 border_radius=size // 2,
                 bgcolor=Colors.PRIMARY,
-                alignment=ft.alignment.center,
+                alignment=ft.Alignment(0, 0),
             )
         else:  # pending
             return ft.Container(
@@ -382,7 +382,7 @@ class ProgressModal:
                 border_radius=size // 2,
                 border=ft.border.all(2, Colors.BORDER),
                 bgcolor=Colors.CARD,
-                alignment=ft.alignment.center,
+                alignment=ft.Alignment(0, 0),
             )
 
     def _label_color(self, state: str) -> str:

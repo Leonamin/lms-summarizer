@@ -53,7 +53,7 @@ class LectureSection:
                             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                             spacing=Spacing.SM,
                         ),
-                        alignment=ft.alignment.center,
+                        alignment=ft.Alignment(0, 0),
                         expand=True,
                     ),
                 ],

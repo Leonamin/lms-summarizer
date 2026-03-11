@@ -233,7 +233,7 @@ class CourseListView:
                     width=28, height=28,
                     border_radius=14,
                     bgcolor=Colors.ACCENT,
-                    alignment=ft.alignment.center,
+                    alignment=ft.Alignment(0, 0),
                 )
             else:
                 star = ft.Container(
@@ -241,7 +241,7 @@ class CourseListView:
                     width=28, height=28,
                     border_radius=14,
                     bgcolor=Colors.SURFACE,
-                    alignment=ft.alignment.center,
+                    alignment=ft.Alignment(0, 0),
                 )
 
             # 학기 배지
