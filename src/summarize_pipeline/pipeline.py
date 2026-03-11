@@ -2,7 +2,7 @@ import os
 import time
 from pathlib import Path
 
-from src.summarize_pipeline.summarizer import summarize_text
+from src.summarize_pipeline.providers import create_provider
 
 try:
     from src.gui.core.file_manager import DEFAULT_PROMPT as _DEFAULT_PROMPT
@@ -11,10 +11,18 @@ except ImportError:
 
 
 class SummarizePipeline:
-    def __init__(self, model_name: str = "gemini-2.5-flash", prompt: str = None):
+    def __init__(
+        self,
+        model_name: str = "gemini-2.5-flash",
+        prompt: str = None,
+        engine: str = "gemini",
+        api_key: str = None,
+    ):
         self.downloads_dir = None  # 다운로드 경로는 나중에 설정됨
         self.model_name = model_name
         self.prompt = prompt or _DEFAULT_PROMPT
+        self.engine = engine
+        self.api_key = api_key
 
     def process(self, text_path: str) -> str:
         """텍스트 요약"""
@@ -24,8 +32,14 @@ class SummarizePipeline:
 
         print(f"[INFO] 요약 시작: {text_path}")
         start_time = time.time()
-        summary = summarize_text(text_path, self.prompt,
-                                 model_name=self.model_name)
+
+        # 텍스트 파일 읽기
+        with open(text_path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        # Provider를 통해 요약 생성
+        provider = create_provider(self.engine, api_key=self.api_key, model_name=self.model_name)
+        summary = provider.summarize(content, self.prompt)
 
         end_time = time.time()
         print(f"[INFO] 요약 완료: {summary}")

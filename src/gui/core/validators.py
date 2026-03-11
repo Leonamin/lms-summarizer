@@ -99,8 +99,13 @@ class InputValidator:
             return False
 
     @staticmethod
-    def validate_all_inputs(inputs: Dict[str, str]) -> Tuple[bool, str]:
-        """모든 입력값 종합 검증"""
+    def validate_all_inputs(inputs: Dict[str, str], skip_api_key: bool = False) -> Tuple[bool, str]:
+        """모든 입력값 종합 검증
+
+        Args:
+            inputs: 입력값 딕셔너리
+            skip_api_key: True이면 API 키 검증을 건너뜀 (클립보드 모드 등)
+        """
         # 학번 검증
         valid, error = InputValidator.validate_student_id(inputs.get('student_id', ''))
         if not valid:
@@ -111,10 +116,11 @@ class InputValidator:
         if not valid:
             return False, error
 
-        # API 키 검증
-        valid, error = InputValidator.validate_api_key(inputs.get('api_key', ''))
-        if not valid:
-            return False, error
+        # API 키 검증 (클립보드 모드에서는 건너뜀)
+        if not skip_api_key:
+            valid, error = InputValidator.validate_api_key(inputs.get('api_key', ''))
+            if not valid:
+                return False, error
 
         # URL 검증
         valid, error, urls = InputValidator.validate_urls(inputs.get('urls', ''))

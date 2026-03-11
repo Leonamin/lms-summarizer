@@ -48,6 +48,7 @@ class ProcessingWorker:
         modules: Dict,
         save_video_dir: str = None,
         model_name: str = "gemini-2.5-flash",
+        engine: str = "gemini",
         on_log: Optional[Callable[[str], None]] = None,
         on_finished: Optional[Callable[[bool, str], None]] = None,
         on_step_changed: Optional[Callable[[int, str], None]] = None,
@@ -59,6 +60,7 @@ class ProcessingWorker:
         self.modules = modules
         self.save_video_dir = save_video_dir
         self.model_name = model_name
+        self.engine = engine
         self.summary_prompt = get_summary_prompt()
         self.chrome_path = get_chrome_path()
         self.debug_mode = get_debug_mode()
@@ -354,8 +356,19 @@ class ProcessingWorker:
 
     def _summarize_texts(self, text_paths: List[str]) -> List[str]:
         self._emit_log(Messages.TEXT_SUMMARIZING)
+        self._emit_log(f"AI 엔진: {self.engine} / 모델: {self.model_name}")
 
-        summarize_pipeline = self.modules['SummarizePipeline'](self.model_name, prompt=self.summary_prompt)
+        is_clipboard = self.engine == "clipboard"
+        if is_clipboard:
+            self._emit_log("클립보드 모드: 프롬프트가 클립보드에 복사되고 외부 챗봇이 열립니다.")
+
+        api_key = self.user_inputs.get('api_key', '')
+        summarize_pipeline = self.modules['SummarizePipeline'](
+            self.model_name,
+            prompt=self.summary_prompt,
+            engine=self.engine,
+            api_key=api_key,
+        )
         summary_paths = []
 
         for i, text_path in enumerate(text_paths, 1):
@@ -363,6 +376,10 @@ class ProcessingWorker:
             try:
                 summarize_pipeline.downloads_dir = str(Path(text_path).parent)
                 self._emit_log(f"({i}/{len(text_paths)}) 요약 생성 중: {Path(text_path).name}")
+
+                # 클립보드 모드: 챗봇용 텍스트 파일도 생성
+                if is_clipboard:
+                    self._write_chatbot_text(text_path)
 
                 summary_path = summarize_pipeline.process(text_path)
                 summary_paths.append(summary_path)
@@ -374,6 +391,19 @@ class ProcessingWorker:
                 self._emit_log(f"{Messages.SUMMARY_FAILED} ({Path(text_path).name}): {e}")
 
         return summary_paths
+
+    def _write_chatbot_text(self, text_path: str):
+        """클립보드 모드에서 챗봇에 붙여넣기용 텍스트 파일 생성"""
+        try:
+            with open(text_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            chatbot_path = text_path.replace('.txt', '_for_chatbot.txt')
+            chatbot_content = f"{self.summary_prompt}\n\n다음 텍스트를 요약해줘:\n\n{content}"
+            with open(chatbot_path, 'w', encoding='utf-8') as f:
+                f.write(chatbot_content)
+            self._emit_log(f"챗봇용 텍스트 저장: {Path(chatbot_path).name}")
+        except Exception as e:
+            self._emit_log(f"⚠️ 챗봇용 텍스트 생성 실패: {e}")
 
 
     def _save_processing_history(
