@@ -55,6 +55,9 @@ class MainView:
         self._snackbar = ft.SnackBar(content=ft.Text(""), duration=3000)
         page.overlay.append(self._snackbar)
 
+        # StageSelector의 FilePicker를 overlay에 등록
+        page.overlay.append(self.stage_selector.file_picker)
+
         # 컨트롤 생성
         self._save_video_checkbox = ft.Checkbox(
             label="처리 완료 후 원본 동영상 보관 (미선택 시 자동 삭제)",
