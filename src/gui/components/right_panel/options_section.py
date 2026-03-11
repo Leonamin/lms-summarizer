@@ -231,7 +231,7 @@ class OptionsSection:
             padding=ft.padding.all(Spacing.MD),
         )
 
-        # 옵션 본문 (접혀있을 때 숨김)
+        # 옵션 본문 (접혀있을 때 숨김, 펼침 시 스크롤 가능)
         self._body = ft.Column(
             controls=[
                 self._summary_mode_container,
@@ -241,6 +241,7 @@ class OptionsSection:
             ],
             spacing=Spacing.SM,
             visible=False,
+            scroll=ft.ScrollMode.AUTO,
             horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
         )
 
