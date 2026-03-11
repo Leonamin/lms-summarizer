@@ -11,12 +11,14 @@ from pathlib import Path
 from typing import Dict, List, Callable, Optional
 
 from src.gui.config.constants import Messages
+from src.video_pipeline.login import LoginFailedError
 from src.gui.core.file_manager import (
     create_config_files, extract_urls_from_input, ensure_downloads_directory,
     get_summary_prompt, get_chrome_path, get_debug_mode, get_stt_engine,
     add_history_entry, get_app_data_dir,
 )
 from src.gui.core.module_loader import check_required_modules
+from src.pipeline_stage import PipelineStage, STAGE_LABELS
 
 
 def _setup_file_logger() -> logging.Logger:
@@ -50,6 +52,8 @@ class ProcessingWorker:
         on_finished: Optional[Callable[[bool, str], None]] = None,
         on_step_changed: Optional[Callable[[int, str], None]] = None,
         on_progress: Optional[Callable[[int, int], None]] = None,
+        start_stage: PipelineStage = PipelineStage.DOWNLOAD,
+        input_files: Optional[List[str]] = None,
     ):
         self.user_inputs = user_inputs
         self.modules = modules
@@ -59,6 +63,8 @@ class ProcessingWorker:
         self.chrome_path = get_chrome_path()
         self.debug_mode = get_debug_mode()
         self.stt_engine = get_stt_engine()
+        self.start_stage = start_stage
+        self.input_files = input_files or []
         self._cancel_event = threading.Event()
         self._thread: Optional[threading.Thread] = None
 
@@ -109,7 +115,9 @@ class ProcessingWorker:
                 return
 
             self._check_cancelled()
-            self._create_configuration()
+            # 다운로드 단계부터 시작할 때만 설정 파일 생성
+            if self.start_stage <= PipelineStage.DOWNLOAD:
+                self._create_configuration()
             self._check_cancelled()
             self._execute_processing_pipeline()
 
@@ -119,6 +127,11 @@ class ProcessingWorker:
         except CancelledException:
             self._emit_log("⚠️ 사용자에 의해 작업이 취소되었습니다.")
             self._on_finished(False, "작업이 취소되었습니다.")
+
+        except LoginFailedError as e:
+            reason_msg = e.detail
+            self._emit_log(f"로그인 실패: {reason_msg}")
+            self._on_finished(False, f"login_failed:{e.reason}:{reason_msg}")
 
         except Exception as e:
             error_msg = f"작업 중 오류 발생: {str(e)}"
@@ -141,55 +154,94 @@ class ProcessingWorker:
 
     def _execute_processing_pipeline(self):
         import time as _time
-        urls = extract_urls_from_input(self.user_inputs.get('urls', ''))
-        if not urls:
-            raise ValueError("처리할 URL이 없습니다.")
 
-        user_setting = self.modules['UserSetting'](self.user_inputs)
         pipeline_start = _time.time()
-
-        # 단계별 성능 측정
         step_timings = {}
 
-        # 1. 비디오 다운로드
-        self._check_cancelled()
-        self._on_step_changed(1, "영상 다운로드")
-        step_start = _time.time()
-        video_paths = self._download_videos(urls, user_setting)
-        step_timings["download_sec"] = round(_time.time() - step_start, 1)
+        video_paths: List[str] = []
+        wav_paths: List[str] = []
+        text_paths: List[str] = []
+        summary_paths: List[str] = []
+        video_sizes: Dict[str, float] = {}
+        urls: List[str] = []
 
-        if not video_paths:
-            raise ValueError(f"다운로드된 영상이 없습니다. ({len(urls)}개 URL 중 0개 성공)")
+        # ── 1. 영상 다운로드 ──
+        if self.start_stage <= PipelineStage.DOWNLOAD:
+            urls = extract_urls_from_input(self.user_inputs.get('urls', ''))
+            if not urls:
+                raise ValueError("처리할 URL이 없습니다.")
 
-        # 영상 파일 크기 기록 (삭제 전)
-        video_sizes = {}
-        for vp in video_paths:
-            try:
-                video_sizes[vp] = os.path.getsize(vp) / (1024 * 1024)
-            except OSError:
-                video_sizes[vp] = 0.0
+            user_setting = self.modules['UserSetting'](self.user_inputs)
 
-        # 2. 오디오 → 텍스트
-        self._check_cancelled()
-        self._on_step_changed(2, "음성 → 텍스트 변환")
-        step_start = _time.time()
-        text_paths = self._convert_audio_to_text(video_paths)
-        step_timings["stt_sec"] = round(_time.time() - step_start, 1)
+            self._check_cancelled()
+            self._on_step_changed(PipelineStage.DOWNLOAD, STAGE_LABELS[PipelineStage.DOWNLOAD])
+            step_start = _time.time()
+            video_paths = self._download_videos(urls, user_setting)
+            step_timings["download_sec"] = round(_time.time() - step_start, 1)
 
-        # 3. AI 요약
-        self._check_cancelled()
-        self._on_step_changed(3, "AI 요약 생성")
-        step_start = _time.time()
-        summary_paths = self._summarize_texts(text_paths)
-        step_timings["summary_sec"] = round(_time.time() - step_start, 1)
+            if not video_paths:
+                raise ValueError(f"다운로드된 영상이 없습니다. ({len(urls)}개 URL 중 0개 성공)")
 
-        # 히스토리 저장
+            # 영상 파일 크기 기록 (삭제 전)
+            for vp in video_paths:
+                try:
+                    video_sizes[vp] = os.path.getsize(vp) / (1024 * 1024)
+                except OSError:
+                    video_sizes[vp] = 0.0
+
+        # ── 2. MP4 → WAV 변환 ──
+        if self.start_stage <= PipelineStage.CONVERT_AUDIO:
+            self._check_cancelled()
+            self._on_step_changed(PipelineStage.CONVERT_AUDIO, STAGE_LABELS[PipelineStage.CONVERT_AUDIO])
+            step_start = _time.time()
+
+            # 시작 단계가 CONVERT_AUDIO이면 input_files를 사용
+            source_videos = self.input_files if self.start_stage == PipelineStage.CONVERT_AUDIO else video_paths
+            wav_paths = self._convert_videos_to_wav(source_videos)
+            step_timings["convert_sec"] = round(_time.time() - step_start, 1)
+
+        # ── 3. STT ──
+        if self.start_stage <= PipelineStage.STT:
+            self._check_cancelled()
+            self._on_step_changed(PipelineStage.STT, STAGE_LABELS[PipelineStage.STT])
+            step_start = _time.time()
+
+            # 시작 단계가 STT이면 input_files를 사용
+            source_wavs = self.input_files if self.start_stage == PipelineStage.STT else wav_paths
+            text_paths = self._transcribe_wav_to_text(source_wavs)
+            step_timings["stt_sec"] = round(_time.time() - step_start, 1)
+
+        # ── 4. AI 요약 ──
+        if self.start_stage <= PipelineStage.SUMMARIZE:
+            self._check_cancelled()
+            self._on_step_changed(PipelineStage.SUMMARIZE, STAGE_LABELS[PipelineStage.SUMMARIZE])
+            step_start = _time.time()
+
+            # 시작 단계가 SUMMARIZE이면 input_files를 사용
+            source_texts = self.input_files if self.start_stage == PipelineStage.SUMMARIZE else text_paths
+            summary_paths = self._summarize_texts(source_texts)
+            step_timings["summary_sec"] = round(_time.time() - step_start, 1)
+
+        # 히스토리 저장 (다운로드부터 시작한 경우에만)
         duration_sec = _time.time() - pipeline_start
         step_timings["total_sec"] = round(duration_sec, 1)
-        self._emit_log(f"⏱ 성능: 다운로드 {step_timings['download_sec']}초 | STT {step_timings['stt_sec']}초 | 요약 {step_timings['summary_sec']}초 | 전체 {step_timings['total_sec']}초")
-        self._save_processing_history(urls, video_paths, video_sizes, summary_paths, duration_sec, step_timings)
 
-        if not self.save_video_dir:
+        timing_parts = []
+        if "download_sec" in step_timings:
+            timing_parts.append(f"다운로드 {step_timings['download_sec']}초")
+        if "convert_sec" in step_timings:
+            timing_parts.append(f"변환 {step_timings['convert_sec']}초")
+        if "stt_sec" in step_timings:
+            timing_parts.append(f"STT {step_timings['stt_sec']}초")
+        if "summary_sec" in step_timings:
+            timing_parts.append(f"요약 {step_timings['summary_sec']}초")
+        timing_parts.append(f"전체 {step_timings['total_sec']}초")
+        self._emit_log(f"⏱ 성능: {' | '.join(timing_parts)}")
+
+        if urls and video_paths:
+            self._save_processing_history(urls, video_paths, video_sizes, summary_paths, duration_sec, step_timings)
+
+        if video_paths and not self.save_video_dir:
             self._delete_video_files(video_paths)
 
         self._display_results(video_paths, text_paths)
@@ -241,27 +293,52 @@ class ProcessingWorker:
             except Exception as e:
                 self._emit_log(f"⚠️ 영상 삭제 실패 ({Path(filepath).name}): {e}")
 
-    def _convert_audio_to_text(self, video_paths: List[str]) -> List[str]:
+    def _convert_videos_to_wav(self, video_paths: List[str]) -> List[str]:
+        """MP4/영상 파일들을 WAV로 변환"""
+        self._emit_log("📋 영상을 오디오(WAV)로 변환 중...")
+
+        audio_pipeline = self.modules['AudioToTextPipeline'](engine=self.stt_engine)
+        wav_paths = []
+
+        for i, video_path in enumerate(video_paths, 1):
+            self._check_cancelled()
+            try:
+                audio_pipeline.downloads_dir = str(Path(video_path).parent)
+                self._emit_log(f"({i}/{len(video_paths)}) WAV 변환 중: {Path(video_path).name}")
+
+                wav_path = audio_pipeline.convert_to_wav(video_path)
+                wav_paths.append(wav_path)
+                self._emit_log(f"✅ WAV 변환 완료: {wav_path}")
+
+            except CancelledException:
+                raise
+            except Exception as e:
+                self._emit_log(f"❌ WAV 변환 실패 ({Path(video_path).name}): {e}")
+
+        return wav_paths
+
+    def _transcribe_wav_to_text(self, wav_paths: List[str]) -> List[str]:
+        """WAV 파일들을 텍스트로 변환"""
         self._emit_log(Messages.AUDIO_CONVERTING)
 
         audio_pipeline = self.modules['AudioToTextPipeline'](engine=self.stt_engine)
         self._emit_log(f"STT 엔진: {self.stt_engine}")
         text_paths = []
 
-        for i, video_path in enumerate(video_paths, 1):
+        for i, wav_path in enumerate(wav_paths, 1):
             self._check_cancelled()
             try:
-                audio_pipeline.downloads_dir = str(Path(video_path).parent)
-                self._emit_log(f"({i}/{len(video_paths)}) 텍스트 변환 중: {Path(video_path).name}")
+                audio_pipeline.downloads_dir = str(Path(wav_path).parent)
+                self._emit_log(f"({i}/{len(wav_paths)}) 텍스트 변환 중: {Path(wav_path).name}")
 
-                text_path = audio_pipeline.process(video_path)
+                text_path = audio_pipeline.transcribe(wav_path, remove_wav=True)
                 text_paths.append(text_path)
                 self._emit_log(f"{Messages.CONVERSION_COMPLETE}: {text_path}")
 
             except CancelledException:
                 raise
             except Exception as e:
-                self._emit_log(f"{Messages.CONVERSION_FAILED} ({Path(video_path).name}): {e}")
+                self._emit_log(f"{Messages.CONVERSION_FAILED} ({Path(wav_path).name}): {e}")
 
         if text_paths:
             self._emit_log("변환된 텍스트 파일들:")
@@ -269,6 +346,11 @@ class ProcessingWorker:
                 self._emit_log(f"   ({i}) {text_path}")
 
         return text_paths
+
+    # 하위 호환: 기존 _convert_audio_to_text 을 유지 (직접 호출하는 곳은 없지만 안전)
+    def _convert_audio_to_text(self, video_paths: List[str]) -> List[str]:
+        wav_paths = self._convert_videos_to_wav(video_paths)
+        return self._transcribe_wav_to_text(wav_paths)
 
     def _summarize_texts(self, text_paths: List[str]) -> List[str]:
         self._emit_log(Messages.TEXT_SUMMARIZING)

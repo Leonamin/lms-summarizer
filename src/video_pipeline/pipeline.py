@@ -4,7 +4,7 @@ from pathlib import Path
 from playwright.async_api import async_playwright, Playwright, Page
 from typing import Callable, Optional, Tuple
 
-from src.video_pipeline.login import perform_login_if_needed
+from src.video_pipeline.login import perform_login_if_needed, LoginFailedError
 from src.video_pipeline.video_parser import extract_video_url
 from src.video_pipeline.download_video import download_video
 from src.user_setting import UserSetting
@@ -78,11 +78,9 @@ class VideoPipeline:
 
         if "login" in page.url:
             self._log("로그인 진행 중...")
-            result = await perform_login_if_needed(
+            await perform_login_if_needed(
                 page, self.user_id, self.password, log=self._log
             )
-            if not result:
-                raise RuntimeError("LMS 로그인 실패. 학번/비밀번호를 확인하세요.")
             self._log("로그인 완료")
         else:
             self._log("이미 로그인 상태")

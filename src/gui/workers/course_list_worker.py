@@ -9,6 +9,7 @@ from typing import Optional, Callable, List
 
 from src.gui.config.course_models import Course
 from src.gui.core.file_manager import get_chrome_path, get_debug_mode
+from src.video_pipeline.login import LoginFailedError
 
 
 class CourseListWorker:
@@ -66,6 +67,9 @@ class CourseListWorker:
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             loop.run_until_complete(self._async_run())
+        except LoginFailedError as e:
+            if not self._cancel_event.is_set():
+                self._on_error(f"로그인 실패: {e.detail}")
         except Exception as e:
             if not self._cancel_event.is_set():
                 self._on_error(str(e))
