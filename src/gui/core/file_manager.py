@@ -234,8 +234,27 @@ def set_summary_prompt(prompt: str) -> None:
 # ── STT 엔진 ──────────────────────────────────────────────
 
 def get_stt_engine() -> str:
-    """STT 엔진 반환. whisper.cpp 단일 엔진."""
-    return "whisper-cpp"
+    """STT 엔진 반환. 기본값: whisper-cpp."""
+    return load_settings().get("stt_engine", "whisper-cpp")
+
+
+def set_stt_engine(engine: str) -> None:
+    """STT 엔진을 settings.json에 저장"""
+    settings = load_settings()
+    settings["stt_engine"] = engine
+    save_settings(settings)
+
+
+def get_stt_api_key() -> str:
+    """ReturnZero STT API 키(client_id:client_secret 형식) 반환"""
+    return load_settings().get("stt_api_key", "")
+
+
+def set_stt_api_key(api_key: str) -> None:
+    """ReturnZero STT API 키를 settings.json에 저장"""
+    settings = load_settings()
+    settings["stt_api_key"] = api_key
+    save_settings(settings)
 
 
 # ── Chrome 경로 ────────────────────────────────────────────
