@@ -5,6 +5,9 @@
 import flet as ft
 
 from src.gui.theme import Colors, Typography, Spacing, Radius, divider
+from src.gui.core.file_manager import (
+    open_in_file_explorer, ensure_downloads_directory, get_auto_open_folder,
+)
 
 # 처리 단계 정의
 _STEPS = [
@@ -85,6 +88,19 @@ class ProgressModal:
             on_click=self._toggle_log,
         )
 
+        # 결과 폴더 열기 버튼 (완료 시 표시)
+        self._open_folder_btn = ft.ElevatedButton(
+            content=ft.Text("결과 폴더 열기"),
+            icon=ft.Icons.FOLDER_OPEN,
+            on_click=self._handle_open_folder,
+            visible=False,
+            style=ft.ButtonStyle(
+                color=ft.Colors.WHITE,
+                bgcolor=Colors.SUCCESS,
+                shape=ft.RoundedRectangleBorder(radius=Radius.SM),
+            ),
+        )
+
         # 중지 버튼
         self._stop_btn = ft.ElevatedButton(
             content=ft.Text("중지"),
@@ -127,7 +143,7 @@ class ProgressModal:
                     tight=True,
                 ),
             ),
-            actions=[self._stop_btn],
+            actions=[self._open_folder_btn, self._stop_btn],
             actions_alignment=ft.MainAxisAlignment.END,
         )
 
@@ -148,6 +164,9 @@ class ProgressModal:
             self._log_toggle.content.value = "상세 로그 보기"
             self._log_toggle.icon = ft.Icons.EXPAND_MORE
         self._page.update()
+
+    def _handle_open_folder(self, e=None):
+        open_in_file_explorer(ensure_downloads_directory())
 
     def _handle_stop(self, e=None):
         if self._is_finished:
@@ -217,6 +236,9 @@ class ProgressModal:
         self._progress_bar.value = 1.0
         self._status_text.value = "모든 작업이 완료되었습니다!"
         self._status_text.color = Colors.SUCCESS
+        self._open_folder_btn.visible = True
+        if get_auto_open_folder():
+            open_in_file_explorer(ensure_downloads_directory())
         self._stop_btn.content.value = "닫기"
         self._stop_btn.disabled = False
         self._stop_btn.style = ft.ButtonStyle(
