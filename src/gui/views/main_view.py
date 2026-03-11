@@ -25,10 +25,12 @@ from src.gui.core.file_manager import (
 from src.gui.components.input_field import InputField
 from src.gui.components.log_area import LogArea
 from src.gui.components.model_selector import ModelSelector
+from src.gui.components.stage_selector import StageSelector
 from src.gui.views.progress_view import ProgressModal
 from src.gui.views.settings_view import open_settings_dialog
 from src.gui.views.course_list_view import CourseListView
 from src.gui.workers.processing_worker import ProcessingWorker
+from src.pipeline_stage import PipelineStage
 
 
 class MainView:
@@ -42,6 +44,7 @@ class MainView:
         self.input_fields: Dict[str, InputField] = {}
         self.log_area = LogArea()
         self.model_selector = ModelSelector()
+        self.stage_selector = StageSelector()
         self.worker: ProcessingWorker = None
         self.modal: ProgressModal = None
 
@@ -241,9 +244,10 @@ class MainView:
 
             form_controls.append(field.container)
 
-            # API 키 다음에 모델 선택기
+            # API 키 다음에 모델 선택기 + 시작 단계 선택기
             if name == 'api_key':
                 form_controls.append(self.model_selector.control)
+                form_controls.append(self.stage_selector.control)
 
         return card_container(
             content=ft.Column(
@@ -339,11 +343,28 @@ class MainView:
             self._handle_stop()
             return
 
+        start_stage = self.stage_selector.get_stage()
         inputs = {name: field.get_value() for name, field in self.input_fields.items()}
-        valid, error_message = InputValidator.validate_all_inputs(inputs)
-        if not valid:
-            self._show_snackbar(error_message, Colors.ERROR)
-            return
+
+        # 다운로드 단계부터 시작할 때만 전체 검증 필요
+        if start_stage == PipelineStage.DOWNLOAD:
+            valid, error_message = InputValidator.validate_all_inputs(inputs)
+            if not valid:
+                self._show_snackbar(error_message, Colors.ERROR)
+                return
+        else:
+            # 다운로드 이후 단계에서는 API 키만 검증 (요약에 필요)
+            if start_stage <= PipelineStage.SUMMARIZE:
+                valid, error = InputValidator.validate_api_key(inputs.get('api_key', ''))
+                if not valid:
+                    self._show_snackbar(error, Colors.ERROR)
+                    return
+
+            # 입력 파일이 있는지 확인
+            input_files = self.stage_selector.get_files()
+            if not input_files:
+                self._show_snackbar("시작 단계에 사용할 파일을 선택해주세요.", Colors.ERROR)
+                return
 
         all_loaded, missing = check_required_modules(self.modules)
         if not all_loaded:
@@ -354,6 +375,8 @@ class MainView:
 
     def _start_processing(self, inputs: Dict[str, str]):
         model_name = self.model_selector.get_model()
+        start_stage = self.stage_selector.get_stage()
+        input_files = self.stage_selector.get_files()
         save_user_inputs({**inputs, 'ai_model': model_name})
 
         self._is_processing = True
@@ -373,7 +396,7 @@ class MainView:
         save_video_dir = ensure_downloads_directory() if self._save_video_checkbox.value else None
 
         # 프로그레스 모달 생성
-        self.modal = ProgressModal(self.page, on_stop=self._on_modal_stop)
+        self.modal = ProgressModal(self.page, on_stop=self._on_modal_stop, start_stage=start_stage)
 
         def on_log(msg):
             self.log_area.append_message(msg)
@@ -434,6 +457,8 @@ class MainView:
             on_finished=on_finished,
             on_step_changed=on_step,
             on_progress=on_progress,
+            start_stage=start_stage,
+            input_files=input_files,
         )
 
         self.modal.show()
@@ -511,6 +536,7 @@ class MainView:
         for field in self.input_fields.values():
             field.set_enabled(enabled)
         self.model_selector.set_enabled(enabled)
+        self.stage_selector.set_enabled(enabled)
 
     def _check_module_status(self):
         if self.module_errors:
