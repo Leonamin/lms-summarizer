@@ -63,6 +63,7 @@ class ProgressModal:
             color=Colors.TEXT_SECONDARY,
             border=ft.InputBorder.NONE,
             content_padding=0,
+            expand=True,
         )
         self._log_container = ft.Container(
             content=self._log_field,
@@ -125,6 +126,7 @@ class ProgressModal:
                     ],
                     spacing=Spacing.SM,
                     tight=True,
+                    horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
                 ),
             ),
             actions=[self._stop_btn],
