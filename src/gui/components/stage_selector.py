@@ -104,7 +104,7 @@ class StageSelector:
             visible=False,
         )
 
-        # FilePicker (page overlay에 등록 필요)
+        # FilePicker (Flet 0.81+에서는 Service 타입으로 overlay 등록 불필요)
         self.file_picker = ft.FilePicker(on_result=self._on_files_selected)
 
         self.control = ft.Column(
@@ -188,7 +188,7 @@ class StageSelector:
             allowed_extensions=allowed if allowed else None,
         )
 
-    def _on_files_selected(self, e: ft.FilePickerResultEvent):
+    def _on_files_selected(self, e):
         if not e.files:
             return
 

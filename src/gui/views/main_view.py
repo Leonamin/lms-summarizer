@@ -54,10 +54,6 @@ class MainView:
 
         # 스레드 안전한 SnackBar (미리 생성하여 재사용)
         self._snackbar = ft.SnackBar(content=ft.Text(""), duration=3000)
-        page.overlay.append(self._snackbar)
-
-        # StageSelector의 FilePicker를 overlay에 등록
-        page.overlay.append(self.stage_selector.file_picker)
 
         # 컨트롤 생성
         self._save_video_checkbox = ft.Checkbox(
@@ -571,12 +567,12 @@ class MainView:
     # ── 유틸리티 ─────────────────────────────────────────────
 
     def _show_snackbar(self, message: str, bgcolor: str = Colors.PRIMARY):
-        """스레드 안전한 SnackBar 표시 (미리 생성된 컨트롤 재사용)"""
+        """스레드 안전한 SnackBar 표시"""
         try:
             self._snackbar.content.value = message
             self._snackbar.bgcolor = bgcolor
             self._snackbar.open = True
-            self.page.update()
+            self.page.show_snack_bar(self._snackbar)
         except Exception:
             pass
 
