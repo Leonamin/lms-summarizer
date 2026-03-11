@@ -39,8 +39,8 @@ INPUT_FIELD_CONFIGS = {
         icon="lock",
     ),
     'api_key': InputFieldConfig(
-        label="Gemini API 키:",
-        placeholder="sk-... (Gemini API 키를 입력하세요)",
+        label="AI API 키:",
+        placeholder="AI 엔진의 API 키를 입력하세요",
         icon="key",
     ),
     'urls': InputFieldConfig(
