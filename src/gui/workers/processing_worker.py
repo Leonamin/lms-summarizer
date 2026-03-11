@@ -46,6 +46,7 @@ class ProcessingWorker:
         modules: Dict,
         save_video_dir: str = None,
         model_name: str = "gemini-2.5-flash",
+        engine: str = "gemini",
         on_log: Optional[Callable[[str], None]] = None,
         on_finished: Optional[Callable[[bool, str], None]] = None,
         on_step_changed: Optional[Callable[[int, str], None]] = None,
@@ -55,6 +56,7 @@ class ProcessingWorker:
         self.modules = modules
         self.save_video_dir = save_video_dir
         self.model_name = model_name
+        self.engine = engine
         self.summary_prompt = get_summary_prompt()
         self.chrome_path = get_chrome_path()
         self.debug_mode = get_debug_mode()
@@ -272,8 +274,15 @@ class ProcessingWorker:
 
     def _summarize_texts(self, text_paths: List[str]) -> List[str]:
         self._emit_log(Messages.TEXT_SUMMARIZING)
+        self._emit_log(f"AI 엔진: {self.engine} / 모델: {self.model_name}")
 
-        summarize_pipeline = self.modules['SummarizePipeline'](self.model_name, prompt=self.summary_prompt)
+        api_key = self.user_inputs.get('api_key', '')
+        summarize_pipeline = self.modules['SummarizePipeline'](
+            self.model_name,
+            prompt=self.summary_prompt,
+            engine=self.engine,
+            api_key=api_key,
+        )
         summary_paths = []
 
         for i, text_path in enumerate(text_paths, 1):
