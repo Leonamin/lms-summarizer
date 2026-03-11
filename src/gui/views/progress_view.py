@@ -14,9 +14,10 @@ _STEPS = [(stage.value, STAGE_LABELS[stage]) for stage in PipelineStage]
 class ProgressModal:
     """처리 진행 상황을 표시하는 모달"""
 
-    def __init__(self, page: ft.Page, on_stop=None):
+    def __init__(self, page: ft.Page, on_stop=None, start_stage: PipelineStage = PipelineStage.DOWNLOAD):
         self._page = page
         self._on_stop = on_stop
+        self._start_stage = start_stage
         self._is_finished = False
         self._log_visible = False
         self._log_messages: list[str] = []
@@ -24,12 +25,21 @@ class ProgressModal:
         # 단계 인디케이터
         self._step_rows: list[ft.Row] = []
         for num, name in _STEPS:
-            icon = ft.Text("○", size=14, color=Colors.TEXT_MUTED)
-            label = ft.Text(
-                f"{num}단계: {name}",
-                size=Typography.BODY,
-                color=Colors.TEXT_MUTED,
-            )
+            # start_stage 이전 단계는 건너뜀 표시 (회색 대시)
+            if num < start_stage:
+                icon = ft.Text("—", size=14, color=Colors.DISABLED)
+                label = ft.Text(
+                    f"{num}단계: {name}",
+                    size=Typography.BODY,
+                    color=Colors.DISABLED,
+                )
+            else:
+                icon = ft.Text("○", size=14, color=Colors.TEXT_MUTED)
+                label = ft.Text(
+                    f"{num}단계: {name}",
+                    size=Typography.BODY,
+                    color=Colors.TEXT_MUTED,
+                )
             row = ft.Row(controls=[icon, label], spacing=Spacing.SM)
             self._step_rows.append(row)
 
@@ -164,11 +174,15 @@ class ProgressModal:
             icon_ctrl = self._step_rows[i].controls[0]
             label_ctrl = self._step_rows[i].controls[1]
 
-            if i + 1 < step_num:
+            # 건너뛴 단계는 유지
+            if num < self._start_stage:
+                continue
+
+            if num < step_num:
                 icon_ctrl.value = "✓"
                 icon_ctrl.color = Colors.SUCCESS
                 label_ctrl.color = Colors.SUCCESS
-            elif i + 1 == step_num:
+            elif num == step_num:
                 icon_ctrl.value = "●"
                 icon_ctrl.color = Colors.PRIMARY
                 icon_ctrl.weight = Typography.BOLD
@@ -205,6 +219,9 @@ class ProgressModal:
     def mark_complete(self):
         self._is_finished = True
         for i, (num, name) in enumerate(_STEPS):
+            # 건너뛴 단계는 유지
+            if num < self._start_stage:
+                continue
             icon_ctrl = self._step_rows[i].controls[0]
             label_ctrl = self._step_rows[i].controls[1]
             icon_ctrl.value = "✓"
