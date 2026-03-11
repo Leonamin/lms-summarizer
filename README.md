@@ -1,18 +1,47 @@
-# 🎓 LMS 강의 자동 요약기
+# 🎓 LMS 강의 AI 요약기
 
-숭실대학교 LMS 강의 동영상을 자동으로 다운로드하고, AI가 내용을 요약해주는 프로그램입니다.
+숭실대학교 LMS 강의 내용을 AI가 자동으로 분석하고 핵심을 요약해주는 학습 보조 도구입니다.
 
-> **이런 분께 추천합니다**: 강의 영상을 일일이 보기 어렵거나, 핵심 내용만 빠르게 파악하고 싶은 분
+> **이런 분께 추천합니다**: 강의 내용을 빠르게 파악하고 싶거나, 핵심 개념만 정리해서 학습 효율을 높이고 싶은 분
 
 ---
 
 ## 📌 이 프로그램이 하는 일
 
-1. **강의 영상 자동 다운로드** — LMS에 로그인해서 영상을 내려받습니다
+1. **강의 페이지 접근 및 콘텐츠 분석** — LMS에 로그인하여 강의 콘텐츠를 처리합니다
 2. **음성 → 텍스트 변환** — AI(Whisper)가 강의 내용을 텍스트로 변환합니다
-3. **AI 요약 생성** — Google Gemini AI가 핵심 내용을 요약해줍니다
+3. **AI 요약 생성** — AI가 핵심 내용을 요약해줍니다
 
 결과물로 요약 텍스트 파일이 저장됩니다. (.txt)
+
+---
+
+## 🧩 지원 기능
+
+### 음성 인식 (STT) 엔진
+
+| 엔진 | 방식 | 비용 | 특징 |
+| --- | --- | --- | --- |
+| **whisper.cpp** | 로컬 실행 | 무료 | 기본 엔진, API 키 불필요 |
+| **ReturnZero** | 클라우드 API | 유료 | 높은 정확도 |
+
+### AI 요약 엔진
+
+| 엔진 | 지원 모델 | 비용 |
+| --- | --- | --- |
+| **Gemini** (Google) | 2.5 Flash (권장), 2.5 Pro, 2.5 Flash Lite, 2.0 Flash | 무료 티어 제공 |
+| **OpenAI** | GPT-4o (권장), GPT-4o Mini, o3-mini | 유료 |
+| **Claude** (Anthropic) | Claude Sonnet 4 (권장), Claude Haiku 4.5 | 유료 |
+| **Grok** (xAI) | Grok 3 (권장), Grok 3 Mini | 유료 |
+| **클립보드 모드** | ChatGPT / Claude / Grok 웹 | 무료 (API 키 불필요, 브라우저에서 수동 붙여넣기) |
+
+### 기타 기능
+
+- LMS 강의 목록 자동 조회
+- 처리 완료 후 원본 파일 보관/삭제 선택
+- 처리 단계 선택 (다운로드만, STT만, 요약만 등)
+- 사용자 설정 자동 저장 (학번, API 키 등)
+- 디버그 모드
 
 ---
 
@@ -21,8 +50,8 @@
 | 항목                | 설명                                 | 비용 |
 | ------------------- | ------------------------------------ | ---- |
 | **숭실대 LMS 계정** | 학번 + 비밀번호                      | 무료 |
-| **Gemini API 키**   | AI 요약에 사용 (발급 방법 아래 참고) | 무료 |
-| **Google Chrome**   | 강의 영상 접근에 필요                | 무료 |
+| **AI API 키**       | AI 요약에 사용 (Gemini 무료 발급 가능, 아래 참고) | 무료~유료 |
+| **Google Chrome**   | 강의 콘텐츠 접근에 필요              | 무료 |
 
 ---
 
@@ -67,14 +96,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
 
-**ffmpeg** (음성 변환에 필요):
-
-```bash
-# macOS
-brew install ffmpeg
-
-# Windows: https://ffmpeg.org/download.html 에서 다운로드 후 PATH 등록
-```
+> ffmpeg는 별도 설치가 필요 없습니다. PyAV(`av` 패키지)가 MP4→WAV 변환을 자체 처리합니다.
 
 #### 2. 저장소 복제 및 실행
 
@@ -82,7 +104,6 @@ brew install ffmpeg
 git clone https://github.com/Leonamin/lms-summarizer.git
 cd lms-summarizer
 uv sync
-uv run playwright install
 uv run python src/gui/main.py
 ```
 
@@ -158,7 +179,7 @@ Google 계정으로 로그인하세요.
 │  🎬 강의 URL 목록:                       │
 │  [                              ]        │
 │                                          │
-│  ☐ 처리 완료 후 원본 동영상 보관         │
+│  ☐ 처리 완료 후 원본 파일 보관           │
 │                                          │
 │  [▶ 처리 시작]  [초기화]                 │
 └──────────────────────────────────────────┘
@@ -171,7 +192,7 @@ Google 계정으로 로그인하세요.
 | **학번**          | 숭실대 LMS 학번                   |
 | **비밀번호**      | LMS 비밀번호 (영문 자판으로 입력) |
 | **Gemini API 키** | 위에서 발급받은 API 키            |
-| **AI 모델**       | Gemini 2.5 Flash 권장             |
+| **AI 모델**       | Gemini 2.5 Flash 권장 (다른 엔진도 지원) |
 | **강의 URL**      | LMS 강의 페이지 URL (아래 참고)   |
 
 > 💡 **학번과 API 키는 자동으로 저장됩니다.** 다음 실행 시 다시 입력하지 않아도 됩니다.
@@ -197,7 +218,7 @@ https://canvas.ssu.ac.kr/courses/12345/modules/items/222222
 
 처리 단계:
 
-- **1단계**: 강의 영상 다운로드 (인터넷 속도에 따라 수 분 소요)
+- **1단계**: 강의 콘텐츠 처리 (인터넷 속도에 따라 수 분 소요)
 - **2단계**: 음성 → 텍스트 변환 (영상 길이의 20~50% 소요)
 - **3단계**: AI 요약 생성 (수십 초 소요)
 
@@ -221,7 +242,7 @@ https://canvas.ssu.ac.kr/courses/12345/modules/items/222222
 
 비밀번호 입력란은 **영문 자판**에서만 입력됩니다. 한글 자판으로 되어 있다면 영문으로 전환 후 입력하세요.
 
-### Q. 강의 영상이 없다고 나와요
+### Q. 강의 콘텐츠를 찾을 수 없다고 나와요
 
 - URL이 올바른지 확인하세요 (영상이 있는 강의 항목의 URL이어야 합니다)
 - 해당 강의가 현재 수강 중인지 확인하세요
@@ -242,7 +263,8 @@ xattr -rd com.apple.quarantine ~/Downloads/LMS-Summarizer.app
 
 ### Q. 요약 결과가 마음에 안 들어요
 
-- **Gemini 2.5 Pro** 모델을 선택하면 더 상세한 요약이 가능합니다 (단, API 사용량이 증가합니다)
+- **Gemini 2.5 Pro** 등 상위 모델을 선택하면 더 상세한 요약이 가능합니다
+- OpenAI, Claude, Grok 등 다른 AI 엔진도 지원합니다 (유료 API 키 필요)
 - 강의 음질이 좋지 않으면 텍스트 변환 정확도가 낮아질 수 있습니다
 
 ---
@@ -256,39 +278,40 @@ xattr -rd com.apple.quarantine ~/Downloads/LMS-Summarizer.app
 
 | 영역            | 기술                                       |
 | --------------- | ------------------------------------------ |
-| GUI             | PyQt5                                      |
-| 영상 다운로드   | Playwright (headless=False, 시스템 Chrome) |
-| 음성 변환 (STT) | OpenAI Whisper (로컬 실행)                 |
-| AI 요약         | Google Gemini API                          |
+| GUI             | Flet 0.81.0                                |
+| 콘텐츠 처리     | Playwright (headless=False, 시스템 Chrome) |
+| 음성 변환 (STT) | whisper.cpp (pywhispercpp, 로컬 실행)      |
+| 미디어 변환     | PyAV (ffmpeg 불필요)                       |
+| AI 요약         | Gemini / OpenAI / Claude / Grok API        |
 | 패키지 관리     | uv                                         |
+| Python          | >=3.11, <3.13                              |
 
 ### 프로젝트 구조
 
 ```
 src/
-├── gui/                    # GUI 관련
+├── gui/                    # Flet GUI 애플리케이션
+│   ├── main.py             # 엔트리포인트
 │   ├── config/             # 상수, 스타일, 설정
 │   ├── core/               # 파일 관리, 모듈 로더
-│   ├── ui/                 # 컴포넌트, 다이얼로그, 윈도우
+│   ├── components/         # UI 컴포넌트
+│   ├── views/              # 화면 (메인, 설정, 강의 목록, 진행 상태)
 │   └── workers/            # 백그라운드 처리 스레드
-├── video_pipeline/         # 영상 다운로드 파이프라인
+├── video_pipeline/         # 콘텐츠 다운로드 파이프라인
 ├── audio_pipeline/         # 음성 → 텍스트 파이프라인
 └── summarize_pipeline/     # AI 요약 파이프라인
+    └── providers/          # AI 엔진별 구현 (Gemini, OpenAI, Claude, Grok, 클립보드)
 ```
 
 ### 빌드
 
+GitHub Actions(`release.yml`)가 `v*` 태그 push 시 macOS/Windows 빌드를 자동 생성합니다.
+
+로컬에서 직접 빌드하려면:
+
 ```bash
-# macOS .app 빌드
-./build_mac_pyinstaller.sh
-
-# Windows .exe 빌드 (PowerShell)
-powershell -ExecutionPolicy Bypass -File scripts/build_windows.ps1
+uv run pyinstaller lms-summarizer.spec
 ```
-
-### 실행 파일 만들기
-
-`uv run pyinstaller lms-summarizer.spec`
 
 ### 커밋 메시지 규칙
 
@@ -301,6 +324,16 @@ docs: 문서      |  style: 스타일   |  test: 테스트
 
 ---
 
+## ⚠️ 주의사항
+
+- 본 도구는 **개인 학습 목적**으로만 사용하세요
+- 처리된 콘텐츠의 **외부 공유 및 배포는 금지**됩니다
+- 숭실대학교 LMS **이용약관을 준수**하여 사용하세요
+- 본 프로그램은 LMS 서비스에 어떠한 변조나 침해도 가하지 않습니다
+- 문제 발생 시 즉시 사용을 중단하세요
+
+---
+
 ## 📄 라이선스
 
-개인/학습 목적으로만 사용하세요. LMS 서비스 약관을 준수하여 사용하시기 바랍니다.
+본 프로젝트는 개인 학습 보조 목적으로 제작되었습니다. LMS 서비스 약관을 준수하여 사용하시기 바랍니다.
