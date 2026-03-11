@@ -143,33 +143,62 @@ class StageSelector:
             self._on_change(stage)
 
     def _handle_auto_detect(self, e):
-        """다운로드 디렉토리를 스캔하여 시작 단계와 파일을 자동 설정"""
+        """1단계: 전체 자동 추천 / 2~4단계: 현재 단계에 맞는 파일만 검색"""
         downloads_dir = ensure_downloads_directory()
-        detector = ArtifactDetector(downloads_dir)
-        recommended_stage, files = detector.recommend_start_stage()
+        current_stage = self.get_stage()
 
-        if recommended_stage == PipelineStage.DOWNLOAD and not files:
-            self._detect_info.value = "감지된 산출물이 없습니다. 1단계부터 시작합니다."
-            self._detect_info.color = Colors.TEXT_MUTED
-            self._detect_info.visible = True
-            self.set_stage(PipelineStage.DOWNLOAD)
-            self._selected_files.clear()
-            self._file_list.controls.clear()
-            self._file_list.visible = False
-            self._file_count_text.visible = False
-            self._pick_btn.visible = False
+        if current_stage == PipelineStage.DOWNLOAD:
+            # 1단계: 전체 자동 추천 (단계까지 변경)
+            detector = ArtifactDetector(downloads_dir)
+            recommended_stage, files = detector.recommend_start_stage()
+
+            if recommended_stage == PipelineStage.DOWNLOAD and not files:
+                self._detect_info.value = "감지된 산출물이 없습니다. 1단계부터 시작합니다."
+                self._detect_info.color = Colors.TEXT_MUTED
+                self._detect_info.visible = True
+            else:
+                self.set_stage(recommended_stage)
+                self.set_files(files)
+                stage_name = STAGE_LABELS[recommended_stage]
+                self._detect_info.value = (
+                    f"{len(files)}개 파일 감지 → {recommended_stage.value}단계: {stage_name}부터 시작"
+                )
+                self._detect_info.color = Colors.INFO
+                self._detect_info.visible = True
         else:
-            self.set_stage(recommended_stage)
-            self.set_files(files)
-            stage_name = STAGE_LABELS[recommended_stage]
-            self._detect_info.value = (
-                f"{len(files)}개 파일 감지 → {recommended_stage.value}단계: {stage_name}부터 시작"
-            )
-            self._detect_info.color = Colors.INFO
-            self._detect_info.visible = True
+            # 2~4단계: 현재 단계에 맞는 파일만 검색 (단계 변경 안 함)
+            extensions = _STAGE_INPUT_EXTENSIONS.get(current_stage, [])
+            found_files = self._scan_for_extensions(downloads_dir, extensions)
+
+            if found_files:
+                self.set_files(found_files)
+                self._detect_info.value = f"{len(found_files)}개 파일 감지됨"
+                self._detect_info.color = Colors.INFO
+                self._detect_info.visible = True
+            else:
+                ext_str = ", ".join(extensions)
+                self._detect_info.value = f"저장 폴더에서 {ext_str} 파일을 찾을 수 없습니다."
+                self._detect_info.color = Colors.TEXT_MUTED
+                self._detect_info.visible = True
 
         if self._detect_info.page:
             self._detect_info.page.update()
+
+    @staticmethod
+    def _scan_for_extensions(directory: str, extensions: list[str]) -> list[str]:
+        """디렉토리를 재귀 스캔하여 특정 확장자 파일 목록 반환"""
+        import os
+        found = []
+        if not os.path.isdir(directory):
+            return found
+        for root, _dirs, files in os.walk(directory):
+            for filename in files:
+                lower = filename.lower()
+                if lower.endswith("_summarized.txt"):
+                    continue
+                if any(lower.endswith(ext) for ext in extensions):
+                    found.append(os.path.join(root, filename))
+        return sorted(found)
 
     async def _handle_pick_files(self, e):
         stage = self.get_stage()
