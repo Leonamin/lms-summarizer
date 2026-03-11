@@ -35,7 +35,7 @@ class LeftPanel:
             ),
             width=270,
             padding=ft.padding.all(Spacing.MD),
-            bgcolor=Colors.SURFACE,
+            bgcolor=Colors.LEFT_PANEL_BG,
         )
 
     def get_all_inputs(self) -> Dict[str, str]:

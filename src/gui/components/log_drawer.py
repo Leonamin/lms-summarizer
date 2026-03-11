@@ -6,18 +6,10 @@ from datetime import datetime
 
 import flet as ft
 
-from src.gui.theme import Colors, Typography, Radius, Spacing
+from src.gui.theme import Colors, Typography, Radius, Spacing, LogDarkColors
 
-
-# 로그 드로어 전용 다크 색상
-class LogColors:
-    BG = "#1E1E2E"
-    SURFACE = "#252535"
-    TEXT = "#CDD6F4"
-    TEXT_DIM = "#6C7086"
-    BORDER = "#313244"
-    TIMESTAMP = "#A6E3A1"    # green
-    HEADER_BG = "#181825"
+# 로그 색상 별칭 (간결하게 참조)
+LogColors = LogDarkColors
 
 
 class LogDrawer:

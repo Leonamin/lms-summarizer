@@ -1,9 +1,10 @@
 """
 LMS Summarizer 디자인 시스템
 - Style: Modern Minimalism (Swiss Style)
-- Color: SaaS Blue (#2563EB) + Orange CTA
+- Color: Primary Blue (#3B82F6) + Accent Orange (#F97316)
 - Typography: System sans-serif (Noto Sans KR 호환)
 - Spacing: 8px grid system
+- Layout: 2-panel (left 270px + right expand)
 """
 
 import flet as ft
@@ -13,15 +14,20 @@ import flet as ft
 
 class Colors:
     # Primary (Blue)
-    PRIMARY = "#2563EB"
-    PRIMARY_LIGHT = "#3B82F6"
-    PRIMARY_DARK = "#1D4ED8"
+    PRIMARY = "#3B82F6"          # blue-500
+    PRIMARY_LIGHT = "#60A5FA"    # blue-400
+    PRIMARY_DARK = "#2563EB"     # blue-600
     PRIMARY_BG = "#EFF6FF"       # 아주 연한 블루 배경
 
+    # Accent (Orange - CTA)
+    ACCENT = "#F97316"           # orange-500
+    ACCENT_LIGHT = "#FB923C"     # orange-400
+
     # Neutral
-    BG = "#F8FAFC"               # 페이지 배경
+    BG = "#F8FAFC"               # 페이지 배경 (slate-50)
     CARD = "#FFFFFF"             # 카드 배경
-    SURFACE = "#F1F5F9"          # 입력 필드 배경 등
+    SURFACE = "#F1F5F9"          # 입력 필드 배경 등 (slate-100)
+    LEFT_PANEL_BG = "#F8FAFC"    # 왼쪽 패널 배경 (slate-50)
 
     # Text
     TEXT = "#1E293B"             # 기본 텍스트 (slate-800)
@@ -30,17 +36,29 @@ class Colors:
 
     # Border
     BORDER = "#E2E8F0"          # 기본 테두리 (slate-200)
-    BORDER_FOCUS = "#2563EB"    # 포커스 테두리
+    BORDER_FOCUS = "#3B82F6"    # 포커스 테두리
 
     # Semantic
     SUCCESS = "#16A34A"          # green-600
     WARNING = "#EA580C"          # orange-600
-    ERROR = "#DC2626"            # red-600
-    INFO = "#2563EB"             # primary
+    ERROR = "#EF4444"            # red-500
+    INFO = "#3B82F6"             # primary
 
     # Misc
     DISABLED = "#CBD5E1"         # slate-300
     SHADOW = "#0F172A"           # shadow color base
+
+
+# ── 로그 드로어 다크 테마 색상 ──────────────────────────────────
+
+class LogDarkColors:
+    BG = "#1E1E2E"               # 다크 배경
+    SURFACE = "#252535"          # 표면
+    TEXT = "#CDD6F4"             # 밝은 텍스트
+    TEXT_DIM = "#6C7086"         # 흐린 텍스트
+    BORDER = "#313244"           # 테두리
+    TIMESTAMP = "#A6E3A1"        # 타임스탬프 (green)
+    HEADER_BG = "#181825"        # 헤더 배경
 
 
 # ── 타이포그래피 ──────────────────────────────────────────────
@@ -248,10 +266,10 @@ def setup_page_theme(page: ft.Page):
     page.title = "LMS 강의 다운로드 & 요약"
     page.bgcolor = Colors.BG
     page.padding = 0
-    page.window.width = 700
+    page.window.width = 820
     page.window.height = 640
-    page.window.min_width = 580
-    page.window.min_height = 480
+    page.window.min_width = 700
+    page.window.min_height = 500
 
     page.theme = ft.Theme(
         color_scheme_seed=Colors.PRIMARY,
