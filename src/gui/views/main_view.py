@@ -12,6 +12,7 @@ from src.gui.core.validators import InputValidator
 from src.gui.core.module_loader import check_required_modules
 from src.gui.core.file_manager import (
     ensure_downloads_directory, save_user_inputs, load_user_inputs,
+    set_summary_mode, set_subject_category, set_subject_custom,
 )
 from src.gui.components.header import build_header
 from src.gui.components.left_panel import LeftPanel
@@ -177,6 +178,11 @@ class MainView:
         start_stage = self.right_panel.get_stage()
         input_files = self.right_panel.get_files()
         save_user_inputs({**inputs, 'ai_model': model_name, 'ai_engine': engine})
+
+        # 요약 모드/과목 설정 저장
+        set_summary_mode(self.right_panel.get_summary_mode())
+        set_subject_category(self.right_panel.get_subject_category())
+        set_subject_custom(self.right_panel.get_subject_custom())
 
         self._is_processing = True
         self.right_panel.set_processing(True)

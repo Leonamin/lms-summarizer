@@ -1,6 +1,6 @@
 """
 설정 다이얼로그 (Flet AlertDialog)
-- 요약 프롬프트, Chrome 경로 (기본)
+- 요약 프롬프트 모드/분야 설정 + 프리뷰, Chrome 경로 (기본)
 - 고급 설정 접힘/펼침: STT 엔진, 디버그 모드, 폴더 자동 열기
 """
 
@@ -9,13 +9,18 @@ import flet as ft
 
 from src.gui.theme import Colors, Typography, Spacing, Radius, divider
 from src.gui.core.file_manager import (
-    DEFAULT_PROMPT,
-    get_summary_prompt, set_summary_prompt,
+    get_summary_mode, set_summary_mode,
+    get_subject_category, set_subject_category,
+    get_subject_custom, set_subject_custom,
     get_chrome_path, set_chrome_path, detect_chrome_paths,
     get_debug_mode, set_debug_mode,
     get_auto_open_folder, set_auto_open_folder,
     get_stt_engine, set_stt_engine,
     get_stt_api_key, set_stt_api_key,
+)
+from src.summarize_pipeline.prompts import (
+    SummaryMode, SUMMARY_MODE_LABELS, SUBJECT_CATEGORIES,
+    build_prompt,
 )
 
 
@@ -29,23 +34,91 @@ _STT_OPTIONS = [
 def open_settings_dialog(page: ft.Page):
     """설정 다이얼로그를 열고 닫기까지 관리"""
 
-    # ── 요약 프롬프트 ────────────────────────────────────
-    prompt_field = ft.TextField(
-        value=get_summary_prompt(),
+    # ── 요약 프롬프트 모드/분야 설정 ──────────────────────
+    mode_dropdown = ft.Dropdown(
+        options=[
+            ft.dropdown.Option(key=k, text=v)
+            for k, v in SUMMARY_MODE_LABELS.items()
+        ],
+        value=get_summary_mode(),
+        label="요약 모드",
+        border_radius=Radius.MD,
+        border_color=Colors.BORDER,
+        focused_border_color=Colors.PRIMARY,
+        text_size=Typography.BODY,
+        label_style=ft.TextStyle(size=Typography.CAPTION, color=Colors.TEXT_SECONDARY),
+        dense=True,
+        on_select=lambda e: _update_preview(),
+    )
+
+    subject_dropdown = ft.Dropdown(
+        options=[
+            ft.dropdown.Option(key=k, text=k)
+            for k in SUBJECT_CATEGORIES.keys()
+        ],
+        value=get_subject_category(),
+        label="강의 분야",
+        border_radius=Radius.MD,
+        border_color=Colors.BORDER,
+        focused_border_color=Colors.PRIMARY,
+        text_size=Typography.BODY,
+        label_style=ft.TextStyle(size=Typography.CAPTION, color=Colors.TEXT_SECONDARY),
+        dense=True,
+        on_select=lambda e: _update_preview(),
+    )
+
+    subject_custom_field = ft.TextField(
+        value=get_subject_custom(),
+        hint_text="과목명 직접 입력 (선택사항, 드롭다운보다 우선)",
+        border_radius=Radius.MD,
+        border_color=Colors.BORDER,
+        focused_border_color=Colors.PRIMARY,
+        text_size=Typography.BODY,
+        label="직접 입력",
+        label_style=ft.TextStyle(size=Typography.CAPTION, color=Colors.TEXT_SECONDARY),
+        dense=True,
+        on_change=lambda e: _update_preview(),
+    )
+
+    # 프롬프트 프리뷰 (읽기 전용)
+    prompt_preview = ft.TextField(
+        value=build_prompt(
+            mode=get_summary_mode(),
+            subject_category=get_subject_category(),
+            subject_custom=get_subject_custom(),
+        ),
         multiline=True,
         min_lines=3,
         max_lines=6,
         border_radius=Radius.MD,
         border_color=Colors.BORDER,
-        focused_border_color=Colors.PRIMARY,
-        text_size=Typography.BODY,
-        label="요약 프롬프트",
+        text_size=Typography.SMALL,
+        label="생성된 프롬프트 (미리보기)",
         label_style=ft.TextStyle(size=Typography.CAPTION, color=Colors.TEXT_SECONDARY),
+        read_only=True,
     )
 
+    def _update_preview():
+        mode = mode_dropdown.value or SummaryMode.NORMAL
+        category = subject_dropdown.value or "자동 감지"
+        custom = (subject_custom_field.value or "").strip()
+        prompt_preview.value = build_prompt(
+            mode=mode,
+            subject_category=category,
+            subject_custom=custom,
+        )
+        if prompt_preview.page:
+            prompt_preview.update()
+
     def _reset_prompt(e):
-        prompt_field.value = DEFAULT_PROMPT
-        prompt_field.update()
+        mode_dropdown.value = SummaryMode.NORMAL
+        subject_dropdown.value = "자동 감지"
+        subject_custom_field.value = ""
+        _update_preview()
+        if mode_dropdown.page:
+            mode_dropdown.update()
+            subject_dropdown.update()
+            subject_custom_field.update()
 
     # ── Chrome 경로 ──────────────────────────────────────
     chrome_field = ft.TextField(
@@ -299,10 +372,13 @@ def open_settings_dialog(page: ft.Page):
         page.update()
 
     def _save(e):
-        prompt = (prompt_field.value or "").strip()
         chrome_path = (chrome_field.value or "").strip()
 
-        set_summary_prompt(prompt if prompt else DEFAULT_PROMPT)
+        # 요약 모드/분야 저장
+        set_summary_mode(mode_dropdown.value or SummaryMode.NORMAL)
+        set_subject_category(subject_dropdown.value or "자동 감지")
+        set_subject_custom((subject_custom_field.value or "").strip())
+
         set_debug_mode(debug_switch.value)
         set_auto_open_folder(auto_open_switch.value)
 
@@ -358,11 +434,14 @@ def open_settings_dialog(page: ft.Page):
                         color=Colors.TEXT,
                     ),
                     ft.Text(
-                        "AI 요약 시 사용되는 프롬프트를 수정할 수 있습니다.",
+                        "요약 모드와 강의 분야를 선택하면 프롬프트가 자동 생성됩니다.",
                         size=Typography.SMALL,
                         color=Colors.TEXT_MUTED,
                     ),
-                    prompt_field,
+                    mode_dropdown,
+                    subject_dropdown,
+                    subject_custom_field,
+                    prompt_preview,
                     ft.TextButton(
                         content=ft.Text("기본값 복원"),
                         icon=ft.Icons.RESTORE,
