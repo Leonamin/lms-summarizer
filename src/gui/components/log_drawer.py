@@ -90,7 +90,7 @@ class LogDrawer:
     def toggle(self, e=None):
         self._expanded = not self._expanded
         self._log_container.visible = self._expanded
-        self._toggle_icon.name = (
+        self._toggle_icon.icon = (
             ft.Icons.EXPAND_LESS if self._expanded else ft.Icons.EXPAND_MORE
         )
         try:
@@ -113,7 +113,7 @@ class LogDrawer:
         if not self._expanded:
             self._expanded = True
             self._log_container.visible = True
-            self._toggle_icon.name = ft.Icons.EXPAND_LESS
+            self._toggle_icon.icon = ft.Icons.EXPAND_LESS
 
     def clear(self):
         self._messages.clear()
@@ -121,7 +121,7 @@ class LogDrawer:
         self._count_badge.value = ""
         self._expanded = False
         self._log_container.visible = False
-        self._toggle_icon.name = ft.Icons.EXPAND_MORE
+        self._toggle_icon.icon = ft.Icons.EXPAND_MORE
 
     def get_all_text(self) -> str:
         return "\n".join(self._messages)

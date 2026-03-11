@@ -306,7 +306,9 @@ class MainView:
             self._snackbar.content.value = message
             self._snackbar.bgcolor = bgcolor
             self._snackbar.open = True
-            self.page.show_snack_bar(self._snackbar)
+            if self._snackbar not in self.page.overlay:
+                self.page.overlay.append(self._snackbar)
+            self.page.update()
         except Exception:
             pass
 

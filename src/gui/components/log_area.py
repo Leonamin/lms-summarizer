@@ -78,7 +78,7 @@ class LogArea:
     def _toggle(self, e=None):
         self._expanded = not self._expanded
         self._log_container.visible = self._expanded
-        self._toggle_icon.name = (
+        self._toggle_icon.icon = (
             ft.Icons.EXPAND_LESS if self._expanded else ft.Icons.EXPAND_MORE
         )
         self.control.expand = self._expanded
@@ -99,7 +99,7 @@ class LogArea:
         if not self._expanded:
             self._expanded = True
             self._log_container.visible = True
-            self._toggle_icon.name = ft.Icons.EXPAND_LESS
+            self._toggle_icon.icon = ft.Icons.EXPAND_LESS
             self.control.expand = True
 
     def clear(self):
@@ -109,7 +109,7 @@ class LogArea:
         # 초기화 시 접기
         self._expanded = False
         self._log_container.visible = False
-        self._toggle_icon.name = ft.Icons.EXPAND_MORE
+        self._toggle_icon.icon = ft.Icons.EXPAND_MORE
         self.control.expand = False
 
     def get_all_text(self) -> str:

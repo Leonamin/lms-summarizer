@@ -90,7 +90,10 @@ class CourseListView:
         )
 
         # ── 타이틀 ──────────────────────────────────────
-        self._title_icon = ft.Icon(ft.Icons.SCHOOL, size=20, color=Colors.PRIMARY)
+        self._title_icon = ft.IconButton(
+            icon=ft.Icons.SCHOOL, icon_size=20, icon_color=Colors.PRIMARY,
+            style=ft.ButtonStyle(padding=ft.padding.all(0)),
+        )
         self._title_text = ft.Text(
             "강의 목록",
             size=Typography.HEADING,
@@ -233,7 +236,7 @@ class CourseListView:
                     width=28, height=28,
                     border_radius=14,
                     bgcolor=Colors.ACCENT,
-                    alignment=ft.Alignment(0, 0),
+                    alignment=ft.Alignment.CENTER,
                 )
             else:
                 star = ft.Container(
@@ -241,7 +244,7 @@ class CourseListView:
                     width=28, height=28,
                     border_radius=14,
                     bgcolor=Colors.SURFACE,
-                    alignment=ft.Alignment(0, 0),
+                    alignment=ft.Alignment.CENTER,
                 )
 
             # 학기 배지
@@ -363,8 +366,8 @@ class CourseListView:
         self._lecture_page.visible = True
         self._step_text.value = "2 / 2"
         self._step_bar.value = 1.0
-        self._title_icon.name = ft.Icons.ARROW_BACK
-        self._title_icon.color = Colors.PRIMARY
+        self._title_icon.icon = ft.Icons.ARROW_BACK
+        self._title_icon.icon_color = Colors.PRIMARY
         self._title_text.value = course.long_name
         self._subtitle_text.value = ""
         # 타이틀 아이콘을 뒤로가기 버튼으로 변환
@@ -588,8 +591,8 @@ class CourseListView:
         # Step 전환: 2 -> 1
         self._step_text.value = "1 / 2"
         self._step_bar.value = 0.5
-        self._title_icon.name = ft.Icons.SCHOOL
-        self._title_icon.color = Colors.PRIMARY
+        self._title_icon.icon = ft.Icons.SCHOOL
+        self._title_icon.icon_color = Colors.PRIMARY
         self._title_icon.on_click = None
         self._title_text.value = "강의 목록"
         self._subtitle_text.value = "과목을 클릭하여 주차별 강의를 확인하세요."

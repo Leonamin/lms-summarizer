@@ -104,8 +104,8 @@ class StageSelector:
             visible=False,
         )
 
-        # FilePicker (Flet 0.81+에서는 Service 타입으로 overlay 등록 불필요)
-        self.file_picker = ft.FilePicker(on_result=self._on_files_selected)
+        # FilePicker (Flet 0.81+에서는 async 직접 반환)
+        self.file_picker = ft.FilePicker()
 
         self.control = ft.Column(
             controls=[
@@ -177,22 +177,20 @@ class StageSelector:
         if self._detect_info.page:
             self._detect_info.page.update()
 
-    def _handle_pick_files(self, e):
+    async def _handle_pick_files(self, e):
         stage = self.get_stage()
         allowed = _STAGE_ALLOWED_EXTENSIONS.get(stage, [])
         file_type = ft.FilePickerFileType.CUSTOM if allowed else ft.FilePickerFileType.ANY
-        self.file_picker.pick_files(
+        files = await self.file_picker.pick_files(
             dialog_title="파일 선택",
             allow_multiple=True,
             file_type=file_type,
             allowed_extensions=allowed if allowed else None,
         )
-
-    def _on_files_selected(self, e):
-        if not e.files:
+        if not files:
             return
 
-        new_paths = [f.path for f in e.files if f.path]
+        new_paths = [f.path for f in files if f.path]
         existing = set(self._selected_files)
         added = [p for p in new_paths if p not in existing]
 

@@ -53,7 +53,7 @@ class LectureSection:
                             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                             spacing=Spacing.SM,
                         ),
-                        alignment=ft.Alignment(0, 0),
+                        alignment=ft.Alignment.CENTER,
                         expand=True,
                     ),
                 ],
@@ -75,8 +75,8 @@ class LectureSection:
         self._tabs = ft.Tabs(
             selected_index=0,
             tabs=[
-                ft.Tab(text="목록에서 선택", icon=ft.Icons.LIST),
-                ft.Tab(text="URL 직접 입력", icon=ft.Icons.LINK),
+                ft.Tab(label="목록에서 선택", icon=ft.Icons.LIST),
+                ft.Tab(label="URL 직접 입력", icon=ft.Icons.LINK),
             ],
             on_change=self._handle_tab_change,
             indicator_color=Colors.PRIMARY,

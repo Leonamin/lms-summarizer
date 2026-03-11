@@ -226,7 +226,7 @@ def open_settings_dialog(page: ft.Page):
         nonlocal advanced_expanded
         advanced_expanded = not advanced_expanded
         advanced_content.visible = advanced_expanded
-        advanced_chevron.name = ft.Icons.EXPAND_LESS if advanced_expanded else ft.Icons.EXPAND_MORE
+        advanced_chevron.icon = ft.Icons.EXPAND_LESS if advanced_expanded else ft.Icons.EXPAND_MORE
         page.update()
 
     advanced_header = ft.Container(
@@ -273,13 +273,13 @@ def open_settings_dialog(page: ft.Page):
 
         if chrome_path:
             if not os.path.exists(chrome_path):
-                page.show_snack_bar(
-                    ft.SnackBar(
-                        content=ft.Text(f"Chrome 경로가 존재하지 않습니다: {chrome_path}"),
-                        bgcolor=Colors.ERROR,
-                        open=True,
-                    )
+                snackbar = ft.SnackBar(
+                    content=ft.Text(f"Chrome 경로가 존재하지 않습니다: {chrome_path}"),
+                    bgcolor=Colors.ERROR,
+                    open=True,
                 )
+                page.overlay.append(snackbar)
+                page.update()
                 return
             set_chrome_path(chrome_path)
 
