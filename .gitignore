@@ -200,3 +200,4 @@ cython_debug/
 
 user_settings.json.claude/
 .claude/
+.omc/
