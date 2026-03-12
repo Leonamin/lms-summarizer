@@ -10,6 +10,7 @@ from src.gui.theme import Colors, Typography, Spacing, Radius
 from src.gui.config.constants import Messages
 from src.gui.core.validators import InputValidator
 from src.gui.core.module_loader import check_required_modules
+from src.gui.core.thread_safe import invoke_on_ui
 from src.gui.core.file_manager import (
     ensure_downloads_directory, save_user_inputs, load_user_inputs,
     set_summary_mode, set_subject_category, set_subject_custom,
@@ -197,10 +198,6 @@ class MainView:
             self.log_drawer.append_message(msg)
             if self.modal:
                 self.modal.append_log(msg)
-            try:
-                self.page.schedule_update()
-            except Exception:
-                pass
 
         def on_finished(success, message):
             async def _update_ui():
@@ -249,10 +246,10 @@ class MainView:
             save_video_dir=save_video_dir,
             model_name=model_name,
             engine=engine,
-            on_log=on_log,
+            on_log=invoke_on_ui(self.page, on_log),
             on_finished=on_finished,
-            on_step_changed=on_step,
-            on_progress=on_progress,
+            on_step_changed=invoke_on_ui(self.page, on_step),
+            on_progress=invoke_on_ui(self.page, on_progress),
             start_stage=start_stage,
             input_files=input_files,
         )
