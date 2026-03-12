@@ -15,20 +15,12 @@ from src.gui.core.file_manager import (
     get_chrome_path, set_chrome_path, detect_chrome_paths,
     get_debug_mode, set_debug_mode,
     get_auto_open_folder, set_auto_open_folder,
-    get_stt_engine, set_stt_engine,
-    get_stt_api_key, set_stt_api_key,
 )
 from src.summarize_pipeline.prompts import (
     SummaryMode, SUMMARY_MODE_LABELS, SUBJECT_CATEGORIES,
     build_prompt,
 )
 
-
-# STT 엔진 옵션
-_STT_OPTIONS = [
-    ("whisper-cpp", "whisper-cpp (로컬, 무료)"),
-    ("returnzero", "ReturnZero API (유료, 높은 정확도)"),
-]
 
 
 def open_settings_dialog(page: ft.Page):
@@ -193,7 +185,13 @@ def open_settings_dialog(page: ft.Page):
         chrome_field.value = path
         chrome_field.update()
 
-    file_picker = ft.FilePicker()
+    # FilePicker는 page당 한 번만 overlay에 등록해야 함
+    # 재호출 시 기존 인스턴스를 재사용
+    if not hasattr(page, "_fp_chrome"):
+        page._fp_chrome = ft.FilePicker()
+        page.services.append(page._fp_chrome)
+        page.update()
+    file_picker = page._fp_chrome
 
     async def _browse_chrome(e):
         files = await file_picker.pick_files(
@@ -202,51 +200,6 @@ def open_settings_dialog(page: ft.Page):
         )
         if files:
             _set_chrome_path(files[0].path)
-
-    # ── 고급 설정: STT 엔진 ──────────────────────────────
-    current_stt = get_stt_engine()
-
-    stt_dropdown = ft.Dropdown(
-        options=[ft.dropdown.Option(key=k, text=t) for k, t in _STT_OPTIONS],
-        value=current_stt,
-        label="STT 엔진",
-        leading_icon=ft.Icons.MIC,
-        border_radius=Radius.MD,
-        border_color=Colors.BORDER,
-        focused_border_color=Colors.PRIMARY,
-        text_size=Typography.BODY,
-        label_style=ft.TextStyle(size=Typography.CAPTION, color=Colors.TEXT_SECONDARY),
-        on_select=lambda e: _on_stt_changed(),
-        dense=True,
-    )
-
-    stt_api_key_field = ft.TextField(
-        value=get_stt_api_key(),
-        hint_text="client_id:client_secret",
-        border_radius=Radius.MD,
-        border_color=Colors.BORDER,
-        focused_border_color=Colors.PRIMARY,
-        text_size=Typography.BODY,
-        label="ReturnZero API 키",
-        label_style=ft.TextStyle(size=Typography.CAPTION, color=Colors.TEXT_SECONDARY),
-        prefix_icon=ft.Icons.KEY,
-        visible=(current_stt == "returnzero"),
-    )
-
-    stt_description = ft.Text(
-        _get_stt_description(current_stt),
-        size=Typography.SMALL,
-        color=Colors.TEXT_MUTED,
-    )
-
-    def _on_stt_changed():
-        engine = stt_dropdown.value or "whisper-cpp"
-        stt_api_key_field.visible = (engine == "returnzero")
-        stt_description.value = _get_stt_description(engine)
-        if stt_api_key_field.page:
-            stt_api_key_field.update()
-        if stt_description.page:
-            stt_description.update()
 
     # ── 고급 설정: 토글 스위치들 ─────────────────────────
     debug_switch = ft.Switch(
@@ -264,18 +217,6 @@ def open_settings_dialog(page: ft.Page):
 
     advanced_content = ft.Column(
         controls=[
-            # STT 엔진
-            ft.Row(
-                controls=[
-                    ft.Icon(ft.Icons.MIC, size=16, color=Colors.TEXT_SECONDARY),
-                    ft.Text("STT 엔진", size=Typography.BODY, weight=Typography.SEMI_BOLD, color=Colors.TEXT),
-                ],
-                spacing=Spacing.XS,
-            ),
-            stt_dropdown,
-            stt_api_key_field,
-            stt_description,
-            divider(),
             # 디버그 모드
             ft.Row(
                 controls=[
@@ -381,12 +322,6 @@ def open_settings_dialog(page: ft.Page):
 
         set_debug_mode(debug_switch.value)
         set_auto_open_folder(auto_open_switch.value)
-
-        # STT 엔진 저장
-        stt_engine = stt_dropdown.value or "whisper-cpp"
-        set_stt_engine(stt_engine)
-        if stt_engine == "returnzero":
-            set_stt_api_key((stt_api_key_field.value or "").strip())
 
         if chrome_path:
             if not os.path.exists(chrome_path):
@@ -508,10 +443,3 @@ def open_settings_dialog(page: ft.Page):
     )
 
     page.show_dialog(dialog)
-
-
-def _get_stt_description(engine: str) -> str:
-    """STT 엔진별 설명 텍스트"""
-    if engine == "returnzero":
-        return "ReturnZero는 클라우드 API로 높은 정확도를 제공하지만 유료입니다. ffmpeg 설치가 필요합니다."
-    return "whisper-cpp는 로컬에서 실행되며 인터넷 없이 무료로 동작합니다."

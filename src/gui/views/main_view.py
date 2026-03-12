@@ -41,6 +41,7 @@ class MainView:
 
         # 컴포넌트 생성
         self.left_panel = LeftPanel(
+            page=self.page,
             on_path_changed=lambda p: self.log_drawer.append_message(f"저장 경로 변경: {p}"),
         )
         self.right_panel = RightPanel(
@@ -197,41 +198,43 @@ class MainView:
             if self.modal:
                 self.modal.append_log(msg)
             try:
-                self.page.update()
+                self.page.schedule_update()
             except Exception:
                 pass
 
         def on_finished(success, message):
-            try:
-                self._is_processing = False
-                self.right_panel.set_processing(False)
-                self._set_fields_enabled(True)
+            async def _update_ui():
+                try:
+                    self._is_processing = False
+                    self.right_panel.set_processing(False)
+                    self._set_fields_enabled(True)
 
-                if self.modal:
+                    if self.modal:
+                        if success:
+                            self.modal.mark_complete()
+                        else:
+                            self.modal.mark_cancelled()
+
                     if success:
-                        self.modal.mark_complete()
+                        self._show_snackbar("작업이 완료되었습니다!", Colors.SUCCESS)
+                    elif message and message.startswith("login_failed:"):
+                        parts = message.split(":", 2)
+                        reason = parts[1] if len(parts) > 1 else "unknown"
+                        display_msg = parts[2] if len(parts) > 2 else message
+                        self._show_snackbar(display_msg, Colors.ERROR)
+                        if reason == "invalid_credentials":
+                            self.left_panel.account.set_error('student_id', "학번을 확인하세요")
+                            self.left_panel.account.set_error('password', "비밀번호를 확인하세요")
+                        elif reason in ("navigation_timeout", "sso_page_failed"):
+                            self.left_panel.account.set_error('student_id', "로그인 서버 연결 실패")
+                    elif "취소" not in message:
+                        self._show_snackbar(f"오류: {message}", Colors.ERROR)
                     else:
-                        self.modal.mark_cancelled()
-
-                if success:
-                    self._show_snackbar("작업이 완료되었습니다!", Colors.SUCCESS)
-                elif message and message.startswith("login_failed:"):
-                    parts = message.split(":", 2)
-                    reason = parts[1] if len(parts) > 1 else "unknown"
-                    display_msg = parts[2] if len(parts) > 2 else message
-                    self._show_snackbar(display_msg, Colors.ERROR)
-                    if reason == "invalid_credentials":
-                        self.left_panel.account.set_error('student_id', "학번을 확인하세요")
-                        self.left_panel.account.set_error('password', "비밀번호를 확인하세요")
-                    elif reason in ("navigation_timeout", "sso_page_failed"):
-                        self.left_panel.account.set_error('student_id', "로그인 서버 연결 실패")
-                elif "취소" not in message:
-                    self._show_snackbar(f"오류: {message}", Colors.ERROR)
-                else:
-                    self.page.update()
-            except Exception:
-                pass
-            self.worker = None
+                        self.page.update()
+                except Exception:
+                    pass
+                self.worker = None
+            self.page.run_task(_update_ui)
 
         def on_step(step_num, step_name):
             if self.modal:

@@ -7,7 +7,8 @@ from dataclasses import dataclass
 
 # 앱 기본 정보
 APP_TITLE = "LMS 강의 다운로드 & 요약"
-APP_VERSION = "v1.3.0"
+from src import __version__ as _ver
+APP_VERSION = f"v{_ver}"
 WINDOW_WIDTH = 660
 WINDOW_HEIGHT = 600
 MIN_WINDOW_WIDTH = 580

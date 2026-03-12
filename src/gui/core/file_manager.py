@@ -298,6 +298,37 @@ def set_stt_engine(engine: str) -> None:
     save_settings(settings)
 
 
+def get_stt_model() -> str:
+    """whisper-cpp 모델명 반환. 기본값: base."""
+    return load_settings().get("stt_model", "base")
+
+
+def set_stt_model(model: str) -> None:
+    """whisper-cpp 모델명을 settings.json에 저장"""
+    settings = load_settings()
+    settings["stt_model"] = model
+    save_settings(settings)
+
+
+def get_stt_params() -> dict:
+    """whisper-cpp 고급 파라미터 반환. 기본값: 한국어 최적화 설정."""
+    defaults = {
+        "no_speech_thold": 0.4,
+        "initial_prompt": "한국어 강의입니다.",
+        "repeat_threshold": 4,
+    }
+    stored = load_settings().get("stt_params", {})
+    stored.pop("suppress_non_speech_tokens", None)
+    return {**defaults, **stored}
+
+
+def set_stt_params(params: dict) -> None:
+    """whisper-cpp 고급 파라미터를 settings.json에 저장"""
+    settings = load_settings()
+    settings["stt_params"] = params
+    save_settings(settings)
+
+
 def get_stt_api_key() -> str:
     """ReturnZero STT API 키(client_id:client_secret 형식) 반환"""
     return load_settings().get("stt_api_key", "")
