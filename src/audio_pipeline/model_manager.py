@@ -18,17 +18,18 @@ MODEL_REGISTRY: dict[str, dict] = {
         "filename": "ggml-large-v3-turbo-q4_k.bin",
         "url": "https://huggingface.co/Pomni/whisper-large-v3-turbo-ggml-allquants/resolve/main/ggml-large-v3-turbo-q4_k.bin",
     },
-    "large-v3": {
+    "large-v3-korean": {
         "label": "고정밀 모드",
         "emoji": "💎",
-        "description": "가장 정확한 인식 (속도 느림)",
-        "size_mb": 1550,
-        "source": "builtin",
-        "model_id": "large-v3",
+        "description": "한국어 파인튜닝, 가장 정확한 인식 (속도 느림)",
+        "size_mb": 1660,
+        "source": "huggingface",
+        "filename": "whisper-large-v3-turbo-korean.bin",
+        "url": "https://huggingface.co/royshilkrot/whisper-large-v3-turbo-korean-ggml/resolve/main/whisper-large-v3-turbo-korean.bin",
     },
 }
 
-MODE_ORDER = ["turbo-q4k", "large-v3"]
+MODE_ORDER = ["turbo-q4k", "large-v3-korean"]
 
 
 # ── 경로 관리 ────────────────────────────────────────────────────
