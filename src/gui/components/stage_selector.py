@@ -11,6 +11,18 @@ from src.gui.core.file_manager import ensure_downloads_directory
 from src.gui.core.artifact_detector import ArtifactDetector
 from src.pipeline_stage import PipelineStage, STAGE_LABELS
 
+# 각 단계별 설명 텍스트
+_STAGE_DESCRIPTIONS: dict[PipelineStage, str] = {
+    PipelineStage.DOWNLOAD:
+        "LMS에서 강의 영상을 다운로드하고, 오디오 변환 → 음성 인식 → AI 요약까지 전체 파이프라인을 실행합니다.",
+    PipelineStage.CONVERT_AUDIO:
+        "이미 다운로드된 영상 파일(MP4/TS)을 선택하여 오디오 변환부터 시작합니다. 다운로드 단계를 건너뜁니다.",
+    PipelineStage.STT:
+        "이미 변환된 오디오 파일(WAV/MP3)을 선택하여 음성 인식부터 시작합니다. 다운로드와 오디오 변환을 건너뜁니다.",
+    PipelineStage.SUMMARIZE:
+        "이미 변환된 텍스트 파일(TXT)을 선택하여 AI 요약만 실행합니다. 이전 단계를 모두 건너뜁니다.",
+}
+
 # 각 단계에서 입력으로 받을 파일 확장자
 _STAGE_INPUT_EXTENSIONS = {
     PipelineStage.CONVERT_AUDIO: [".mp4", ".ts"],
@@ -126,12 +138,20 @@ class StageSelector:
             visible=False,
         )
 
+        # 단계 설명 텍스트
+        self._stage_desc = ft.Text(
+            _STAGE_DESCRIPTIONS[PipelineStage.DOWNLOAD],
+            size=Typography.SMALL,
+            color=Colors.TEXT_MUTED,
+        )
+
         # FilePicker (Flet 0.81+에서는 async 직접 반환)
         self.file_picker = ft.FilePicker()
 
         self.control = ft.Column(
             controls=[
                 self._dropdown,
+                self._stage_desc,
                 ft.Row(
                     controls=[self._pick_btn, self._file_count_text, self._clear_all_btn],
                     spacing=Spacing.SM,
@@ -150,6 +170,8 @@ class StageSelector:
         stage = self.get_stage()
         show_picker = stage != PipelineStage.DOWNLOAD
         self._pick_btn.visible = show_picker
+        # 단계 설명 갱신
+        self._stage_desc.value = _STAGE_DESCRIPTIONS.get(stage, "")
         # 단계 변경 시 파일 목록 및 감지 메시지 초기화
         self._selected_files.clear()
         self._file_list.controls.clear()
@@ -334,6 +356,7 @@ class StageSelector:
         self._dropdown.value = str(stage.value)
         show_picker = stage != PipelineStage.DOWNLOAD
         self._pick_btn.visible = show_picker
+        self._stage_desc.value = _STAGE_DESCRIPTIONS.get(stage, "")
 
     def set_enabled(self, enabled: bool):
         """활성/비활성 설정"""
