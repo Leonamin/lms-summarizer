@@ -33,10 +33,13 @@ class Transcriber(ABC):
 class WhisperCppTranscriber(Transcriber):
     def __init__(self, model_name="base", language="ko", params=None):
         from pywhispercpp.model import Model
+        from src.audio_pipeline.model_manager import resolve_for_transcriber
         import sys
 
         self._language = language
-        self._params = params or {}
+        # suppress_non_speech_tokens은 pywhispercpp C 바인딩에서 미지원 → 제거
+        sanitized = {k: v for k, v in (params or {}).items() if k != "suppress_non_speech_tokens"}
+        self._params = sanitized
         load_start = time.time()
 
         # .app 번들 내부의 모델 확인
@@ -49,9 +52,15 @@ class WhisperCppTranscriber(Transcriber):
                 print(f"[INFO] 모델 로드 시간: {self.model_load_sec:.1f}초")
                 return
 
-        # 기본 경로에서 모델 로드 (자동 다운로드)
-        print(f"[INFO] whisper.cpp 모델 로드 중: {model_name}")
-        self.model = Model(model_name)
+        # model_key → (custom_path, builtin_name) 결정
+        custom_path, builtin_name = resolve_for_transcriber(model_name)
+        if custom_path:
+            print(f"[INFO] 커스텀 whisper.cpp 모델 로드: {os.path.basename(custom_path)}")
+            self.model = Model(custom_path)
+        else:
+            print(f"[INFO] whisper.cpp 내장 모델 로드: {builtin_name}")
+            self.model = Model(builtin_name)
+
         self.model_load_sec = time.time() - load_start
         print(f"[INFO] 모델 로드 시간: {self.model_load_sec:.1f}초")
 

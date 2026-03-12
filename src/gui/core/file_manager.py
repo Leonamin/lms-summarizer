@@ -314,10 +314,10 @@ def get_stt_params() -> dict:
     """whisper-cpp 고급 파라미터 반환. 기본값: 한국어 최적화 설정."""
     defaults = {
         "no_speech_thold": 0.4,
-        "suppress_non_speech_tokens": True,
         "initial_prompt": "한국어 강의입니다.",
     }
     stored = load_settings().get("stt_params", {})
+    stored.pop("suppress_non_speech_tokens", None)
     return {**defaults, **stored}
 
 

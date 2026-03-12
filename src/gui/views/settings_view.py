@@ -216,7 +216,14 @@ def open_settings_dialog(page: ft.Page):
             _set_chrome_path(files[0].path)
 
     # ── 고급 설정: STT 엔진 ──────────────────────────────
+    import threading as _threading
+    from src.audio_pipeline.model_manager import (
+        MODEL_REGISTRY, MODE_ORDER, is_available, download_model, DownloadCancelled,
+    )
+
     current_stt = get_stt_engine()
+    current_stt_model = get_stt_model()
+    current_params = get_stt_params()
 
     stt_dropdown = ft.Dropdown(
         options=[ft.dropdown.Option(key=k, text=t) for k, t in _STT_OPTIONS],
@@ -230,21 +237,6 @@ def open_settings_dialog(page: ft.Page):
         label_style=ft.TextStyle(size=Typography.CAPTION, color=Colors.TEXT_SECONDARY),
         on_select=lambda e: _on_stt_changed(),
         dense=True,
-    )
-
-    current_stt_model = get_stt_model()
-    stt_model_dropdown = ft.Dropdown(
-        options=[ft.dropdown.Option(key=k, text=t) for k, t in _STT_MODELS],
-        value=current_stt_model,
-        label="모델 크기",
-        leading_icon=ft.Icons.MEMORY,
-        border_radius=Radius.MD,
-        border_color=Colors.BORDER,
-        focused_border_color=Colors.PRIMARY,
-        text_size=Typography.BODY,
-        label_style=ft.TextStyle(size=Typography.CAPTION, color=Colors.TEXT_SECONDARY),
-        dense=True,
-        visible=(current_stt == "whisper-cpp"),
     )
 
     stt_api_key_field = ft.TextField(
@@ -266,93 +258,272 @@ def open_settings_dialog(page: ft.Page):
         color=Colors.TEXT_MUTED,
     )
 
-    # ── 고급 whisper 파라미터 ────────────────────────────
-    current_params = get_stt_params()
+    # ── 모드 버튼 (3개) ─────────────────────────────────
+    _selected_mode = [current_stt_model if current_stt_model in MODE_ORDER else "base"]
+    _download_cancel: list = [None]
 
+    def _build_mode_btn(mode_key: str) -> ft.Container:
+        info = MODEL_REGISTRY[mode_key]
+        downloaded = is_available(mode_key)
+        selected = (_selected_mode[0] == mode_key)
+        size_mb = info["size_mb"]
+        size_str = f"{size_mb/1024:.1f}GB" if size_mb >= 1000 else f"{size_mb}MB"
+        badge = ft.Container(
+            content=ft.Text("✓" if downloaded else f"↓{size_str}", size=9,
+                            color="#16A34A" if downloaded else "#D97706"),
+            bgcolor="#DCFCE7" if downloaded else "#FEF3C7",
+            border_radius=4,
+            padding=ft.padding.symmetric(horizontal=4, vertical=1),
+        )
+        return ft.Container(
+            content=ft.Column(
+                controls=[
+                    ft.Row(
+                        controls=[
+                            ft.Text(f"{info['emoji']} {info['label']}", size=Typography.SMALL,
+                                    weight=Typography.SEMI_BOLD, color=Colors.TEXT),
+                            badge,
+                        ],
+                        spacing=4,
+                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                    ),
+                    ft.Text(info["description"], size=8, color=Colors.TEXT_MUTED),
+                ],
+                spacing=2,
+            ),
+            border=ft.border.all(1.5, Colors.PRIMARY if selected else Colors.BORDER),
+            border_radius=Radius.MD,
+            bgcolor="#EFF6FF" if selected else Colors.BG,
+            padding=ft.padding.symmetric(horizontal=8, vertical=8),
+            expand=True,
+            on_click=lambda e, k=mode_key: _select_mode(k),
+            ink=True,
+        )
+
+    mode_buttons_row = ft.Row(
+        controls=[_build_mode_btn(k) for k in MODE_ORDER],
+        spacing=Spacing.XS,
+    )
+
+    # 다운로드 영역
+    _dl_status = ft.Text("", size=Typography.SMALL, color=Colors.TEXT_MUTED)
+    _dl_bar = ft.ProgressBar(value=0, visible=False, color=Colors.PRIMARY, bgcolor=Colors.BORDER)
+    _dl_btn = ft.ElevatedButton(
+        content=ft.Text("다운로드"), icon=ft.Icons.DOWNLOAD, visible=False,
+        style=ft.ButtonStyle(color=ft.Colors.WHITE, bgcolor=Colors.PRIMARY,
+                             shape=ft.RoundedRectangleBorder(radius=Radius.MD)),
+        on_click=lambda e: _start_download(),
+    )
+    _dl_cancel_btn = ft.OutlinedButton(
+        content=ft.Text("취소"), visible=False,
+        style=ft.ButtonStyle(color=Colors.ERROR,
+                             shape=ft.RoundedRectangleBorder(radius=Radius.MD)),
+        on_click=lambda e: _cancel_download(),
+    )
+    download_area = ft.Column(
+        controls=[_dl_status, _dl_bar, ft.Row(controls=[_dl_btn, _dl_cancel_btn], spacing=Spacing.SM)],
+        spacing=4, visible=False,
+    )
+
+    def _refresh_mode_buttons():
+        mode_buttons_row.controls = [_build_mode_btn(k) for k in MODE_ORDER]
+        if mode_buttons_row.page:
+            mode_buttons_row.update()
+
+    def _select_mode(key: str):
+        _selected_mode[0] = key
+        _refresh_mode_buttons()
+        _update_download_area()
+
+    def _update_download_area():
+        mode = _selected_mode[0]
+        if is_available(mode):
+            download_area.visible = False
+        else:
+            info = MODEL_REGISTRY[mode]
+            size_mb = info["size_mb"]
+            size_str = f"{size_mb/1024:.1f}GB" if size_mb >= 1000 else f"{size_mb}MB"
+            _dl_status.value = f"'{info['label']}' 모델 미다운로드 ({size_str})"
+            _dl_btn.visible = True
+            _dl_cancel_btn.visible = False
+            _dl_bar.visible = False
+            download_area.visible = True
+        if download_area.page:
+            download_area.update()
+
+    def _start_download():
+        mode = _selected_mode[0]
+        info = MODEL_REGISTRY[mode]
+        cancel_ev = _threading.Event()
+        _download_cancel[0] = cancel_ev
+        _dl_btn.visible = False
+        _dl_cancel_btn.visible = True
+        _dl_bar.visible = True
+        _dl_bar.value = 0
+        _dl_status.value = f"연결 중..."
+        if download_area.page:
+            download_area.update()
+
+        def _run():
+            try:
+                def on_progress(done, total):
+                    if total:
+                        _dl_bar.value = done / total
+                        _dl_status.value = f"다운로드 중... {done/1048576:.0f}/{total/1048576:.0f}MB"
+                        if download_area.page:
+                            download_area.update()
+                download_model(mode, on_progress=on_progress, cancel_event=cancel_ev)
+                _dl_status.value = f"✅ '{info['label']}' 다운로드 완료!"
+                _dl_btn.visible = False
+                _dl_cancel_btn.visible = False
+                _dl_bar.visible = False
+                _refresh_mode_buttons()
+            except DownloadCancelled:
+                _dl_status.value = "다운로드가 취소되었습니다."
+                _dl_btn.visible = True
+                _dl_cancel_btn.visible = False
+                _dl_bar.visible = False
+            except Exception as ex:
+                _dl_status.value = f"❌ 다운로드 실패: {ex}"
+                _dl_btn.visible = True
+                _dl_cancel_btn.visible = False
+                _dl_bar.visible = False
+            finally:
+                if download_area.page:
+                    download_area.update()
+
+        _threading.Thread(target=_run, daemon=True).start()
+
+    def _cancel_download():
+        if _download_cancel[0]:
+            _download_cancel[0].set()
+
+    _update_download_area()
+
+    # ── 전문가 모드 ──────────────────────────────────────
     stt_no_speech_field = ft.TextField(
         value=str(current_params.get("no_speech_thold", 0.4)),
         label="no_speech_thold (0.0~1.0)",
-        hint_text="낮을수록 무음 구간을 공격적으로 억제 (기본: 0.4)",
-        border_radius=Radius.MD,
-        border_color=Colors.BORDER,
-        focused_border_color=Colors.PRIMARY,
-        text_size=Typography.BODY,
+        hint_text="낮을수록 무음 억제 강도 증가 (기본: 0.4)",
+        border_radius=Radius.MD, border_color=Colors.BORDER,
+        focused_border_color=Colors.PRIMARY, text_size=Typography.BODY,
         label_style=ft.TextStyle(size=Typography.CAPTION, color=Colors.TEXT_SECONDARY),
         dense=True,
-        visible=(current_stt == "whisper-cpp"),
     )
-
     stt_entropy_field = ft.TextField(
         value=str(current_params.get("entropy_thold", 2.4)),
         label="entropy_thold (0.0~5.0)",
         hint_text="반복/이상 출력 필터링 임계값 (기본: 2.4)",
-        border_radius=Radius.MD,
-        border_color=Colors.BORDER,
-        focused_border_color=Colors.PRIMARY,
-        text_size=Typography.BODY,
+        border_radius=Radius.MD, border_color=Colors.BORDER,
+        focused_border_color=Colors.PRIMARY, text_size=Typography.BODY,
         label_style=ft.TextStyle(size=Typography.CAPTION, color=Colors.TEXT_SECONDARY),
         dense=True,
-        visible=(current_stt == "whisper-cpp"),
     )
-
-    stt_suppress_checkbox = ft.Checkbox(
-        label="suppress_non_speech_tokens (불필요한 토큰 억제)",
-        value=current_params.get("suppress_non_speech_tokens", True),
-        active_color=Colors.PRIMARY,
-        visible=(current_stt == "whisper-cpp"),
-    )
-
     stt_initial_prompt_field = ft.TextField(
         value=current_params.get("initial_prompt", "한국어 강의입니다."),
         label="initial_prompt",
         hint_text="모델에 전달할 초기 힌트 텍스트",
-        border_radius=Radius.MD,
-        border_color=Colors.BORDER,
-        focused_border_color=Colors.PRIMARY,
-        text_size=Typography.BODY,
+        border_radius=Radius.MD, border_color=Colors.BORDER,
+        focused_border_color=Colors.PRIMARY, text_size=Typography.BODY,
         label_style=ft.TextStyle(size=Typography.CAPTION, color=Colors.TEXT_SECONDARY),
         dense=True,
-        visible=(current_stt == "whisper-cpp"),
     )
+    model_file_field = ft.TextField(
+        hint_text="직접 다운로드한 .bin 파일 경로 (선택사항)",
+        border_radius=Radius.MD, border_color=Colors.BORDER,
+        focused_border_color=Colors.PRIMARY, text_size=Typography.BODY,
+        label="커스텀 모델 파일",
+        label_style=ft.TextStyle(size=Typography.CAPTION, color=Colors.TEXT_SECONDARY),
+        dense=True, expand=True,
+    )
+    model_file_picker = ft.FilePicker()
 
-    # whisper 고급 파라미터 컨테이너
-    whisper_params_container = ft.Container(
+    async def _browse_model(e):
+        files = await model_file_picker.pick_files(
+            dialog_title="whisper.cpp 모델 파일 선택 (.bin)",
+            allowed_extensions=["bin"],
+        )
+        if files:
+            model_file_field.value = files[0].path
+            if model_file_field.page:
+                model_file_field.update()
+
+    expert_content = ft.Container(
         content=ft.Column(
             controls=[
                 ft.Row(
                     controls=[
-                        ft.Icon(ft.Icons.TUNE, size=14, color=Colors.TEXT_SECONDARY),
-                        ft.Text(
-                            "whisper 고급 파라미터",
-                            size=Typography.CAPTION,
-                            weight=Typography.SEMI_BOLD,
-                            color=Colors.TEXT_SECONDARY,
+                        ft.Icon(ft.Icons.FOLDER_OPEN, size=14, color=Colors.TEXT_SECONDARY),
+                        ft.Text("직접 모델 로드", size=Typography.CAPTION,
+                                weight=Typography.SEMI_BOLD, color=Colors.TEXT_SECONDARY),
+                    ],
+                    spacing=Spacing.XS,
+                ),
+                ft.Row(
+                    controls=[
+                        model_file_field,
+                        ft.OutlinedButton(
+                            content=ft.Text("찾아보기"), icon=ft.Icons.FOLDER_OPEN,
+                            on_click=_browse_model,
+                            style=ft.ButtonStyle(color=Colors.PRIMARY,
+                                                 shape=ft.RoundedRectangleBorder(radius=Radius.MD)),
                         ),
+                    ],
+                    spacing=Spacing.SM,
+                ),
+                ft.Text("파일 지정 시 모드 선택보다 우선합니다.", size=8, color=Colors.TEXT_MUTED),
+                divider(),
+                ft.Row(
+                    controls=[
+                        ft.Icon(ft.Icons.TUNE, size=14, color=Colors.TEXT_SECONDARY),
+                        ft.Text("파라미터 튜닝", size=Typography.CAPTION,
+                                weight=Typography.SEMI_BOLD, color=Colors.TEXT_SECONDARY),
                     ],
                     spacing=Spacing.XS,
                 ),
                 stt_no_speech_field,
                 stt_entropy_field,
-                stt_suppress_checkbox,
                 stt_initial_prompt_field,
             ],
             spacing=Spacing.SM,
         ),
-        bgcolor="#F8FAFC",
-        border_radius=Radius.MD,
+        bgcolor="#F8FAFC", border_radius=Radius.MD,
         border=ft.border.all(1, Colors.BORDER),
         padding=ft.padding.all(Spacing.SM),
+        visible=False,
+    )
+
+    expert_checkbox = ft.Checkbox(
+        label="전문가 설정 (Expert Mode)",
+        value=False, active_color=Colors.PRIMARY,
+        on_change=lambda e: _toggle_expert(e.control.value),
+    )
+
+    def _toggle_expert(on: bool):
+        expert_content.visible = on
+        if expert_content.page:
+            expert_content.update()
+
+    whisper_section = ft.Column(
+        controls=[
+            ft.Text("모드 선택", size=Typography.CAPTION,
+                    weight=Typography.SEMI_BOLD, color=Colors.TEXT_SECONDARY),
+            mode_buttons_row,
+            download_area,
+            expert_checkbox,
+            expert_content,
+        ],
+        spacing=Spacing.SM,
         visible=(current_stt == "whisper-cpp"),
     )
 
     def _on_stt_changed():
         engine = stt_dropdown.value or "whisper-cpp"
         is_whisper = (engine == "whisper-cpp")
-        stt_model_dropdown.visible = is_whisper
+        whisper_section.visible = is_whisper
         stt_api_key_field.visible = (engine == "returnzero")
         stt_description.value = _get_stt_description(engine)
-        whisper_params_container.visible = is_whisper
-        for ctrl in [stt_model_dropdown, stt_api_key_field, stt_description, whisper_params_container]:
+        for ctrl in [whisper_section, stt_api_key_field, stt_description]:
             if ctrl.page:
                 ctrl.update()
 
@@ -381,10 +552,9 @@ def open_settings_dialog(page: ft.Page):
                 spacing=Spacing.XS,
             ),
             stt_dropdown,
-            stt_model_dropdown,
+            whisper_section,
             stt_api_key_field,
             stt_description,
-            whisper_params_container,
             divider(),
             # 디버그 모드
             ft.Row(
@@ -498,20 +668,20 @@ def open_settings_dialog(page: ft.Page):
         if stt_engine == "returnzero":
             set_stt_api_key((stt_api_key_field.value or "").strip())
         if stt_engine == "whisper-cpp":
-            set_stt_model(stt_model_dropdown.value or "base")
+            # 커스텀 파일 경로 > 모드 선택
+            custom_path = (model_file_field.value or "").strip()
+            set_stt_model(custom_path if custom_path else _selected_mode[0])
             try:
                 params = {
                     "no_speech_thold": float(stt_no_speech_field.value or 0.4),
                     "entropy_thold": float(stt_entropy_field.value or 2.4),
-                    "suppress_non_speech_tokens": stt_suppress_checkbox.value,
                     "initial_prompt": (stt_initial_prompt_field.value or "").strip() or None,
                 }
-                # initial_prompt가 None이면 키 제거 (빈 값 전달 방지)
                 if params["initial_prompt"] is None:
                     del params["initial_prompt"]
                 set_stt_params(params)
             except ValueError:
-                pass  # 숫자 변환 실패 시 기존 값 유지
+                pass
 
         if chrome_path:
             if not os.path.exists(chrome_path):
@@ -632,6 +802,7 @@ def open_settings_dialog(page: ft.Page):
         actions_alignment=ft.MainAxisAlignment.END,
     )
 
+    page.overlay.extend([file_picker, model_file_picker])
     page.show_dialog(dialog)
 
 
