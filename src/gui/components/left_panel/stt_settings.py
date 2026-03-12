@@ -124,6 +124,7 @@ class STTSettingsSection:
             focused_border_color=Colors.PRIMARY, text_size=Typography.SMALL,
             label_style=ft.TextStyle(size=9, color=Colors.TEXT_SECONDARY),
             dense=True,
+            tooltip="무음 구간 감지 민감도 — 낮을수록 더 적극적으로 무음을 제거합니다",
         )
         self._entropy_field = ft.TextField(
             value=str(current_params.get("entropy_thold", 2.4)),
@@ -133,6 +134,7 @@ class STTSettingsSection:
             focused_border_color=Colors.PRIMARY, text_size=Typography.SMALL,
             label_style=ft.TextStyle(size=9, color=Colors.TEXT_SECONDARY),
             dense=True,
+            tooltip="높을수록 반복/이상 텍스트 허용 — 낮추면 필터링이 강해집니다",
         )
         self._initial_prompt_field = ft.TextField(
             value=current_params.get("initial_prompt", "한국어 강의입니다."),
@@ -142,6 +144,7 @@ class STTSettingsSection:
             focused_border_color=Colors.PRIMARY, text_size=Typography.SMALL,
             label_style=ft.TextStyle(size=9, color=Colors.TEXT_SECONDARY),
             dense=True,
+            tooltip="Whisper 모델에 전달되는 초기 힌트 텍스트 — 인식 언어와 맥락을 안내합니다",
         )
         self._repeat_threshold_field = ft.TextField(
             value=str(current_params.get("repeat_threshold", 4)),
@@ -151,6 +154,7 @@ class STTSettingsSection:
             focused_border_color=Colors.PRIMARY, text_size=Typography.SMALL,
             label_style=ft.TextStyle(size=9, color=Colors.TEXT_SECONDARY),
             dense=True,
+            tooltip="같은 구문이 이 횟수 이상 연속되면 1개로 축약합니다 (0이면 비활성화)",
         )
         self._expert_content = ft.Column(
             controls=[self._no_speech_field, self._entropy_field, self._initial_prompt_field, self._repeat_threshold_field],
@@ -209,6 +213,7 @@ class STTSettingsSection:
             prefix_icon=ft.Icons.KEY,
             visible=(current_stt == "returnzero"),
             dense=True,
+            tooltip="ReturnZero API 키를 client_id:client_secret 형식으로 입력하세요",
         )
 
         # ── 엔진 드롭다운 ──────────────────────────────────
@@ -224,6 +229,7 @@ class STTSettingsSection:
             label_style=ft.TextStyle(size=Typography.CAPTION, color=Colors.TEXT_SECONDARY),
             on_select=self._on_engine_changed,
             dense=True,
+            tooltip="음성 인식(STT)에 사용할 엔진을 선택하세요",
         )
 
         # ── 적용 버튼 ─────────────────────────────────────

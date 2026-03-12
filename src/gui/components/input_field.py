@@ -28,6 +28,7 @@ class InputField:
         self.config = config
         self._on_korean_detected = on_korean_detected
         icon = _ICON_MAP.get(config.icon)
+        tooltip = getattr(config, 'tooltip', None)
 
         # 한글 경고 텍스트 (비밀번호 전용)
         self._korean_warning = ft.Text(
@@ -51,6 +52,7 @@ class InputField:
                 cursor_color=Colors.PRIMARY,
                 text_size=Typography.BODY,
                 label_style=ft.TextStyle(size=Typography.CAPTION, color=Colors.TEXT_SECONDARY),
+                tooltip=tooltip,
             )
             self.container = ft.Column(controls=[self.control], spacing=Spacing.XS, horizontal_alignment=ft.CrossAxisAlignment.STRETCH)
         elif config.is_password:
@@ -67,6 +69,7 @@ class InputField:
                 text_size=Typography.BODY,
                 label_style=ft.TextStyle(size=Typography.CAPTION, color=Colors.TEXT_SECONDARY),
                 on_change=self._check_korean_input,
+                tooltip=tooltip,
             )
             self.container = ft.Column(
                 controls=[self.control, self._korean_warning],
@@ -84,6 +87,7 @@ class InputField:
                 cursor_color=Colors.PRIMARY,
                 text_size=Typography.BODY,
                 label_style=ft.TextStyle(size=Typography.CAPTION, color=Colors.TEXT_SECONDARY),
+                tooltip=tooltip,
             )
             self.container = ft.Column(controls=[self.control], spacing=Spacing.XS, horizontal_alignment=ft.CrossAxisAlignment.STRETCH)
 

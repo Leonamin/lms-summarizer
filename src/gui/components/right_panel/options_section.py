@@ -82,6 +82,7 @@ class OptionsSection:
             label_style=ft.TextStyle(size=Typography.CAPTION, color=Colors.TEXT_SECONDARY),
             dense=True,
             on_select=lambda e: self._update_badges(),
+            tooltip="요약 스타일을 선택하세요 (일반 요약, 시험 대비, 핵심 정리 등)",
         )
 
         self._summary_mode_container = ft.Container(
@@ -124,6 +125,7 @@ class OptionsSection:
             label_style=ft.TextStyle(size=Typography.CAPTION, color=Colors.TEXT_SECONDARY),
             dense=True,
             on_select=lambda e: self._update_badges(),
+            tooltip="강의 분야에 맞는 전문 용어로 요약됩니다",
         )
 
         self._subject_custom_field = ft.TextField(
@@ -137,6 +139,7 @@ class OptionsSection:
             label_style=ft.TextStyle(size=Typography.CAPTION, color=Colors.TEXT_SECONDARY),
             dense=True,
             on_change=lambda e: self._update_badges(),
+            tooltip="과목명을 직접 입력하면 드롭다운 선택보다 우선 적용됩니다",
         )
 
         self._subject_container = ft.Container(
@@ -168,8 +171,9 @@ class OptionsSection:
         # ── 기존 컨트롤 ────────────────────────────────────
         self._save_video_checkbox = ft.Checkbox(
             label="처리 완료 후 원본 동영상 보관",
-            value=False,
+            value=True,
             active_color=Colors.PRIMARY,
+            tooltip="체크 해제 시 요약 완료 후 다운로드된 영상 파일이 자동 삭제됩니다",
         )
 
         self.stage_selector = StageSelector()

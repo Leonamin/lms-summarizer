@@ -13,6 +13,7 @@ from src.gui.config.course_models import (
     Course, CourseDetail, LectureItem, LectureType, VIDEO_LECTURE_TYPES,
 )
 from src.gui.core.file_manager import save_course_cache, load_course_cache
+from src.gui.core.thread_safe import invoke_on_ui
 from src.gui.workers.course_list_worker import CourseListWorker
 
 
@@ -92,6 +93,7 @@ class CourseListView:
             value=True,
             active_color=Colors.PRIMARY,
             on_change=self._on_video_filter_changed,
+            tooltip="체크 해제 시 과제, 퀴즈 등 모든 강의 항목이 표시됩니다",
         )
 
         # ── 타이틀 ──────────────────────────────────────
@@ -218,9 +220,9 @@ class CourseListView:
 
         self._worker = CourseListWorker(
             self._username, self._password,
-            on_courses_loaded=self._on_courses_loaded,
-            on_error=self._on_load_error,
-            on_finished=self._on_worker_finished,
+            on_courses_loaded=invoke_on_ui(self._page, self._on_courses_loaded),
+            on_error=invoke_on_ui(self._page, self._on_load_error),
+            on_finished=invoke_on_ui(self._page, self._on_worker_finished),
         )
         self._worker.start()
 
@@ -232,7 +234,6 @@ class CourseListView:
         except Exception as e:
             print(f"[WARNING] 과목 캐시 저장 실패 (무시): {e}")
         self._populate_course_list()
-        self._page.update()
 
     def _populate_course_list(self):
         self._course_list.controls.clear()
@@ -392,9 +393,9 @@ class CourseListView:
         self._worker = CourseListWorker(
             self._username, self._password,
             course=course,
-            on_lectures_loaded=self._on_lectures_loaded,
-            on_error=self._on_load_error,
-            on_finished=self._on_worker_finished,
+            on_lectures_loaded=invoke_on_ui(self._page, self._on_lectures_loaded),
+            on_error=invoke_on_ui(self._page, self._on_load_error),
+            on_finished=invoke_on_ui(self._page, self._on_worker_finished),
         )
         self._worker.start()
 
@@ -402,7 +403,6 @@ class CourseListView:
         self._course_detail = detail
         self._lecture_loading.visible = False
         self._populate_lecture_tree(detail)
-        self._page.update()
 
     def _populate_lecture_tree(self, detail: CourseDetail):
         self._lecture_list.controls.clear()
@@ -622,15 +622,10 @@ class CourseListView:
             self._course_status.value = f"오류: {error_msg}"
         else:
             self._lecture_status.value = f"오류: {error_msg}"
-        self._page.update()
 
     def _on_worker_finished(self):
         self._course_loading.visible = False
         self._lecture_loading.visible = False
-        try:
-            self._page.update()
-        except Exception:
-            pass
 
     def _cleanup_worker(self):
         if self._worker and self._worker.is_running():

@@ -106,6 +106,20 @@ class ProcessingWorker:
         self._file_logger.info(message)
         self._on_log(message)
 
+    def _check_stt_model_available(self):
+        """STT 단계 시작 전 모델 다운로드 여부 확인"""
+        if self.stt_engine != "whisper-cpp":
+            return
+        from src.audio_pipeline.model_manager import is_available, MODEL_REGISTRY
+        if not is_available(self.stt_model):
+            info = MODEL_REGISTRY.get(self.stt_model, {})
+            label = info.get("label", self.stt_model)
+            size = info.get("size_mb", "?")
+            raise FileNotFoundError(
+                f"'{label}' STT 모델이 다운로드되지 않았습니다. "
+                f"좌측 패널 > STT 설정에서 모델을 먼저 다운로드하세요. (약 {size}MB)"
+            )
+
     def _run(self):
         """실제 처리 작업 실행"""
         self._file_logger = _setup_file_logger()
@@ -205,9 +219,13 @@ class ProcessingWorker:
             wav_paths = self._convert_videos_to_wav(source_videos)
             step_timings["convert_sec"] = round(_time.time() - step_start, 1)
 
+            if not wav_paths:
+                raise ValueError(f"WAV 변환 성공한 파일이 없습니다. ({len(source_videos)}개 중 0개 성공)")
+
         # ── 3. STT ──
         if self.start_stage <= PipelineStage.STT:
             self._check_cancelled()
+            self._check_stt_model_available()
             self._on_step_changed(PipelineStage.STT, STAGE_LABELS[PipelineStage.STT])
             step_start = _time.time()
 
@@ -215,6 +233,9 @@ class ProcessingWorker:
             source_wavs = self.input_files if self.start_stage == PipelineStage.STT else wav_paths
             text_paths = self._transcribe_wav_to_text(source_wavs)
             step_timings["stt_sec"] = round(_time.time() - step_start, 1)
+
+            if not text_paths:
+                raise ValueError(f"텍스트 변환 성공한 파일이 없습니다. ({len(source_wavs)}개 중 0개 성공)")
 
         # ── 4. AI 요약 ──
         if self.start_stage <= PipelineStage.SUMMARIZE:
@@ -226,6 +247,9 @@ class ProcessingWorker:
             source_texts = self.input_files if self.start_stage == PipelineStage.SUMMARIZE else text_paths
             summary_paths = self._summarize_texts(source_texts)
             step_timings["summary_sec"] = round(_time.time() - step_start, 1)
+
+            if not summary_paths:
+                raise ValueError(f"요약 생성 성공한 파일이 없습니다. ({len(source_texts)}개 중 0개 성공)")
 
         # 히스토리 저장 (다운로드부터 시작한 경우에만)
         duration_sec = _time.time() - pipeline_start
