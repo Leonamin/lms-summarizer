@@ -315,6 +315,7 @@ def get_stt_params() -> dict:
     defaults = {
         "no_speech_thold": 0.4,
         "initial_prompt": "한국어 강의입니다.",
+        "repeat_threshold": 4,
     }
     stored = load_settings().get("stt_params", {})
     stored.pop("suppress_non_speech_tokens", None)

@@ -143,8 +143,17 @@ class STTSettingsSection:
             label_style=ft.TextStyle(size=9, color=Colors.TEXT_SECONDARY),
             dense=True,
         )
+        self._repeat_threshold_field = ft.TextField(
+            value=str(current_params.get("repeat_threshold", 4)),
+            label="반복 제거 임계값 (0 = 비활성화)",
+            hint_text="같은 구문이 N회 이상 연속되면 1개로 축약 (기본: 4)",
+            border_radius=Radius.SM, border_color=Colors.BORDER,
+            focused_border_color=Colors.PRIMARY, text_size=Typography.SMALL,
+            label_style=ft.TextStyle(size=9, color=Colors.TEXT_SECONDARY),
+            dense=True,
+        )
         self._expert_content = ft.Column(
-            controls=[self._no_speech_field, self._entropy_field, self._initial_prompt_field],
+            controls=[self._no_speech_field, self._entropy_field, self._initial_prompt_field, self._repeat_threshold_field],
             spacing=Spacing.SM,
             visible=False,
         )
@@ -428,6 +437,7 @@ class STTSettingsSection:
                     "no_speech_thold": float(self._no_speech_field.value or 0.4),
                     "entropy_thold": float(self._entropy_field.value or 2.4),
                     "initial_prompt": (self._initial_prompt_field.value or "").strip() or None,
+                    "repeat_threshold": int(float(self._repeat_threshold_field.value or 4)),
                 }
                 if params["initial_prompt"] is None:
                     del params["initial_prompt"]

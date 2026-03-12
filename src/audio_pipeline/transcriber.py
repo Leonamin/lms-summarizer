@@ -1,4 +1,5 @@
 import json
+import re
 import time
 from abc import ABC, abstractmethod
 import os
@@ -8,8 +9,24 @@ from src.user_setting import UserSetting
 # https://developers.rtzr.ai/docs/stt-file/
 
 
+def clean_transcript(text: str, repeat_threshold: int = 4) -> str:
+    """반복 구문 제거 (whisper 무한 루프 hallucination 후처리)
+
+    같은 구문이 repeat_threshold번 이상 연속 반복되면 1개로 축약.
+    repeat_threshold <= 0 이면 비활성화.
+    """
+    if repeat_threshold <= 0:
+        return text
+    pattern = r'(.+?)\1{' + str(repeat_threshold) + r',}'
+    return re.sub(pattern, r'\1', text)
+
+
 def transcribe_audio_to_text(audio_path: str, txt_path: str, engine="whisper-cpp", model_name="base", params=None, on_log=None):
     """오디오/비디오 파일을 텍스트로 변환"""
+    _log = on_log or (lambda msg: None)
+    params = dict(params or {})
+    repeat_threshold = int(params.pop("repeat_threshold", 4))
+
     if engine == "whisper-cpp":
         transcriber = WhisperCppTranscriber(model_name=model_name, params=params, on_log=on_log)
     elif engine == "returnzero":
@@ -18,6 +35,16 @@ def transcribe_audio_to_text(audio_path: str, txt_path: str, engine="whisper-cpp
         raise ValueError("지원하지 않는 엔진입니다")
 
     transcriber.transcribe(audio_path, txt_path)
+
+    # 반복 구문 후처리 (양쪽 엔진 공통)
+    if repeat_threshold > 0 and os.path.exists(txt_path):
+        with open(txt_path, "r", encoding="utf-8") as f:
+            raw = f.read()
+        cleaned = clean_transcript(raw, repeat_threshold)
+        if cleaned != raw:
+            with open(txt_path, "w", encoding="utf-8") as f:
+                f.write(cleaned)
+            _log(f"[후처리] 반복 구문 제거 완료 (임계값: {repeat_threshold}회)")
 
 
 # 하위 호환성 유지
@@ -38,8 +65,9 @@ class WhisperCppTranscriber(Transcriber):
 
         self._language = language
         self._on_log = on_log or (lambda msg: None)
-        # suppress_non_speech_tokens은 pywhispercpp C 바인딩에서 미지원 → 제거
-        sanitized = {k: v for k, v in (params or {}).items() if k != "suppress_non_speech_tokens"}
+        # suppress_non_speech_tokens, repeat_threshold은 pywhispercpp C 바인딩에서 미지원 → 제거
+        _exclude = {"suppress_non_speech_tokens", "repeat_threshold"}
+        sanitized = {k: v for k, v in (params or {}).items() if k not in _exclude}
         self._params = sanitized
         load_start = time.time()
 
