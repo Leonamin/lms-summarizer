@@ -95,12 +95,15 @@ class AISettingsSection:
     def _get_summary_text(self) -> str:
         engine = self._model_selector.get_engine()
         model = self._model_selector.get_model()
-        api_key = self._api_field.get_value()
         engine_label = {
             "gemini": "Gemini", "openai": "OpenAI", "claude": "Claude",
             "grok": "Grok", "clipboard": "클립보드",
         }.get(engine, engine)
-        key_status = "키 없음" if engine != "clipboard" and not api_key.strip() else ("API 불필요" if engine == "clipboard" else "키 있음")
+        if engine == "clipboard":
+            key_status = "API 불필요"
+        else:
+            saved_key = get_api_key_for_engine(engine)
+            key_status = "키 있음" if saved_key and saved_key.strip() else "키 없음"
         short_model = model.split("-")[0] if "-" in model else model
         return f"{engine_label} · {short_model} · {key_status}"
 
@@ -108,6 +111,8 @@ class AISettingsSection:
         self._expanded = not self._expanded
         self._expanded_content.visible = self._expanded
         self._summary.visible = not self._expanded
+        if not self._expanded:
+            self._summary.value = self._get_summary_text()
         self._chevron.icon = ft.Icons.EXPAND_LESS if self._expanded else ft.Icons.EXPAND_MORE
         self._expanded_content.update()
         self._summary.update()

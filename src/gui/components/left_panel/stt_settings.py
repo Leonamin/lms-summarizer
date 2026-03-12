@@ -409,6 +409,12 @@ class STTSettingsSection:
         self._rtzr_api_field.visible = (engine == "returnzero")
         self._whisper_section.update()
         self._rtzr_api_field.update()
+        self._summary.value = self._get_summary_text()
+        try:
+            if self._summary.page:
+                self._summary.update()
+        except Exception:
+            pass
 
     def _save(self, e):
         engine = self._engine_dd.value or "whisper-cpp"
@@ -439,6 +445,8 @@ class STTSettingsSection:
         self._expanded = not self._expanded
         self._expanded_content.visible = self._expanded
         self._summary.visible = not self._expanded
+        if not self._expanded:
+            self._summary.value = self._get_summary_text()
         self._chevron.icon = (
             ft.Icons.EXPAND_LESS if self._expanded else ft.Icons.EXPAND_MORE
         )
