@@ -15,6 +15,7 @@ from src.video_pipeline.login import LoginFailedError
 from src.gui.core.file_manager import (
     create_config_files, extract_urls_from_input, ensure_downloads_directory,
     get_summary_prompt, get_chrome_path, get_debug_mode, get_stt_engine,
+    get_stt_model, get_stt_params,
     add_history_entry, get_app_data_dir,
 )
 from src.gui.core.module_loader import check_required_modules
@@ -65,6 +66,8 @@ class ProcessingWorker:
         self.chrome_path = get_chrome_path()
         self.debug_mode = get_debug_mode()
         self.stt_engine = get_stt_engine()
+        self.stt_model = get_stt_model()
+        self.stt_params = get_stt_params()
         self.start_stage = start_stage
         self.input_files = input_files or []
         self._cancel_event = threading.Event()
@@ -299,7 +302,7 @@ class ProcessingWorker:
         """MP4/영상 파일들을 WAV로 변환"""
         self._emit_log("📋 영상을 오디오(WAV)로 변환 중...")
 
-        audio_pipeline = self.modules['AudioToTextPipeline'](engine=self.stt_engine)
+        audio_pipeline = self.modules['AudioToTextPipeline'](engine=self.stt_engine, model_name=self.stt_model, stt_params=self.stt_params)
         wav_paths = []
 
         for i, video_path in enumerate(video_paths, 1):
@@ -323,8 +326,8 @@ class ProcessingWorker:
         """WAV 파일들을 텍스트로 변환"""
         self._emit_log(Messages.AUDIO_CONVERTING)
 
-        audio_pipeline = self.modules['AudioToTextPipeline'](engine=self.stt_engine)
-        self._emit_log(f"STT 엔진: {self.stt_engine}")
+        audio_pipeline = self.modules['AudioToTextPipeline'](engine=self.stt_engine, model_name=self.stt_model, stt_params=self.stt_params)
+        self._emit_log(f"STT 엔진: {self.stt_engine} / 모델: {self.stt_model}")
         text_paths = []
 
         for i, wav_path in enumerate(wav_paths, 1):

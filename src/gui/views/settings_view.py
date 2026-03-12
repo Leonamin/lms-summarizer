@@ -17,6 +17,8 @@ from src.gui.core.file_manager import (
     get_auto_open_folder, set_auto_open_folder,
     get_stt_engine, set_stt_engine,
     get_stt_api_key, set_stt_api_key,
+    get_stt_model, set_stt_model,
+    get_stt_params, set_stt_params,
 )
 from src.summarize_pipeline.prompts import (
     SummaryMode, SUMMARY_MODE_LABELS, SUBJECT_CATEGORIES,
@@ -28,6 +30,16 @@ from src.summarize_pipeline.prompts import (
 _STT_OPTIONS = [
     ("whisper-cpp", "whisper-cpp (로컬, 무료)"),
     ("returnzero", "ReturnZero API (유료, 높은 정확도)"),
+]
+
+# whisper-cpp 모델 옵션 (크기 오름차순)
+_STT_MODELS = [
+    ("tiny",           "Tiny (39M) — 가장 빠름"),
+    ("base",           "Base (74M) — 기본"),
+    ("small",          "Small (244M)"),
+    ("medium",         "Medium (769M)"),
+    ("large-v3-turbo", "Large-v3-turbo (809M) ⭐ 추천"),
+    ("large-v3",       "Large-v3 (1.5GB) — 최고 품질"),
 ]
 
 
@@ -220,6 +232,21 @@ def open_settings_dialog(page: ft.Page):
         dense=True,
     )
 
+    current_stt_model = get_stt_model()
+    stt_model_dropdown = ft.Dropdown(
+        options=[ft.dropdown.Option(key=k, text=t) for k, t in _STT_MODELS],
+        value=current_stt_model,
+        label="모델 크기",
+        leading_icon=ft.Icons.MEMORY,
+        border_radius=Radius.MD,
+        border_color=Colors.BORDER,
+        focused_border_color=Colors.PRIMARY,
+        text_size=Typography.BODY,
+        label_style=ft.TextStyle(size=Typography.CAPTION, color=Colors.TEXT_SECONDARY),
+        dense=True,
+        visible=(current_stt == "whisper-cpp"),
+    )
+
     stt_api_key_field = ft.TextField(
         value=get_stt_api_key(),
         hint_text="client_id:client_secret",
@@ -239,14 +266,95 @@ def open_settings_dialog(page: ft.Page):
         color=Colors.TEXT_MUTED,
     )
 
+    # ── 고급 whisper 파라미터 ────────────────────────────
+    current_params = get_stt_params()
+
+    stt_no_speech_field = ft.TextField(
+        value=str(current_params.get("no_speech_thold", 0.4)),
+        label="no_speech_thold (0.0~1.0)",
+        hint_text="낮을수록 무음 구간을 공격적으로 억제 (기본: 0.4)",
+        border_radius=Radius.MD,
+        border_color=Colors.BORDER,
+        focused_border_color=Colors.PRIMARY,
+        text_size=Typography.BODY,
+        label_style=ft.TextStyle(size=Typography.CAPTION, color=Colors.TEXT_SECONDARY),
+        dense=True,
+        visible=(current_stt == "whisper-cpp"),
+    )
+
+    stt_entropy_field = ft.TextField(
+        value=str(current_params.get("entropy_thold", 2.4)),
+        label="entropy_thold (0.0~5.0)",
+        hint_text="반복/이상 출력 필터링 임계값 (기본: 2.4)",
+        border_radius=Radius.MD,
+        border_color=Colors.BORDER,
+        focused_border_color=Colors.PRIMARY,
+        text_size=Typography.BODY,
+        label_style=ft.TextStyle(size=Typography.CAPTION, color=Colors.TEXT_SECONDARY),
+        dense=True,
+        visible=(current_stt == "whisper-cpp"),
+    )
+
+    stt_suppress_checkbox = ft.Checkbox(
+        label="suppress_non_speech_tokens (불필요한 토큰 억제)",
+        value=current_params.get("suppress_non_speech_tokens", True),
+        active_color=Colors.PRIMARY,
+        visible=(current_stt == "whisper-cpp"),
+    )
+
+    stt_initial_prompt_field = ft.TextField(
+        value=current_params.get("initial_prompt", "한국어 강의입니다."),
+        label="initial_prompt",
+        hint_text="모델에 전달할 초기 힌트 텍스트",
+        border_radius=Radius.MD,
+        border_color=Colors.BORDER,
+        focused_border_color=Colors.PRIMARY,
+        text_size=Typography.BODY,
+        label_style=ft.TextStyle(size=Typography.CAPTION, color=Colors.TEXT_SECONDARY),
+        dense=True,
+        visible=(current_stt == "whisper-cpp"),
+    )
+
+    # whisper 고급 파라미터 컨테이너
+    whisper_params_container = ft.Container(
+        content=ft.Column(
+            controls=[
+                ft.Row(
+                    controls=[
+                        ft.Icon(ft.Icons.TUNE, size=14, color=Colors.TEXT_SECONDARY),
+                        ft.Text(
+                            "whisper 고급 파라미터",
+                            size=Typography.CAPTION,
+                            weight=Typography.SEMI_BOLD,
+                            color=Colors.TEXT_SECONDARY,
+                        ),
+                    ],
+                    spacing=Spacing.XS,
+                ),
+                stt_no_speech_field,
+                stt_entropy_field,
+                stt_suppress_checkbox,
+                stt_initial_prompt_field,
+            ],
+            spacing=Spacing.SM,
+        ),
+        bgcolor="#F8FAFC",
+        border_radius=Radius.MD,
+        border=ft.border.all(1, Colors.BORDER),
+        padding=ft.padding.all(Spacing.SM),
+        visible=(current_stt == "whisper-cpp"),
+    )
+
     def _on_stt_changed():
         engine = stt_dropdown.value or "whisper-cpp"
+        is_whisper = (engine == "whisper-cpp")
+        stt_model_dropdown.visible = is_whisper
         stt_api_key_field.visible = (engine == "returnzero")
         stt_description.value = _get_stt_description(engine)
-        if stt_api_key_field.page:
-            stt_api_key_field.update()
-        if stt_description.page:
-            stt_description.update()
+        whisper_params_container.visible = is_whisper
+        for ctrl in [stt_model_dropdown, stt_api_key_field, stt_description, whisper_params_container]:
+            if ctrl.page:
+                ctrl.update()
 
     # ── 고급 설정: 토글 스위치들 ─────────────────────────
     debug_switch = ft.Switch(
@@ -273,8 +381,10 @@ def open_settings_dialog(page: ft.Page):
                 spacing=Spacing.XS,
             ),
             stt_dropdown,
+            stt_model_dropdown,
             stt_api_key_field,
             stt_description,
+            whisper_params_container,
             divider(),
             # 디버그 모드
             ft.Row(
@@ -387,6 +497,21 @@ def open_settings_dialog(page: ft.Page):
         set_stt_engine(stt_engine)
         if stt_engine == "returnzero":
             set_stt_api_key((stt_api_key_field.value or "").strip())
+        if stt_engine == "whisper-cpp":
+            set_stt_model(stt_model_dropdown.value or "base")
+            try:
+                params = {
+                    "no_speech_thold": float(stt_no_speech_field.value or 0.4),
+                    "entropy_thold": float(stt_entropy_field.value or 2.4),
+                    "suppress_non_speech_tokens": stt_suppress_checkbox.value,
+                    "initial_prompt": (stt_initial_prompt_field.value or "").strip() or None,
+                }
+                # initial_prompt가 None이면 키 제거 (빈 값 전달 방지)
+                if params["initial_prompt"] is None:
+                    del params["initial_prompt"]
+                set_stt_params(params)
+            except ValueError:
+                pass  # 숫자 변환 실패 시 기존 값 유지
 
         if chrome_path:
             if not os.path.exists(chrome_path):

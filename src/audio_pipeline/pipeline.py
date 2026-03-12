@@ -6,9 +6,11 @@ from src.audio_pipeline.transcriber import transcribe_audio_to_text
 
 
 class AudioToTextPipeline:
-    def __init__(self, sample_rate=16000, engine="whisper-cpp"):
+    def __init__(self, sample_rate=16000, engine="whisper-cpp", model_name="base", stt_params=None):
         self.sample_rate = sample_rate
         self.engine = engine
+        self.model_name = model_name
+        self.stt_params = stt_params or {}
         self.downloads_dir = None  # 다운로드 경로는 나중에 설정됨
 
     def convert_to_wav(self, mp4_path: str) -> str:
@@ -33,7 +35,7 @@ class AudioToTextPipeline:
 
         print(f"[INFO] STT 변환 시작: {wav_path}")
         start_time = time.time()
-        transcribe_audio_to_text(wav_path, txt_path, engine=self.engine)
+        transcribe_audio_to_text(wav_path, txt_path, engine=self.engine, model_name=self.model_name, params=self.stt_params)
         elapsed = time.time() - start_time
         print(f"[DONE] 텍스트 저장 완료: {txt_path} ({elapsed:.1f}초)")
 

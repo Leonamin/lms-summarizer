@@ -8,10 +8,10 @@ from src.user_setting import UserSetting
 # https://developers.rtzr.ai/docs/stt-file/
 
 
-def transcribe_audio_to_text(audio_path: str, txt_path: str, engine="whisper-cpp"):
+def transcribe_audio_to_text(audio_path: str, txt_path: str, engine="whisper-cpp", model_name="base", params=None):
     """오디오/비디오 파일을 텍스트로 변환"""
     if engine == "whisper-cpp":
-        transcriber = WhisperCppTranscriber()
+        transcriber = WhisperCppTranscriber(model_name=model_name, params=params)
     elif engine == "returnzero":
         transcriber = ReturnZeroTranscriber()
     else:
@@ -31,11 +31,12 @@ class Transcriber(ABC):
 
 
 class WhisperCppTranscriber(Transcriber):
-    def __init__(self, model_name="base", language="ko"):
+    def __init__(self, model_name="base", language="ko", params=None):
         from pywhispercpp.model import Model
         import sys
 
         self._language = language
+        self._params = params or {}
         load_start = time.time()
 
         # .app 번들 내부의 모델 확인
@@ -57,13 +58,15 @@ class WhisperCppTranscriber(Transcriber):
     def transcribe(self, audio_path: str, txt_path: str):
         try:
             transcribe_start = time.time()
-            segments = self.model.transcribe(audio_path, language=self._language)
+            segments = self.model.transcribe(audio_path, language=self._language, **self._params)
             text = " ".join(segment.text.strip() for segment in segments if segment.text.strip())
             with open(txt_path, "w", encoding="utf-8") as f:
                 f.write(text)
             self.last_transcribe_sec = time.time() - transcribe_start
             print(f"[whisper.cpp] 변환 완료: {txt_path}")
             print(f"[whisper.cpp] STT 소요 시간: {self.last_transcribe_sec:.1f}초")
+            if self._params:
+                print(f"[whisper.cpp] 적용된 파라미터: {self._params}")
         except Exception as e:
             print(f"[ERROR] 변환 실패: {e}")
             raise e
