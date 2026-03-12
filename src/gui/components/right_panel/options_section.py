@@ -168,7 +168,7 @@ class OptionsSection:
         # ── 기존 컨트롤 ────────────────────────────────────
         self._save_video_checkbox = ft.Checkbox(
             label="처리 완료 후 원본 동영상 보관",
-            value=False,
+            value=True,
             active_color=Colors.PRIMARY,
         )
 
