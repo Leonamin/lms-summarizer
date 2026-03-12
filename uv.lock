@@ -608,7 +608,7 @@ wheels = [
 
 [[package]]
 name = "lms-summarizer"
-version = "1.4.3"
+version = "1.7.0"
 source = { editable = "." }
 dependencies = [
     { name = "anthropic" },
