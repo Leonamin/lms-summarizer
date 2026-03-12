@@ -205,7 +205,13 @@ def open_settings_dialog(page: ft.Page):
         chrome_field.value = path
         chrome_field.update()
 
-    file_picker = ft.FilePicker()
+    # FilePicker는 page당 한 번만 overlay에 등록해야 함
+    # 재호출 시 기존 인스턴스를 재사용
+    if not hasattr(page, "_fp_chrome"):
+        page._fp_chrome = ft.FilePicker()
+        page.services.append(page._fp_chrome)
+        page.update()
+    file_picker = page._fp_chrome
 
     async def _browse_chrome(e):
         files = await file_picker.pick_files(
@@ -357,8 +363,7 @@ def open_settings_dialog(page: ft.Page):
             _dl_cancel_btn.visible = False
             _dl_bar.visible = False
             download_area.visible = True
-        if download_area.page:
-            download_area.update()
+        download_area.update()
 
     def _start_download():
         mode = _selected_mode[0]
@@ -369,37 +374,48 @@ def open_settings_dialog(page: ft.Page):
         _dl_cancel_btn.visible = True
         _dl_bar.visible = True
         _dl_bar.value = 0
-        _dl_status.value = f"연결 중..."
-        if download_area.page:
-            download_area.update()
+        _dl_status.value = "연결 중..."
+        download_area.update()
 
         def _run():
             try:
                 def on_progress(done, total):
                     if total:
-                        _dl_bar.value = done / total
-                        _dl_status.value = f"다운로드 중... {done/1048576:.0f}/{total/1048576:.0f}MB"
-                        if download_area.page:
-                            download_area.update()
+                        async def _update_progress():
+                            _dl_bar.value = done / total
+                            _dl_status.value = f"다운로드 중... {done/1048576:.0f}/{total/1048576:.0f}MB"
+                            _dl_bar.update()
+                            _dl_status.update()
+                        page.run_task(_update_progress)
+
                 download_model(mode, on_progress=on_progress, cancel_event=cancel_ev)
-                _dl_status.value = f"✅ '{info['label']}' 다운로드 완료!"
-                _dl_btn.visible = False
-                _dl_cancel_btn.visible = False
-                _dl_bar.visible = False
-                _refresh_mode_buttons()
-            except DownloadCancelled:
-                _dl_status.value = "다운로드가 취소되었습니다."
-                _dl_btn.visible = True
-                _dl_cancel_btn.visible = False
-                _dl_bar.visible = False
-            except Exception as ex:
-                _dl_status.value = f"❌ 다운로드 실패: {ex}"
-                _dl_btn.visible = True
-                _dl_cancel_btn.visible = False
-                _dl_bar.visible = False
-            finally:
-                if download_area.page:
+
+                async def _on_done():
+                    _dl_status.value = f"✅ '{info['label']}' 다운로드 완료!"
+                    _dl_btn.visible = False
+                    _dl_cancel_btn.visible = False
+                    _dl_bar.visible = False
                     download_area.update()
+                    _refresh_mode_buttons()
+                page.run_task(_on_done)
+
+            except DownloadCancelled:
+                async def _on_cancel():
+                    _dl_status.value = "다운로드가 취소되었습니다."
+                    _dl_btn.visible = True
+                    _dl_cancel_btn.visible = False
+                    _dl_bar.visible = False
+                    download_area.update()
+                page.run_task(_on_cancel)
+
+            except Exception as ex:
+                async def _on_error():
+                    _dl_status.value = f"❌ 다운로드 실패: {ex}"
+                    _dl_btn.visible = True
+                    _dl_cancel_btn.visible = False
+                    _dl_bar.visible = False
+                    download_area.update()
+                page.run_task(_on_error)
 
         _threading.Thread(target=_run, daemon=True).start()
 
@@ -443,7 +459,11 @@ def open_settings_dialog(page: ft.Page):
         label_style=ft.TextStyle(size=Typography.CAPTION, color=Colors.TEXT_SECONDARY),
         dense=True, expand=True,
     )
-    model_file_picker = ft.FilePicker()
+    if not hasattr(page, "_fp_model"):
+        page._fp_model = ft.FilePicker()
+        page.services.append(page._fp_model)
+        page.update()
+    model_file_picker = page._fp_model
 
     async def _browse_model(e):
         files = await model_file_picker.pick_files(
@@ -809,7 +829,6 @@ def open_settings_dialog(page: ft.Page):
         actions_alignment=ft.MainAxisAlignment.END,
     )
 
-    page.overlay.extend([file_picker, model_file_picker])
     page.show_dialog(dialog)
 
 
