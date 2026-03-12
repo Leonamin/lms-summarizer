@@ -41,6 +41,7 @@ class MainView:
 
         # 컴포넌트 생성
         self.left_panel = LeftPanel(
+            page=self.page,
             on_path_changed=lambda p: self.log_drawer.append_message(f"저장 경로 변경: {p}"),
         )
         self.right_panel = RightPanel(

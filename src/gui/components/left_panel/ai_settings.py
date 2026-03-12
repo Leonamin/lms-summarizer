@@ -45,27 +45,73 @@ class AISettingsSection:
             padding=ft.padding.symmetric(horizontal=12, vertical=8),
         )
 
-        self.control = ft.Column(
+        self._expanded = True
+        self._chevron = ft.Icon(ft.Icons.EXPAND_LESS, size=16, color=Colors.TEXT_SECONDARY)
+        self._summary = ft.Text(
+            self._get_summary_text(),
+            size=Typography.SMALL,
+            color=Colors.TEXT_MUTED,
+            visible=False,
+        )
+
+        _header = ft.Container(
+            content=ft.Row(
+                controls=[
+                    ft.Icon(ft.Icons.SMART_TOY, size=13, color=Colors.TEXT_MUTED),
+                    ft.Text(
+                        "AI 설정",
+                        size=Typography.SMALL,
+                        weight=Typography.SEMI_BOLD,
+                        color=Colors.TEXT_MUTED,
+                        expand=True,
+                    ),
+                    self._chevron,
+                ],
+                spacing=Spacing.XS,
+                vertical_alignment=ft.CrossAxisAlignment.CENTER,
+            ),
+            on_click=self._toggle,
+            ink=True,
+            border_radius=Radius.SM,
+        )
+
+        self._expanded_content = ft.Column(
             controls=[
-                ft.Row(
-                    controls=[
-                        ft.Icon(ft.Icons.SMART_TOY, size=13, color=Colors.TEXT_MUTED),
-                        ft.Text(
-                            "AI 설정",
-                            size=Typography.SMALL,
-                            weight=Typography.SEMI_BOLD,
-                            color=Colors.TEXT_MUTED,
-                        ),
-                    ],
-                    spacing=Spacing.XS,
-                ),
                 self._model_selector.control,
                 self._api_field.container,
                 self._clipboard_notice,
             ],
             spacing=Spacing.SM,
             horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
+            visible=True,
         )
+
+        self.control = ft.Column(
+            controls=[_header, self._summary, self._expanded_content],
+            spacing=Spacing.XS,
+            horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
+        )
+
+    def _get_summary_text(self) -> str:
+        engine = self._model_selector.get_engine()
+        model = self._model_selector.get_model()
+        api_key = self._api_field.get_value()
+        engine_label = {
+            "gemini": "Gemini", "openai": "OpenAI", "claude": "Claude",
+            "grok": "Grok", "clipboard": "클립보드",
+        }.get(engine, engine)
+        key_status = "키 없음" if engine != "clipboard" and not api_key.strip() else ("API 불필요" if engine == "clipboard" else "키 있음")
+        short_model = model.split("-")[0] if "-" in model else model
+        return f"{engine_label} · {short_model} · {key_status}"
+
+    def _toggle(self, e):
+        self._expanded = not self._expanded
+        self._expanded_content.visible = self._expanded
+        self._summary.visible = not self._expanded
+        self._chevron.icon = ft.Icons.EXPAND_LESS if self._expanded else ft.Icons.EXPAND_MORE
+        self._expanded_content.update()
+        self._summary.update()
+        self._chevron.update()
 
     def _handle_engine_change(self, engine: str):
         """엔진 변경 시 API 키 라벨/활성 상태 업데이트"""
@@ -87,6 +133,14 @@ class AISettingsSection:
 
         if self._external_engine_cb:
             self._external_engine_cb(engine)
+
+        # summary 업데이트
+        self._summary.value = self._get_summary_text()
+        try:
+            if self._summary.page:
+                self._summary.update()
+        except Exception:
+            pass
 
     def get_engine(self) -> str:
         return self._model_selector.get_engine()
