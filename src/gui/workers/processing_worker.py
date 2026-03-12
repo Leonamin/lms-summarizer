@@ -326,7 +326,7 @@ class ProcessingWorker:
         """WAV 파일들을 텍스트로 변환"""
         self._emit_log(Messages.AUDIO_CONVERTING)
 
-        audio_pipeline = self.modules['AudioToTextPipeline'](engine=self.stt_engine, model_name=self.stt_model, stt_params=self.stt_params)
+        audio_pipeline = self.modules['AudioToTextPipeline'](engine=self.stt_engine, model_name=self.stt_model, stt_params=self.stt_params, on_log=self._emit_log)
         self._emit_log(f"STT 엔진: {self.stt_engine} / 모델: {self.stt_model}")
         text_paths = []
 

@@ -8,10 +8,10 @@ from src.user_setting import UserSetting
 # https://developers.rtzr.ai/docs/stt-file/
 
 
-def transcribe_audio_to_text(audio_path: str, txt_path: str, engine="whisper-cpp", model_name="base", params=None):
+def transcribe_audio_to_text(audio_path: str, txt_path: str, engine="whisper-cpp", model_name="base", params=None, on_log=None):
     """오디오/비디오 파일을 텍스트로 변환"""
     if engine == "whisper-cpp":
-        transcriber = WhisperCppTranscriber(model_name=model_name, params=params)
+        transcriber = WhisperCppTranscriber(model_name=model_name, params=params, on_log=on_log)
     elif engine == "returnzero":
         transcriber = ReturnZeroTranscriber()
     else:
@@ -31,12 +31,13 @@ class Transcriber(ABC):
 
 
 class WhisperCppTranscriber(Transcriber):
-    def __init__(self, model_name="base", language="ko", params=None):
+    def __init__(self, model_name="base", language="ko", params=None, on_log=None):
         from pywhispercpp.model import Model
         from src.audio_pipeline.model_manager import resolve_for_transcriber
         import sys
 
         self._language = language
+        self._on_log = on_log or (lambda msg: None)
         # suppress_non_speech_tokens은 pywhispercpp C 바인딩에서 미지원 → 제거
         sanitized = {k: v for k, v in (params or {}).items() if k != "suppress_non_speech_tokens"}
         self._params = sanitized
@@ -65,6 +66,34 @@ class WhisperCppTranscriber(Transcriber):
         print(f"[INFO] 모델 로드 시간: {self.model_load_sec:.1f}초")
 
     def transcribe(self, audio_path: str, txt_path: str):
+        import os
+        import re
+        import threading
+
+        # C 라이브러리의 stdout(fd 1)을 파이프로 리다이렉트해 Progress: N% 파싱
+        old_fd = os.dup(1)
+        r_fd, w_fd = os.pipe()
+        os.dup2(w_fd, 1)
+        os.close(w_fd)
+
+        last_pct = [-1]
+
+        def _read_stdout():
+            try:
+                with os.fdopen(r_fd, "r", encoding="utf-8", errors="replace") as pipe:
+                    for line in pipe:
+                        m = re.search(r"Progress:\s*(\d+)%", line)
+                        if m:
+                            pct = int(m.group(1))
+                            if pct != last_pct[0] and pct % 10 == 0:
+                                last_pct[0] = pct
+                                self._on_log(f"  STT 진행: {pct}%")
+            except Exception:
+                pass
+
+        reader = threading.Thread(target=_read_stdout, daemon=True)
+        reader.start()
+
         try:
             transcribe_start = time.time()
             segments = self.model.transcribe(audio_path, language=self._language, **self._params)
@@ -72,13 +101,18 @@ class WhisperCppTranscriber(Transcriber):
             with open(txt_path, "w", encoding="utf-8") as f:
                 f.write(text)
             self.last_transcribe_sec = time.time() - transcribe_start
-            print(f"[whisper.cpp] 변환 완료: {txt_path}")
-            print(f"[whisper.cpp] STT 소요 시간: {self.last_transcribe_sec:.1f}초")
-            if self._params:
-                print(f"[whisper.cpp] 적용된 파라미터: {self._params}")
         except Exception as e:
-            print(f"[ERROR] 변환 실패: {e}")
             raise e
+        finally:
+            # 파이프 닫기 → reader 스레드 종료
+            os.dup2(old_fd, 1)
+            os.close(old_fd)
+            reader.join(timeout=5)
+
+        self._on_log(f"[whisper.cpp] 변환 완료: {txt_path}")
+        self._on_log(f"[whisper.cpp] STT 소요 시간: {self.last_transcribe_sec:.1f}초")
+        if self._params:
+            self._on_log(f"[whisper.cpp] 적용된 파라미터: {self._params}")
 
 
 class ReturnZeroTranscriber(Transcriber):
