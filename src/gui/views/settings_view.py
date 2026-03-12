@@ -305,11 +305,19 @@ def open_settings_dialog(page: ft.Page):
         spacing=Spacing.XS,
     )
 
-    # 다운로드 영역
-    _dl_status = ft.Text("", size=Typography.SMALL, color=Colors.TEXT_MUTED)
+    # 다운로드 영역 — 초기 상태를 미리 계산해 page.update() 없이 렌더링
+    _init_mode = _selected_mode[0]
+    _init_needs_dl = _init_mode in MODEL_REGISTRY and not is_available(_init_mode)
+    _init_status_txt = ""
+    if _init_needs_dl:
+        _info0 = MODEL_REGISTRY[_init_mode]
+        _sz = _info0["size_mb"]
+        _init_status_txt = f"'{_info0['label']}' 모델 미다운로드 ({'%.1fGB' % (_sz/1024) if _sz>=1000 else f'{_sz}MB'})"
+
+    _dl_status = ft.Text(_init_status_txt, size=Typography.SMALL, color=Colors.TEXT_MUTED)
     _dl_bar = ft.ProgressBar(value=0, visible=False, color=Colors.PRIMARY, bgcolor=Colors.BORDER)
     _dl_btn = ft.ElevatedButton(
-        content=ft.Text("다운로드"), icon=ft.Icons.DOWNLOAD, visible=False,
+        content=ft.Text("다운로드"), icon=ft.Icons.DOWNLOAD, visible=_init_needs_dl,
         style=ft.ButtonStyle(color=ft.Colors.WHITE, bgcolor=Colors.PRIMARY,
                              shape=ft.RoundedRectangleBorder(radius=Radius.MD)),
         on_click=lambda e: _start_download(),
@@ -320,9 +328,10 @@ def open_settings_dialog(page: ft.Page):
                              shape=ft.RoundedRectangleBorder(radius=Radius.MD)),
         on_click=lambda e: _cancel_download(),
     )
+    _dl_row = ft.Row(controls=[_dl_btn, _dl_cancel_btn], spacing=Spacing.SM)
     download_area = ft.Column(
-        controls=[_dl_status, _dl_bar, ft.Row(controls=[_dl_btn, _dl_cancel_btn], spacing=Spacing.SM)],
-        spacing=4, visible=False,
+        controls=[_dl_status, _dl_bar, _dl_row],
+        spacing=4, visible=_init_needs_dl,
     )
 
     def _refresh_mode_buttons():
@@ -397,8 +406,6 @@ def open_settings_dialog(page: ft.Page):
     def _cancel_download():
         if _download_cancel[0]:
             _download_cancel[0].set()
-
-    _update_download_area()
 
     # ── 전문가 모드 ──────────────────────────────────────
     stt_no_speech_field = ft.TextField(

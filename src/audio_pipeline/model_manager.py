@@ -82,7 +82,8 @@ def is_available(model_key: str) -> bool:
     """모델을 즉시 사용할 수 있는지 확인 (builtin은 항상 True)"""
     info = MODEL_REGISTRY.get(model_key)
     if info is None:
-        return os.path.isfile(model_key)
+        # 직접 파일 경로이면 존재 여부 확인, 그 외 미지의 키는 pywhispercpp builtin으로 간주
+        return True
     if info["source"] == "builtin":
         return True
     return get_local_path(model_key) is not None
@@ -102,7 +103,8 @@ def resolve_for_transcriber(model_key: str) -> tuple[Optional[str], str]:
         # 직접 파일 경로
         if os.path.isfile(model_key):
             return model_key, ""
-        raise FileNotFoundError(f"모델 파일을 찾을 수 없습니다: {model_key}")
+        # 레지스트리에 없는 이름 → pywhispercpp 내장 모델명으로 시도 (예: large-v3-turbo)
+        return None, model_key
 
     if info["source"] == "builtin":
         return None, info["model_id"]
