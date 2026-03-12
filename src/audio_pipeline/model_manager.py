@@ -9,14 +9,6 @@ from typing import Optional, Callable
 
 # ── 모델 레지스트리 ──────────────────────────────────────────────
 MODEL_REGISTRY: dict[str, dict] = {
-    "base": {
-        "label": "번개 모드",
-        "emoji": "⚡",
-        "description": "성능보다 속도가 중요할 때",
-        "size_mb": 74,
-        "source": "builtin",
-        "model_id": "base",  # pywhispercpp에 직접 전달할 이름
-    },
     "turbo-q4k": {
         "label": "표준 모드",
         "emoji": "⚖️",
@@ -26,19 +18,17 @@ MODEL_REGISTRY: dict[str, dict] = {
         "filename": "ggml-large-v3-turbo-q4_k.bin",
         "url": "https://huggingface.co/Pomni/whisper-large-v3-turbo-ggml-allquants/resolve/main/ggml-large-v3-turbo-q4_k.bin",
     },
-    "korean": {
+    "large-v3": {
         "label": "고정밀 모드",
         "emoji": "💎",
-        "description": "가장 정확한 한국어 인식",
-        "size_mb": 1620,
-        "source": "huggingface",
-        "filename": "whisper-large-v3-turbo-korean.bin",
-        "url": "https://huggingface.co/royshilkrot/whisper-large-v3-turbo-korean-ggml/resolve/main/whisper-large-v3-turbo-korean.bin",
+        "description": "가장 정확한 인식 (속도 느림)",
+        "size_mb": 1550,
+        "source": "builtin",
+        "model_id": "large-v3",
     },
 }
 
-# 기본 모드 순서 (UI 표시용)
-MODE_ORDER = ["base", "turbo-q4k", "korean"]
+MODE_ORDER = ["turbo-q4k", "large-v3"]
 
 
 # ── 경로 관리 ────────────────────────────────────────────────────
