@@ -43,6 +43,7 @@ class EngineModelSelector:
             label_style=ft.TextStyle(size=Typography.CAPTION, color=Colors.TEXT_SECONDARY),
             on_select=self._handle_engine_change,
             dense=True,
+            tooltip="요약에 사용할 AI 엔진을 선택하세요",
         )
 
         # 모델 드롭다운
@@ -58,6 +59,7 @@ class EngineModelSelector:
             label_style=ft.TextStyle(size=Typography.CAPTION, color=Colors.TEXT_SECONDARY),
             on_select=self._handle_model_change,
             dense=True,
+            tooltip="요약에 사용할 AI 모델을 선택하세요",
         )
 
         # 커스텀 모델 입력
@@ -69,6 +71,7 @@ class EngineModelSelector:
             text_size=Typography.BODY,
             visible=False,
             dense=True,
+            tooltip="사용할 모델명을 직접 입력하세요 (예: gpt-4o)",
         )
 
         # 초기 모델 목록 채우기

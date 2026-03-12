@@ -52,6 +52,7 @@ class StageSelector:
             label_style=ft.TextStyle(size=Typography.CAPTION, color=Colors.TEXT_SECONDARY),
             on_select=self._handle_change,
             dense=True,
+            tooltip="파이프라인의 시작 단계를 선택하세요 (중간 단계부터 재시작 가능)",
         )
 
         # 파일 선택 버튼

@@ -93,6 +93,7 @@ class CourseListView:
             value=True,
             active_color=Colors.PRIMARY,
             on_change=self._on_video_filter_changed,
+            tooltip="체크 해제 시 과제, 퀴즈 등 모든 강의 항목이 표시됩니다",
         )
 
         # ── 타이틀 ──────────────────────────────────────

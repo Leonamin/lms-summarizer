@@ -41,6 +41,7 @@ def open_settings_dialog(page: ft.Page):
         label_style=ft.TextStyle(size=Typography.CAPTION, color=Colors.TEXT_SECONDARY),
         dense=True,
         on_select=lambda e: _update_preview(),
+        tooltip="요약 스타일을 선택하세요 (일반 요약, 시험 대비, 핵심 정리 등)",
     )
 
     subject_dropdown = ft.Dropdown(
@@ -57,6 +58,7 @@ def open_settings_dialog(page: ft.Page):
         label_style=ft.TextStyle(size=Typography.CAPTION, color=Colors.TEXT_SECONDARY),
         dense=True,
         on_select=lambda e: _update_preview(),
+        tooltip="강의 분야에 맞는 전문 용어로 요약됩니다",
     )
 
     subject_custom_field = ft.TextField(
@@ -70,6 +72,7 @@ def open_settings_dialog(page: ft.Page):
         label_style=ft.TextStyle(size=Typography.CAPTION, color=Colors.TEXT_SECONDARY),
         dense=True,
         on_change=lambda e: _update_preview(),
+        tooltip="과목명을 직접 입력하면 드롭다운 선택보다 우선 적용됩니다",
     )
 
     # 프롬프트 프리뷰 (읽기 전용)
@@ -88,6 +91,7 @@ def open_settings_dialog(page: ft.Page):
         label="생성된 프롬프트 (미리보기)",
         label_style=ft.TextStyle(size=Typography.CAPTION, color=Colors.TEXT_SECONDARY),
         read_only=True,
+        tooltip="AI에 전달될 요약 프롬프트 미리보기 (자동 생성, 직접 수정 불가)",
     )
 
     def _update_preview():
@@ -123,6 +127,7 @@ def open_settings_dialog(page: ft.Page):
         label="Chrome 경로",
         label_style=ft.TextStyle(size=Typography.CAPTION, color=Colors.TEXT_SECONDARY),
         prefix_icon=ft.Icons.WEB,
+        tooltip="LMS 영상 재생에 사용할 Google Chrome 실행 파일 경로",
     )
 
     detected_paths = detect_chrome_paths()
@@ -205,11 +210,13 @@ def open_settings_dialog(page: ft.Page):
     debug_switch = ft.Switch(
         value=get_debug_mode(),
         active_color=Colors.PRIMARY,
+        tooltip="활성화하면 브라우저 창이 표시되어 LMS 동작을 직접 확인할 수 있습니다",
     )
 
     auto_open_switch = ft.Switch(
         value=get_auto_open_folder(),
         active_color=Colors.PRIMARY,
+        tooltip="작업 완료 시 결과물이 저장된 폴더를 자동으로 엽니다",
     )
 
     # ── 고급 설정 접힘/펼침 ──────────────────────────────
