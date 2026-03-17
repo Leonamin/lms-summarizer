@@ -68,8 +68,10 @@ def get_expected_path(model_key: str) -> Optional[str]:
     return os.path.join(get_models_dir(), info["filename"])
 
 
-def is_available(model_key: str) -> bool:
+def is_available(model_key: str, engine: str = "whisper-cpp") -> bool:
     """모델을 즉시 사용할 수 있는지 확인 (builtin은 항상 True)"""
+    if engine == "faster-whisper":
+        return True  # huggingface_hub이 첫 실행 시 자동 다운로드
     info = MODEL_REGISTRY.get(model_key)
     if info is None:
         # 직접 파일 경로이면 존재 여부 확인, 그 외 미지의 키는 pywhispercpp builtin으로 간주
@@ -167,3 +169,26 @@ def download_model(
         if os.path.exists(tmp):
             os.remove(tmp)
         raise
+
+
+# ── Faster-Whisper 모델 레지스트리 ─────────────────────────────────
+FW_MODEL_REGISTRY: dict[str, dict] = {
+    "large-v3-turbo": {
+        "label": "표준/고속 모드",
+        "emoji": "⚡",
+        "description": "빠른 인식, GPU 자동 감지 (권장)",
+        "size_mb": 800,
+        "source": "hf_auto",
+        "hf_model": "large-v3-turbo",
+    },
+    "large-v3": {
+        "label": "고정밀 모드",
+        "emoji": "💎",
+        "description": "최고 정확도 (속도 느림)",
+        "size_mb": 3100,
+        "source": "hf_auto",
+        "hf_model": "large-v3",
+    },
+}
+
+FW_MODE_ORDER = ["large-v3-turbo", "large-v3"]
