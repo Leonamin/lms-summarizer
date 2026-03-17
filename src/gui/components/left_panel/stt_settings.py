@@ -119,6 +119,7 @@ class STTSettingsSection:
         self._expert_expanded = False
         self._expert_chevron = ft.Icon(ft.Icons.EXPAND_MORE, size=14, color=Colors.TEXT_SECONDARY)
         current_params = get_stt_params()
+        current_stt = get_stt_engine()
         self._no_speech_field = ft.TextField(
             value=str(current_params.get("no_speech_thold", 0.4)),
             label="no_speech_thold (0.0~1.0)",
@@ -203,7 +204,6 @@ class STTSettingsSection:
         )
 
         # ── Whisper 전용 섹션 ──────────────────────────────
-        current_stt = get_stt_engine()
         self._whisper_section = ft.Column(
             controls=[
                 ft.Text(
