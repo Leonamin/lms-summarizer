@@ -29,6 +29,13 @@ def transcribe_audio_to_text(audio_path: str, txt_path: str, engine="whisper-cpp
 
     if engine == "whisper-cpp":
         transcriber = WhisperCppTranscriber(model_name=model_name, params=params, on_log=on_log)
+    elif engine == "faster-whisper":
+        device = params.pop("device", "auto")
+        compute_type = params.pop("compute_type", "auto")
+        transcriber = FasterWhisperTranscriber(
+            model_name=model_name, device=device, compute_type=compute_type,
+            params=params, on_log=on_log,
+        )
     elif engine == "returnzero":
         transcriber = ReturnZeroTranscriber()
     else:
@@ -141,6 +148,45 @@ class WhisperCppTranscriber(Transcriber):
         self._on_log(f"[whisper.cpp] STT 소요 시간: {self.last_transcribe_sec:.1f}초")
         if self._params:
             self._on_log(f"[whisper.cpp] 적용된 파라미터: {self._params}")
+
+
+class FasterWhisperTranscriber(Transcriber):
+    def __init__(self, model_name="large-v3-turbo", device="auto", compute_type="auto", params=None, on_log=None):
+        from faster_whisper import WhisperModel
+        self._on_log = on_log or (lambda msg: None)
+        self._language = (params or {}).get("language", "ko")
+        self._initial_prompt = (params or {}).get("initial_prompt", "한국어 강의입니다.")
+        self._vad_filter = bool((params or {}).get("vad_filter", True))
+
+        self._on_log(f"[faster-whisper] 모델 로드 중: {model_name} (device={device})")
+        load_start = time.time()
+        self.model = WhisperModel(model_name, device=device, compute_type=compute_type)
+        self.model_load_sec = time.time() - load_start
+        self._on_log(f"[faster-whisper] 모델 로드: {self.model_load_sec:.1f}초")
+
+    def transcribe(self, audio_path: str, txt_path: str):
+        transcribe_start = time.time()
+        segments, info = self.model.transcribe(
+            audio_path,
+            language=self._language,
+            initial_prompt=self._initial_prompt,
+            vad_filter=self._vad_filter,
+        )
+        text_parts = []
+        for i, seg in enumerate(segments):
+            if seg.text.strip():
+                text_parts.append(seg.text.strip())
+            if (i + 1) % 50 == 0:
+                self._on_log(f"  처리 중... {i+1} 세그먼트")
+
+        text = " ".join(text_parts)
+        with open(txt_path, "w", encoding="utf-8") as f:
+            f.write(text)
+
+        elapsed = time.time() - transcribe_start
+        self._on_log(f"[faster-whisper] 변환 완료: {txt_path}")
+        self._on_log(f"[faster-whisper] 소요 시간: {elapsed:.1f}초")
+        self._on_log(f"[faster-whisper] 감지 언어: {info.language} ({info.language_probability:.0%})")
 
 
 class ReturnZeroTranscriber(Transcriber):

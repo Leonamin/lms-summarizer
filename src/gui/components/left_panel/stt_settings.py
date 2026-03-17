@@ -15,6 +15,7 @@ from src.gui.core.file_manager import (
 
 _STT_ENGINE_OPTIONS = [
     ("whisper-cpp", "whisper-cpp (로컬, 무료)"),
+    ("faster-whisper", "faster-whisper (로컬, GPU 지원)"),
     ("returnzero", "ReturnZero API (유료)"),
 ]
 
@@ -28,6 +29,7 @@ class STTSettingsSection:
 
         from src.audio_pipeline.model_manager import (
             MODEL_REGISTRY, MODE_ORDER, is_available, download_model, DownloadCancelled,
+            FW_MODEL_REGISTRY, FW_MODE_ORDER,
         )
         self._MODEL_REGISTRY = MODEL_REGISTRY
         self._MODE_ORDER = MODE_ORDER
@@ -37,6 +39,7 @@ class STTSettingsSection:
 
         current_model = get_stt_model()
         self._selected_mode = [current_model if current_model in MODE_ORDER else MODE_ORDER[0]]
+        self._fw_selected_mode = [current_model if current_model in FW_MODE_ORDER else FW_MODE_ORDER[0]]
         self._download_cancel: list = [None]
 
         # ── 헤더 ─────────────────────────────────────────
@@ -156,8 +159,25 @@ class STTSettingsSection:
             dense=True,
             tooltip="같은 구문이 이 횟수 이상 연속되면 1개로 축약합니다 (0이면 비활성화)",
         )
+        self._device_dd = ft.Dropdown(
+            options=[
+                ft.dropdown.Option(key="auto", text="자동 감지 (권장)"),
+                ft.dropdown.Option(key="cuda", text="CUDA (NVIDIA GPU)"),
+                ft.dropdown.Option(key="cpu", text="CPU"),
+            ],
+            value=current_params.get("device", "auto"),
+            label="장치 선택",
+            border_radius=Radius.SM,
+            border_color=Colors.BORDER,
+            focused_border_color=Colors.PRIMARY,
+            text_size=Typography.BODY,
+            label_style=ft.TextStyle(size=Typography.CAPTION, color=Colors.TEXT_SECONDARY),
+            dense=True,
+            tooltip="faster-whisper 전용: 추론에 사용할 장치 선택",
+            visible=(current_stt == "faster-whisper"),
+        )
         self._expert_content = ft.Column(
-            controls=[self._no_speech_field, self._entropy_field, self._initial_prompt_field, self._repeat_threshold_field],
+            controls=[self._no_speech_field, self._entropy_field, self._initial_prompt_field, self._repeat_threshold_field, self._device_dd],
             spacing=Spacing.SM,
             visible=False,
         )
@@ -200,6 +220,25 @@ class STTSettingsSection:
             ],
             spacing=Spacing.SM,
             visible=(current_stt == "whisper-cpp"),
+        )
+
+        # ── Faster-Whisper 전용 섹션 ───────────────────────
+        self._fw_mode_row = ft.Row(
+            controls=self._build_fw_mode_buttons(),
+            spacing=Spacing.XS,
+        )
+        self._fw_section = ft.Column(
+            controls=[
+                ft.Text(
+                    "모드 선택",
+                    size=9,
+                    color=Colors.TEXT_SECONDARY,
+                    weight=Typography.SEMI_BOLD,
+                ),
+                self._fw_mode_row,
+            ],
+            spacing=Spacing.SM,
+            visible=(current_stt == "faster-whisper"),
         )
 
         # ── ReturnZero API 키 ──────────────────────────────
@@ -245,6 +284,7 @@ class STTSettingsSection:
             controls=[
                 self._engine_dd,
                 self._whisper_section,
+                self._fw_section,
                 self._rtzr_api_field,
                 self._save_btn,
             ],
@@ -264,6 +304,13 @@ class STTSettingsSection:
         engine = get_stt_engine()
         if engine == "returnzero":
             return "ReturnZero API"
+        if engine == "faster-whisper":
+            model = get_stt_model()
+            from src.audio_pipeline.model_manager import FW_MODEL_REGISTRY
+            info = FW_MODEL_REGISTRY.get(model)
+            label = info["label"] if info else model
+            device = get_stt_params().get("device", "auto")
+            return f"faster-whisper · {label} · {device}"
         model = get_stt_model()
         from src.audio_pipeline.model_manager import MODEL_REGISTRY
         info = MODEL_REGISTRY.get(model)
@@ -318,6 +365,59 @@ class STTSettingsSection:
             )
             buttons.append(btn)
         return buttons
+
+    def _build_fw_mode_buttons(self) -> list:
+        from src.audio_pipeline.model_manager import FW_MODEL_REGISTRY, FW_MODE_ORDER
+        buttons = []
+        for mode_key in FW_MODE_ORDER:
+            info = FW_MODEL_REGISTRY[mode_key]
+            selected = (self._fw_selected_mode[0] == mode_key)
+            size_mb = info["size_mb"]
+            size_str = f"{size_mb/1024:.1f}GB" if size_mb >= 1000 else f"{size_mb}MB"
+            badge = ft.Container(
+                content=ft.Text(f"↓{size_str}", size=8, color="#D97706"),
+                bgcolor="#FEF3C7", border_radius=3,
+                padding=ft.padding.symmetric(horizontal=3, vertical=1),
+            )
+            btn = ft.Container(
+                content=ft.Column(
+                    controls=[
+                        ft.Row(
+                            controls=[
+                                ft.Text(
+                                    f"{info['emoji']} {info['label']}",
+                                    size=Typography.SMALL,
+                                    weight=Typography.SEMI_BOLD,
+                                    color=Colors.TEXT,
+                                ),
+                                badge,
+                            ],
+                            spacing=3,
+                            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                        ),
+                        ft.Text(info["description"], size=8, color=Colors.TEXT_MUTED),
+                    ],
+                    spacing=2,
+                ),
+                border=ft.border.all(1.5, Colors.PRIMARY if selected else Colors.BORDER),
+                border_radius=Radius.SM,
+                bgcolor="#EFF6FF" if selected else Colors.BG,
+                padding=ft.padding.symmetric(horizontal=8, vertical=6),
+                expand=True,
+                on_click=lambda e, k=mode_key: self._select_fw_mode(k),
+                ink=True,
+            )
+            buttons.append(btn)
+        return buttons
+
+    def _select_fw_mode(self, key: str):
+        self._fw_selected_mode[0] = key
+        self._fw_mode_row.controls = self._build_fw_mode_buttons()
+        try:
+            if self._fw_mode_row.page:
+                self._fw_mode_row.update()
+        except Exception:
+            pass
 
     def _refresh_mode_buttons(self):
         self._mode_row.controls = self._build_mode_buttons()
@@ -421,9 +521,13 @@ class STTSettingsSection:
     def _on_engine_changed(self, e):
         engine = self._engine_dd.value or "whisper-cpp"
         self._whisper_section.visible = (engine == "whisper-cpp")
+        self._fw_section.visible = (engine == "faster-whisper")
         self._rtzr_api_field.visible = (engine == "returnzero")
+        self._device_dd.visible = (engine == "faster-whisper")
         self._whisper_section.update()
+        self._fw_section.update()
         self._rtzr_api_field.update()
+        self._device_dd.update()
         self._summary.value = self._get_summary_text()
         try:
             if self._summary.page:
@@ -442,6 +546,20 @@ class STTSettingsSection:
                 params = {
                     "no_speech_thold": float(self._no_speech_field.value or 0.4),
                     "entropy_thold": float(self._entropy_field.value or 2.4),
+                    "initial_prompt": (self._initial_prompt_field.value or "").strip() or None,
+                    "repeat_threshold": int(float(self._repeat_threshold_field.value or 4)),
+                }
+                if params["initial_prompt"] is None:
+                    del params["initial_prompt"]
+                set_stt_params(params)
+            except ValueError:
+                pass
+        elif engine == "faster-whisper":
+            set_stt_model(self._fw_selected_mode[0])
+            try:
+                params = {
+                    "device": self._device_dd.value or "auto",
+                    "vad_filter": True,
                     "initial_prompt": (self._initial_prompt_field.value or "").strip() or None,
                     "repeat_threshold": int(float(self._repeat_threshold_field.value or 4)),
                 }
