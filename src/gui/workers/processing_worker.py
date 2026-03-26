@@ -72,6 +72,7 @@ class ProcessingWorker:
         self.input_files = input_files or []
         self._cancel_event = threading.Event()
         self._thread: Optional[threading.Thread] = None
+        self._fail_count = 0
 
         # 콜백
         self._on_log = on_log or (lambda msg: None)
@@ -140,8 +141,12 @@ class ProcessingWorker:
             self._check_cancelled()
             self._execute_processing_pipeline()
 
-            self._emit_log(Messages.PROCESSING_COMPLETE)
-            self._on_finished(True, "작업이 성공적으로 완료되었습니다.")
+            if self._fail_count > 0:
+                self._emit_log(f"⚠️ 작업 완료 (일부 실패: {self._fail_count}건)")
+                self._on_finished(True, f"작업 완료 — {self._fail_count}건의 파일 처리에 실패했습니다. 로그를 확인하세요.")
+            else:
+                self._emit_log(Messages.PROCESSING_COMPLETE)
+                self._on_finished(True, "작업이 성공적으로 완료되었습니다.")
 
         except CancelledException:
             self._emit_log("⚠️ 사용자에 의해 작업이 취소되었습니다.")
@@ -342,6 +347,7 @@ class ProcessingWorker:
             except CancelledException:
                 raise
             except Exception as e:
+                self._fail_count += 1
                 self._emit_log(f"❌ WAV 변환 실패 ({Path(video_path).name}): {e}")
 
         return wav_paths
@@ -367,6 +373,7 @@ class ProcessingWorker:
             except CancelledException:
                 raise
             except Exception as e:
+                self._fail_count += 1
                 self._emit_log(f"{Messages.CONVERSION_FAILED} ({Path(wav_path).name}): {e}")
 
         if text_paths:
@@ -415,6 +422,7 @@ class ProcessingWorker:
             except CancelledException:
                 raise
             except Exception as e:
+                self._fail_count += 1
                 self._emit_log(f"{Messages.SUMMARY_FAILED} ({Path(text_path).name}): {e}")
 
         return summary_paths

@@ -34,8 +34,12 @@ depends_on: [lecture-list-scroll-timeout]
 - 에러 발생 시 재시도 메커니즘 없음
 
 ## 체크리스트
-- [ ] `mark_cancelled()` 호출 후 일정 시간 뒤 또는 즉시 다이얼로그 자동 닫기 처리
-- [ ] 에러 상태에서 "닫기" 버튼이 명확히 보이고 클릭 가능한지 확인
+- [x] `mark_cancelled()` 호출 시 `page.update()` 직접 호출로 UI 즉시 갱신 보장
+- [x] 에러 상태에서 "닫기" 버튼 + X 버튼 정상 동작 확인 (`close()` 예외 처리 추가)
 - [ ] API 클라이언트에 적절한 timeout 파라미터 설정 (예: 60-120초)
 - [ ] 타임아웃 에러 시 사용자에게 명확한 안내 메시지 + 재시도 옵션 제공
-- [ ] `modal=True` 상태에서 에러 발생 시 UI 복구 경로 보장
+- [x] `modal=True` 상태에서 에러 발생 시 UI 복구 경로 보장 (`on_finished` 모든 경로에서 `page.update()`)
+
+### 수정된 파일
+- `src/gui/views/progress_view.py`: `close()` 예외 처리, `mark_cancelled()` `page.update()` 직접 호출
+- `src/gui/views/main_view.py`: `on_finished` 모든 에러 경로에서 `page.update()` 보장

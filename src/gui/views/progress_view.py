@@ -471,7 +471,10 @@ class ProgressModal:
 
     def close(self):
         self.dialog.open = False
-        self._page.update()
+        try:
+            self._page.update()
+        except Exception:
+            pass
 
     def update_step(self, step_num: int, step_name: str):
         """현재 단계 업데이트 (step_num: 1-indexed)"""
@@ -567,7 +570,10 @@ class ProgressModal:
         self._cancel_elapsed.value = f"경과 시간: {elapsed_str}"
         self._cancel_content.visible = True
 
-        self._safe_update()
+        try:
+            self._page.update()
+        except Exception:
+            self._safe_update()
 
     # ── Private ──────────────────────────────────────────
 

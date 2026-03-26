@@ -29,6 +29,7 @@ class SummarizePipeline:
         # 파일명 추출
         filename = Path(text_path).stem
         output_path = os.path.join(self.downloads_dir, f"{filename}_summarized.txt")
+        os.makedirs(self.downloads_dir, exist_ok=True)
 
         print(f"[INFO] 요약 시작: {text_path}")
         start_time = time.time()

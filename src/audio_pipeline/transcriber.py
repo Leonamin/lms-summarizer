@@ -158,11 +158,49 @@ class FasterWhisperTranscriber(Transcriber):
         self._initial_prompt = (params or {}).get("initial_prompt", "한국어 강의입니다.")
         self._vad_filter = bool((params or {}).get("vad_filter", True))
 
-        self._on_log(f"[faster-whisper] 모델 로드 중: {model_name} (device={device})")
+        resolved_device, resolved_compute = self._resolve_device(device, compute_type)
+        self._on_log(f"[faster-whisper] 모델 로드 중: {model_name} (device={resolved_device}, compute_type={resolved_compute})")
         load_start = time.time()
-        self.model = WhisperModel(model_name, device=device, compute_type=compute_type)
+
+        try:
+            self.model = WhisperModel(model_name, device=resolved_device, compute_type=resolved_compute)
+        except Exception as e:
+            if resolved_device != "cpu":
+                self._on_log(f"⚠️ GPU 초기화 실패: {e}")
+                self._on_log("[faster-whisper] CPU 모드로 전환합니다...")
+                resolved_device = "cpu"
+                resolved_compute = "int8"
+                self.model = WhisperModel(model_name, device="cpu", compute_type="int8")
+            else:
+                raise
+
         self.model_load_sec = time.time() - load_start
-        self._on_log(f"[faster-whisper] 모델 로드: {self.model_load_sec:.1f}초")
+        self._on_log(f"[faster-whisper] 모델 로드: {self.model_load_sec:.1f}초 (device={resolved_device})")
+
+    @staticmethod
+    def _resolve_device(device: str, compute_type: str) -> tuple:
+        """device='auto'일 때 CUDA 가용 여부를 판단하여 실제 디바이스를 결정"""
+        if device != "auto":
+            return device, compute_type
+
+        try:
+            import torch
+            if torch.cuda.is_available():
+                gpu_name = torch.cuda.get_device_name(0)
+                print(f"[faster-whisper] CUDA GPU 감지: {gpu_name}")
+                return "cuda", compute_type if compute_type != "auto" else "float16"
+        except ImportError:
+            pass
+
+        # ctranslate2 자체 CUDA 감지 시도
+        try:
+            import ctranslate2
+            if "cuda" in ctranslate2.get_supported_compute_types("cuda"):
+                return "cuda", compute_type if compute_type != "auto" else "float16"
+        except Exception:
+            pass
+
+        return "cpu", compute_type if compute_type != "auto" else "int8"
 
     def transcribe(self, audio_path: str, txt_path: str):
         transcribe_start = time.time()

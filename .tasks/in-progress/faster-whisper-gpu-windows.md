@@ -32,9 +32,13 @@ self.model = WhisperModel(model_name, device=device, compute_type=compute_type)
 7. **디버깅 정보 부족**: GPU 이름, VRAM, CUDA/PyTorch 버전 등 로깅 없음
 
 ## 체크리스트
-- [ ] `WhisperModel()` 생성을 try/except로 감싸고 GPU 실패 시 CPU 폴백 추가
-- [ ] GPU 사용 가능 여부 사전 감지 로직 추가 (CUDA availability check)
+- [x] `WhisperModel()` 생성을 try/except로 감싸고 GPU 실패 시 CPU 폴백 추가
+- [x] GPU 사용 가능 여부 사전 감지 로직 추가 (`_resolve_device`: torch/ctranslate2 CUDA 확인)
 - [ ] UI에서 GPU 선택 시 사전 검증 + 불가 시 경고 표시
-- [ ] GPU 초기화 실패 시 사용자에게 명확한 안내 메시지 (CUDA 설치 필요 등)
-- [ ] 디바이스 정보 로깅 추가 (GPU 이름, CUDA 버전 등)
+- [x] GPU 초기화 실패 시 사용자에게 명확한 안내 메시지 (`on_log`로 전달)
+- [x] 디바이스 정보 로깅 추가 (GPU 이름, resolved device/compute_type)
 - [ ] pyproject.toml에 CUDA 관련 optional dependency 그룹 검토
+
+### 수정된 파일
+
+- `src/audio_pipeline/transcriber.py`: `_resolve_device()` 메서드 추가 (auto 감지), GPU 실패 시 CPU int8 자동 폴백

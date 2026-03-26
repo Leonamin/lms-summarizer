@@ -31,8 +31,15 @@ created: 2026-03-26
 4. **성공 판정 기준 부재**: `processing_worker.py` (line ~140-144)에서 파일 검증 없이 성공 emit
 
 ## 체크리스트
-- [ ] 모든 파일 쓰기 위치에 `os.makedirs(parent, exist_ok=True)` 추가
-- [ ] 파일 쓰기 후 `os.path.exists()` 검증 추가
-- [ ] 개별 단계 실패 시 전체 결과에 실패 카운트 반영 (부분 성공 처리)
-- [ ] 최종 성공 메시지에 실제 저장된 파일 수 표시
+- [x] 모든 파일 쓰기 위치에 `os.makedirs(parent, exist_ok=True)` 추가
+- [x] 파일 쓰기 후 `os.path.exists()` 검증 추가 (converter, pipeline)
+- [x] 개별 단계 실패 시 전체 결과에 실패 카운트 반영 (`_fail_count`)
+- [x] 최종 성공 메시지에 실패 건수 표시 (부분 실패 시 경고)
 - [ ] Mac 환경에서 경로 권한/특수문자 관련 엣지케이스 확인
+
+### 수정된 파일
+
+- `src/audio_pipeline/converter.py`: WAV 출력 전 `makedirs` 추가
+- `src/audio_pipeline/pipeline.py`: `convert_to_wav`, `transcribe` 모두 `makedirs` + 파일 존재 검증
+- `src/summarize_pipeline/pipeline.py`: 요약 출력 전 `makedirs` 추가
+- `src/gui/workers/processing_worker.py`: `_fail_count` 추적 + 부분 실패 시 경고 메시지

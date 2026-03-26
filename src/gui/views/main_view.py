@@ -226,8 +226,8 @@ class MainView:
                             self.left_panel.account.set_error('student_id', "로그인 서버 연결 실패")
                     elif "취소" not in message:
                         self._show_snackbar(f"오류: {message}", Colors.ERROR)
-                    else:
-                        self.page.update()
+
+                    self.page.update()
                 except Exception:
                     pass
                 self.worker = None
