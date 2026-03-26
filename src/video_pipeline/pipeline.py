@@ -91,7 +91,7 @@ class VideoPipeline:
         await page.goto(url, wait_until="networkidle")
         self._log(f"페이지 이동 완료: {page.url}")
 
-        video_url, title = await extract_video_url(page, method="dom", timeout=self.extraction_timeout)
+        video_url, title = await extract_video_url(page, method="dom", timeout=self.extraction_timeout, log=self._log)
 
         if video_url:
             self._log(f"동영상 링크 추출됨: {video_url}")
