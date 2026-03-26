@@ -106,9 +106,21 @@ class DomVideoExtractor(VideoUrlExtractor):
 
     VIDEO_SELECTOR = "video.vc-vplay-video1"
     VIDEO_URL_PATTERN = ".mp4"
+    _IGNORE_PATTERNS = ("intro.mp4", "uniplayer/")
 
     def __init__(self, log=None):
         self._log = log or print
+
+    def _is_valid_video_url(self, url: str) -> bool:
+        """실제 강의 영상 URL인지 검증 (플레이스홀더 제외)"""
+        if not url or not url.startswith("http"):
+            return False
+        if self.VIDEO_URL_PATTERN not in url:
+            return False
+        for ignore in self._IGNORE_PATTERNS:
+            if ignore in url:
+                return False
+        return True
 
     async def extract(self, page: Page, timeout: float = 60) -> tuple[str, str]:
         shared_state = {"video_url": None, "title": None}
@@ -123,6 +135,8 @@ class DomVideoExtractor(VideoUrlExtractor):
         poll_interval = 0.5
         max_polls = int(timeout / poll_interval)
         dialog_dismissed = False
+        logged_src = False
+        logged_fallback = False
 
         for _ in range(max_polls):
             # 매 폴링마다 이어보기 다이얼로그 체크
@@ -132,11 +146,45 @@ class DomVideoExtractor(VideoUrlExtractor):
             try:
                 video_el = await video_frame.query_selector(self.VIDEO_SELECTOR)
                 if video_el:
+                    # 1) src 속성 체크 (직접 .mp4 링크)
                     src = await video_el.get_attribute("src")
-                    if src and src.startswith("http") and self.VIDEO_URL_PATTERN in src:
+                    if self._is_valid_video_url(src):
                         self._log(f"[DEBUG] DOM에서 비디오 URL 찾음: {src}")
                         shared_state["video_url"] = src
                         return src, shared_state["title"]
+
+                    # 2) currentSrc 체크 (MediaSource/blob 또는 <source> 태그 반영)
+                    current_src = await video_frame.evaluate(
+                        "(sel) => { const v = document.querySelector(sel); return v ? v.currentSrc : ''; }",
+                        self.VIDEO_SELECTOR,
+                    )
+                    if self._is_valid_video_url(current_src):
+                        self._log(f"[DEBUG] currentSrc에서 비디오 URL 찾음: {current_src}")
+                        shared_state["video_url"] = current_src
+                        return current_src, shared_state["title"]
+
+                    # 3) <source> 태그 체크
+                    source_src = await video_frame.evaluate(
+                        "(sel) => { const v = document.querySelector(sel); const s = v && v.querySelector('source'); return s ? s.src : ''; }",
+                        self.VIDEO_SELECTOR,
+                    )
+                    if self._is_valid_video_url(source_src):
+                        self._log(f"[DEBUG] <source> 태그에서 비디오 URL 찾음: {source_src}")
+                        shared_state["video_url"] = source_src
+                        return source_src, shared_state["title"]
+
+                    # 진단 로그 (한번만)
+                    if not logged_src:
+                        self._log(f"[DEBUG] video.src={src or '(없음)'}, currentSrc={current_src or '(없음)'}, source={source_src or '(없음)'}")
+                        logged_src = True
+                else:
+                    if not logged_fallback:
+                        any_video = await video_frame.query_selector("video")
+                        if any_video:
+                            any_src = await any_video.get_attribute("src") or "(src 없음)"
+                            any_class = await any_video.get_attribute("class") or "(class 없음)"
+                            self._log(f"[DEBUG] '{self.VIDEO_SELECTOR}' 없음, 다른 video 요소: class={any_class}, src={any_src[:120]}")
+                            logged_fallback = True
             except Exception as e:
                 self._log(f"[WARN] DOM 폴링 중 오류: {e}")
 

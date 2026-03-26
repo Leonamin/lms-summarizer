@@ -103,6 +103,31 @@ class ProcessingWorker:
         if self._cancel_event.is_set():
             raise CancelledException("사용자가 작업을 취소했습니다.")
 
+    def _interruptible(self, fn, *args, **kwargs):
+        """블로킹 작업을 별도 스레드에서 실행하고, 취소 신호 시 즉시 중단.
+
+        모델 다운로드 등 장시간 블로킹되는 호출을 래핑하면
+        사용자가 중지 버튼을 눌렀을 때 즉시 CancelledException이 발생한다.
+        백그라운드 스레드는 daemon이므로 프로세스 종료 시 자동 정리된다.
+        """
+        result, error = [None], [None]
+
+        def _run():
+            try:
+                result[0] = fn(*args, **kwargs)
+            except Exception as e:
+                error[0] = e
+
+        t = threading.Thread(target=_run, daemon=True)
+        t.start()
+        while t.is_alive():
+            self._check_cancelled()
+            t.join(timeout=0.5)
+
+        if error[0]:
+            raise error[0]
+        return result[0]
+
     def _emit_log(self, message: str):
         self._file_logger.info(message)
         self._on_log(message)
@@ -366,7 +391,7 @@ class ProcessingWorker:
                 audio_pipeline.downloads_dir = str(Path(wav_path).parent)
                 self._emit_log(f"({i}/{len(wav_paths)}) 텍스트 변환 중: {Path(wav_path).name}")
 
-                text_path = audio_pipeline.transcribe(wav_path, remove_wav=True)
+                text_path = self._interruptible(audio_pipeline.transcribe, wav_path, remove_wav=True)
                 text_paths.append(text_path)
                 self._emit_log(f"{Messages.CONVERSION_COMPLETE}: {text_path}")
 
@@ -415,7 +440,7 @@ class ProcessingWorker:
                 if is_clipboard:
                     self._write_chatbot_text(text_path)
 
-                summary_path = summarize_pipeline.process(text_path)
+                summary_path = self._interruptible(summarize_pipeline.process, text_path)
                 summary_paths.append(summary_path)
                 self._emit_log(f"{Messages.SUMMARY_COMPLETE}: {summary_path}")
 
