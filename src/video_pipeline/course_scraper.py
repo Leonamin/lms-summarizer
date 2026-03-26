@@ -157,11 +157,14 @@ class CourseScraper:
         course_name = await root.get_attribute("data-course_name") or course.long_name
         professors = await root.get_attribute("data-professors") or ""
 
-        # 전체 펼치기
+        # 전체 펼치기 — 부모 페이지에서 iframe을 뷰포트로 가져온 뒤 iframe 내부 버튼 클릭
+        await iframe_el.scroll_into_view_if_needed()
+        await iframe.evaluate("() => window.scrollTo(0, 0)")
         expand_btn = await iframe.query_selector(".xnmb-all_fold-btn")
         if expand_btn:
             btn_text = await expand_btn.text_content()
             if btn_text and "펼치기" in btn_text:
+                await expand_btn.scroll_into_view_if_needed()
                 await expand_btn.click()
                 await asyncio.sleep(0.5)
 

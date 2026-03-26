@@ -179,7 +179,11 @@ class FasterWhisperTranscriber(Transcriber):
 
     @staticmethod
     def _resolve_device(device: str, compute_type: str) -> tuple:
-        """device='auto'일 때 CUDA 가용 여부를 판단하여 실제 디바이스를 결정"""
+        """device='auto'일 때 CUDA 가용 여부를 판단하여 실제 디바이스를 결정.
+
+        faster-whisper(CTranslate2)는 CUDA(NVIDIA)만 GPU 가속을 지원함.
+        Apple Silicon(M1~M5), Intel Arc, AMD 내장 GPU는 CUDA 미지원 → CPU 폴백.
+        """
         if device != "auto":
             return device, compute_type
 
@@ -199,6 +203,12 @@ class FasterWhisperTranscriber(Transcriber):
                 return "cuda", compute_type if compute_type != "auto" else "float16"
         except Exception:
             pass
+
+        import sys
+        if sys.platform == "darwin":
+            print("[faster-whisper] macOS 감지 — Apple Silicon은 CUDA 미지원, CPU 모드 사용")
+        else:
+            print("[faster-whisper] CUDA GPU 미감지 — CPU 모드 사용")
 
         return "cpu", compute_type if compute_type != "auto" else "int8"
 
