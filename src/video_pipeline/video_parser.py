@@ -102,9 +102,15 @@ class VideoUrlExtractor(ABC):
 # ==============================================================
 
 class DomVideoExtractor(VideoUrlExtractor):
-    """재생 후 video.vc-vplay-video1 요소의 src 속성에서 URL을 추출한다."""
+    """재생 후 video/audio 요소에서 미디어 URL을 추출한다.
+
+    LMS 콘텐츠 유형별 미디어 소스:
+    - movie/mp4: video.vc-vplay-video1 (직접 .mp4 src)
+    - readystream (SyncDoc): audio.vc-sdaudio-audio (슬라이드+오디오 동기화)
+    """
 
     VIDEO_SELECTOR = "video.vc-vplay-video1"
+    SYNCDOC_AUDIO_SELECTOR = "audio.vc-sdaudio-audio"
     VIDEO_URL_PATTERN = ".mp4"
     _IGNORE_PATTERNS = ("intro.mp4", "uniplayer/")
 
@@ -177,7 +183,17 @@ class DomVideoExtractor(VideoUrlExtractor):
                     if not logged_src:
                         self._log(f"[DEBUG] video.src={src or '(없음)'}, currentSrc={current_src or '(없음)'}, source={source_src or '(없음)'}")
                         logged_src = True
-                else:
+
+                # 4) SyncDoc(readystream) 오디오 폴백 — 슬라이드+오디오 강의
+                audio_el = await video_frame.query_selector(self.SYNCDOC_AUDIO_SELECTOR)
+                if audio_el:
+                    audio_src = await audio_el.get_attribute("src")
+                    if self._is_valid_video_url(audio_src):
+                        self._log(f"[DEBUG] SyncDoc 오디오에서 URL 찾음: {audio_src}")
+                        shared_state["video_url"] = audio_src
+                        return audio_src, shared_state["title"]
+
+                if not video_el and not audio_el:
                     if not logged_fallback:
                         any_video = await video_frame.query_selector("video")
                         if any_video:
