@@ -74,7 +74,7 @@ class STTSettingsSection:
             hint_text="모델 초기 힌트 텍스트",
             border_radius=Radius.SM, border_color=Colors.BORDER,
             focused_border_color=Colors.PRIMARY, text_size=Typography.SMALL,
-            label_style=ft.TextStyle(size=9, color=Colors.TEXT_SECONDARY),
+            label_style=ft.TextStyle(size=Typography.CAPTION, color=Colors.TEXT_SECONDARY),
             dense=True,
             tooltip="Whisper 모델에 전달되는 초기 힌트 텍스트 — 인식 언어와 맥락을 안내합니다",
         )
@@ -84,7 +84,7 @@ class STTSettingsSection:
             hint_text="같은 구문이 N회 이상 연속되면 1개로 축약 (기본: 4)",
             border_radius=Radius.SM, border_color=Colors.BORDER,
             focused_border_color=Colors.PRIMARY, text_size=Typography.SMALL,
-            label_style=ft.TextStyle(size=9, color=Colors.TEXT_SECONDARY),
+            label_style=ft.TextStyle(size=Typography.CAPTION, color=Colors.TEXT_SECONDARY),
             dense=True,
             tooltip="같은 구문이 이 횟수 이상 연속되면 1개로 축약합니다 (0이면 비활성화)",
         )
@@ -134,6 +134,8 @@ class STTSettingsSection:
         self._fw_mode_row = ft.Row(
             controls=self._build_fw_mode_buttons(),
             spacing=Spacing.XS,
+            vertical_alignment=ft.CrossAxisAlignment.STRETCH,
+            intrinsic_height=True,
         )
         self._fw_section = ft.Column(
             controls=[
@@ -228,30 +230,14 @@ class STTSettingsSection:
             selected = (self._fw_selected_mode[0] == mode_key)
             size_mb = info["size_mb"]
             size_str = f"{size_mb/1024:.1f}GB" if size_mb >= 1000 else f"{size_mb}MB"
-            badge = ft.Container(
-                content=ft.Text(f"↓{size_str}", size=8, color="#D97706"),
-                bgcolor="#FEF3C7", border_radius=3,
-                padding=ft.padding.symmetric(horizontal=3, vertical=1),
-            )
+            tooltip_text = f"{info['description']}\n모델 크기: {size_str}"
             btn = ft.Container(
-                content=ft.Column(
-                    controls=[
-                        ft.Row(
-                            controls=[
-                                ft.Text(
-                                    f"{info['emoji']} {info['label']}",
-                                    size=Typography.SMALL,
-                                    weight=Typography.SEMI_BOLD,
-                                    color=Colors.TEXT,
-                                ),
-                                badge,
-                            ],
-                            spacing=3,
-                            vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                        ),
-                        ft.Text(info["description"], size=8, color=Colors.TEXT_MUTED),
-                    ],
-                    spacing=2,
+                content=ft.Text(
+                    f"{info['emoji']} {info['label']}",
+                    size=Typography.SMALL,
+                    weight=Typography.SEMI_BOLD,
+                    color=Colors.TEXT,
+                    text_align=ft.TextAlign.CENTER,
                 ),
                 border=ft.border.all(1.5, Colors.PRIMARY if selected else Colors.BORDER),
                 border_radius=Radius.SM,
@@ -260,6 +246,8 @@ class STTSettingsSection:
                 expand=True,
                 on_click=lambda e, k=mode_key: self._select_fw_mode(k),
                 ink=True,
+                tooltip=tooltip_text,
+                alignment=ft.Alignment.CENTER,
             )
             buttons.append(btn)
         return buttons
