@@ -6,7 +6,7 @@ from src.audio_pipeline.transcriber import transcribe_audio_to_text
 
 
 class AudioToTextPipeline:
-    def __init__(self, sample_rate=16000, engine="whisper-cpp", model_name="base", stt_params=None, on_log=None):
+    def __init__(self, sample_rate=16000, engine="faster-whisper", model_name="large-v3-turbo", stt_params=None, on_log=None):
         self.sample_rate = sample_rate
         self.engine = engine
         self.model_name = model_name

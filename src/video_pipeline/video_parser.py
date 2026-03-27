@@ -211,25 +211,37 @@ class DomVideoExtractor(VideoUrlExtractor):
 
 
 # ==============================================================
-# CDP 기반 추출 (deprecated fallback)
+# CDP 기반 추출 (기본 방식)
 # ==============================================================
 
 class CdpVideoExtractor(VideoUrlExtractor):
-    """CDP Network.requestWillBeSent로 ssmovie.mp4 요청을 가로채서 URL을 추출한다.
+    """CDP Network.requestWillBeSent로 .mp4 네트워크 요청을 가로채서 URL을 추출한다.
 
-    DEPRECATED: CDP 스니핑이 더 이상 안정적으로 동작하지 않는다.
-    DomVideoExtractor가 실패할 경우의 fallback으로 유지한다.
+    LMS 영상 로딩 순서:
+    1. HTML 요소 로드
+    2. intro.mp4 다수 요청 (무시)
+    3. intro 재생 (~5초) 동안 기타 리소스
+    4. intro 종료 후 실제 강의 영상 .mp4 요청 → 이것을 캡처
     """
 
-    VIDEO_URL_PATTERN = "ssmovie.mp4"
+    _IGNORE_PATTERNS = ("intro.mp4", "uniplayer/")
 
     def __init__(self, log=None):
         self._log = log or print
 
+    def _is_target_video(self, url: str) -> bool:
+        """실제 강의 영상 URL인지 판별 (intro.mp4 등 제외)"""
+        if not url or ".mp4" not in url:
+            return False
+        for pattern in self._IGNORE_PATTERNS:
+            if pattern in url:
+                return False
+        return True
+
     async def _on_request(self, event, shared_state: dict):
         url = event["request"]["url"]
-        if self.VIDEO_URL_PATTERN in url and shared_state["video_url"] is None:
-            print(f"[CDP] ssmovie.mp4 요청 감지: {url}")
+        if self._is_target_video(url) and shared_state["video_url"] is None:
+            self._log(f"[CDP] 강의 영상 요청 감지: {url}")
             shared_state["video_url"] = url
 
     async def _register_sniffer(self, page: Page, shared_state: dict):
@@ -241,34 +253,30 @@ class CdpVideoExtractor(VideoUrlExtractor):
         )
 
     async def extract(self, page: Page, timeout: float = 60) -> tuple[str, str]:
-        import warnings
-        warnings.warn(
-            "CdpVideoExtractor is deprecated. Use DomVideoExtractor instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-
         shared_state = {"video_url": None, "title": None}
         await self._register_sniffer(page, shared_state)
 
-        video_frame = await find_canvas_video_frame(page, shared_state)
+        video_frame = await find_canvas_video_frame(page, shared_state, log=self._log)
         if not video_frame:
             return None, None
 
-        await trigger_video_play(video_frame)
-        await try_dismiss_confirm_dialog(video_frame, resume=False)
+        await trigger_video_play(video_frame, log=self._log)
 
-        print("[DEBUG] CDP 비디오 URL 대기 시작")
-        poll_interval = 0.1
+        self._log("[DEBUG] CDP 비디오 URL 대기 시작 (intro.mp4 이후 실제 영상 대기)")
+        poll_interval = 0.5
         max_polls = int(timeout / poll_interval)
+        dialog_dismissed = False
 
         for _ in range(max_polls):
+            if not dialog_dismissed:
+                dialog_dismissed = await try_dismiss_confirm_dialog(video_frame, resume=True)
+
             if shared_state["video_url"]:
-                print(f"[DEBUG] CDP 비디오 URL 찾음: {shared_state['video_url']}")
+                self._log(f"[DEBUG] CDP 비디오 URL 찾음: {shared_state['video_url']}")
                 return shared_state["video_url"], shared_state["title"]
             await asyncio.sleep(poll_interval)
 
-        print("[DEBUG] CDP 비디오 URL을 찾지 못했습니다.")
+        self._log("[DEBUG] CDP 비디오 URL을 찾지 못했습니다.")
         return None, None
 
 
@@ -284,7 +292,7 @@ _EXTRACTORS = {
 
 async def extract_video_url(
     page: Page,
-    method: str = "dom",
+    method: str = "cdp",
     timeout: float = 60,
     log=None,
 ) -> tuple[str, str]:
@@ -292,7 +300,7 @@ async def extract_video_url(
 
     Args:
         page: LMS 콘텐츠가 로드된 Playwright 페이지.
-        method: "dom" (기본, 권장) 또는 "cdp" (deprecated fallback).
+        method: "cdp" (기본, 권장) 또는 "dom" (fallback).
         timeout: 최대 대기 시간(초). 기본 60초.
         log: 로그 콜백 함수. 기본 print.
 

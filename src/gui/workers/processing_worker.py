@@ -133,18 +133,8 @@ class ProcessingWorker:
         self._on_log(message)
 
     def _check_stt_model_available(self):
-        """STT 단계 시작 전 모델 다운로드 여부 확인"""
-        if self.stt_engine != "whisper-cpp":
-            return
-        from src.audio_pipeline.model_manager import is_available, MODEL_REGISTRY
-        if not is_available(self.stt_model):
-            info = MODEL_REGISTRY.get(self.stt_model, {})
-            label = info.get("label", self.stt_model)
-            size = info.get("size_mb", "?")
-            raise FileNotFoundError(
-                f"'{label}' STT 모델이 다운로드되지 않았습니다. "
-                f"좌측 패널 > STT 설정에서 모델을 먼저 다운로드하세요. (약 {size}MB)"
-            )
+        """STT 단계 시작 전 모델 확인 (faster-whisper는 자동 다운로드)"""
+        pass
 
     def _run(self):
         """실제 처리 작업 실행"""
