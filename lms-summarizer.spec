@@ -7,17 +7,16 @@
 #   Windows: pyinstaller lms-summarizer.spec
 #
 # 용량 최적화 참고:
-#   - whisper.cpp (pywhispercpp): ~2MB (faster-whisper/CTranslate2 대비 대폭 절감)
-#   - whisper base ggml 모델: ~142MB → 자동 다운로드 (번들 미포함)
+#   - faster-whisper (CTranslate2 기반): STT 엔진
+#   - 모델: 런타임 다운로드 (번들 미포함)
 #   - Flet: ~20MB
-#   - 전체 예상: ~150-200MB (압축 전)
 
 import sys
 import os
 from pathlib import Path
 
 APP_NAME = "LMS-Summarizer"
-APP_VERSION = "1.4.3"
+APP_VERSION = "1.8.0"
 
 # SSL 인증서 번들 경로 (PyInstaller에서 requests HTTPS 요청에 필요)
 def find_certifi_cacert():
@@ -29,24 +28,6 @@ def find_certifi_cacert():
 
 certifi_cacert = find_certifi_cacert()
 
-# pywhispercpp 네이티브 라이브러리 수집
-def collect_pywhispercpp_libs():
-    """pywhispercpp의 네이티브 바이너리를 수집"""
-    binaries = []
-    try:
-        import pywhispercpp
-        pwc_dir = os.path.dirname(pywhispercpp.__file__)
-        for f in os.listdir(pwc_dir):
-            full = os.path.join(pwc_dir, f)
-            if os.path.isfile(full) and (
-                f.endswith(".dll") or f.endswith(".pyd") or
-                f.endswith(".so") or f.endswith(".dylib")
-            ):
-                binaries.append((full, "pywhispercpp"))
-    except ImportError:
-        print("[WARNING] pywhispercpp not found, skipping lib collection")
-    return binaries
-
 # 추가 데이터 파일
 datas = [
     ("src", "src"),
@@ -55,9 +36,7 @@ datas = [
 if certifi_cacert:
     datas.append((certifi_cacert, "certifi"))
 
-# 바이너리: pywhispercpp 네이티브 라이브러리
 binaries = []
-binaries.extend(collect_pywhispercpp_libs())
 
 a = Analysis(
     ["src/gui/main.py"],
@@ -86,10 +65,8 @@ a = Analysis(
         "src.gui.config.settings",
         "src.gui.config.course_models",
         # 외부 라이브러리
-        "openai", "pywhispercpp", "playwright", "requests",
-        "dotenv", "google.genai", "certifi",
-        # pywhispercpp 의존성
-        "pywhispercpp.model", "pywhispercpp.utils",
+        "openai", "faster_whisper", "ctranslate2", "playwright", "requests",
+        "dotenv", "google.genai", "certifi", "huggingface_hub", "tokenizers",
         # 표준 라이브러리
         "json", "threading", "pathlib",
     ],
@@ -107,8 +84,6 @@ a = Analysis(
         "torchvision", "torchaudio", "caffe2",
         # numba / llvmlite (~100MB 절감)
         "numba", "llvmlite",
-        # faster-whisper / CTranslate2 (whisper.cpp로 대체)
-        "faster_whisper", "ctranslate2", "tokenizers", "huggingface_hub",
         # PyQt5 (더 이상 사용하지 않음)
         "PyQt5", "PyQt5.QtCore", "PyQt5.QtWidgets", "PyQt5.QtGui",
         "qtawesome",

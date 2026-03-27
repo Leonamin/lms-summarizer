@@ -31,9 +31,6 @@ jobs:
           uv sync --frozen
           uv pip install pyinstaller
 
-      - name: Whisper 모델 사전 다운로드 (base, ~142MB)
-        run: uv run python -c "from pywhispercpp.model import Model; Model('base'); print('whisper.cpp model OK')"
-
       - name: PyInstaller 빌드
         run: uv run pyinstaller lms-summarizer.spec
 
@@ -76,16 +73,13 @@ jobs:
       - name: 핵심 모듈 import 검증
         run: |
           uv run python -c "
-          from pywhispercpp.model import Model; print('pywhispercpp OK')
+          from faster_whisper import WhisperModel; print('faster-whisper OK')
           import flet; print('flet OK')
           from src.audio_pipeline.pipeline import AudioToTextPipeline; print('AudioToTextPipeline OK')
           from src.video_pipeline.pipeline import VideoPipeline; print('VideoPipeline OK')
           from src.summarize_pipeline.pipeline import SummarizePipeline; print('SummarizePipeline OK')
           print('All imports verified!')
           "
-
-      - name: Whisper 모델 사전 다운로드 (base, ~142MB)
-        run: uv run python -c "from pywhispercpp.model import Model; Model('base'); print('whisper.cpp model OK')"
 
       - name: PyInstaller 빌드
         run: uv run pyinstaller lms-summarizer.spec
