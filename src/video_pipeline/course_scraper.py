@@ -157,13 +157,19 @@ class CourseScraper:
         course_name = await root.get_attribute("data-course_name") or course.long_name
         professors = await root.get_attribute("data-professors") or ""
 
-        # 전체 펼치기
+        # 전체 펼치기 — 부모 페이지에서 iframe을 뷰포트로 가져온 뒤 iframe 내부 버튼 클릭
+        await iframe_el.scroll_into_view_if_needed()
+        await iframe.evaluate("() => window.scrollTo(0, 0)")
         expand_btn = await iframe.query_selector(".xnmb-all_fold-btn")
         if expand_btn:
             btn_text = await expand_btn.text_content()
             if btn_text and "펼치기" in btn_text:
+                await expand_btn.scroll_into_view_if_needed()
                 await expand_btn.click()
                 await asyncio.sleep(0.5)
+
+        # 가상 스크롤 렌더링을 위해 iframe 내부를 끝까지 스크롤
+        await self._scroll_to_load_all(iframe)
 
         # 주차 파싱
         weeks = await self._parse_weeks(iframe)
@@ -178,6 +184,31 @@ class CourseScraper:
             professors=professors,
             weeks=weeks,
         )
+
+    async def _scroll_to_load_all(self, iframe: Frame, max_attempts: int = 30):
+        """iframe 내부를 반복 스크롤하여 가상 스크롤(IntersectionObserver) 요소를 모두 렌더링"""
+        prev_count = 0
+        stable_rounds = 0
+
+        for _ in range(max_attempts):
+            # 현재 렌더링된 아이템 수 확인
+            count = await iframe.evaluate(
+                "() => document.querySelectorAll('.xnmb-module_item-outer-wrapper').length"
+            )
+
+            if count == prev_count:
+                stable_rounds += 1
+                if stable_rounds >= 3:
+                    break
+            else:
+                stable_rounds = 0
+                prev_count = count
+
+            # 페이지 끝까지 스크롤
+            await iframe.evaluate("() => window.scrollTo(0, document.body.scrollHeight)")
+            await asyncio.sleep(0.3)
+
+        self._log(f"스크롤 완료: {prev_count}개 항목 렌더링됨")
 
     async def _parse_weeks(self, iframe: Frame) -> List[Week]:
         """모든 주차 모듈 파싱"""

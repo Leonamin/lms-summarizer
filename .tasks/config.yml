@@ -1,0 +1,41 @@
+board:
+  name: TaskBoard
+  columns:
+    - id: backlog
+      name: 백로그
+      description: 당장은 아니지만 까먹으면 안 되는 것
+    - id: todo
+      name: 이번주 할 일
+      description: 이번 주에 반드시 처리할 것
+    - id: in-progress
+      name: 진행중
+      description: 지금 작업 중인 것
+    - id: waiting
+      name: 대기중
+      description: 진행했지만 외부 대기 필요 (심사, 테스트 등)
+    - id: done
+      name: 완료
+      description: 끝난 것 (주차별 자동 정리)
+labels:
+  - id: dev
+    name: 개발
+    color: '#3B82F6'
+  - id: bug
+    name: 버그
+    color: '#EF4444'
+priorities:
+  - id: p0
+    name: P0 지금당장
+    color: '#DC2626'
+  - id: p1
+    name: P1 이번주
+    color: '#F59E0B'
+  - id: p2
+    name: P2 이번달
+    color: '#3B82F6'
+  - id: p3
+    name: P3 언젠가
+    color: '#6B7280'
+done_archive:
+  enabled: true
+  group_by: week
