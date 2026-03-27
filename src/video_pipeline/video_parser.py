@@ -240,9 +240,9 @@ class CdpVideoExtractor(VideoUrlExtractor):
 
     async def _on_request(self, event, shared_state: dict):
         url = event["request"]["url"]
-        if self._is_target_video(url) and shared_state["video_url"] is None:
-            self._log(f"[CDP] 강의 영상 요청 감지: {url}")
-            shared_state["video_url"] = url
+        if self._is_target_video(url):
+            self._log(f"[CDP] .mp4 요청 감지: {url}")
+            shared_state["mp4_urls"].append(url)
 
     async def _register_sniffer(self, page: Page, shared_state: dict):
         client = await page.context.new_cdp_session(page)
@@ -252,8 +252,32 @@ class CdpVideoExtractor(VideoUrlExtractor):
             lambda e: asyncio.create_task(self._on_request(e, shared_state)),
         )
 
+    def _pick_video_url(self, urls: list[str]) -> str | None:
+        """수집된 .mp4 URL들 중 영상(비디오+오디오) URL을 선택한다.
+
+        LMS 플레이어는 오디오 전용 mp4와 비디오 mp4를 분리 요청할 수 있다.
+        오디오 전용 파일은 URL 경로에 audio 힌트가 포함되는 경우가 많다.
+        """
+        if not urls:
+            return None
+        if len(urls) == 1:
+            return urls[0]
+
+        self._log(f"[CDP] .mp4 URL {len(urls)}개 수집됨:")
+        for i, u in enumerate(urls):
+            self._log(f"  [{i}] {u}")
+
+        # audio 힌트가 없는 URL을 우선 선택
+        _AUDIO_HINTS = ("audio", "aac", "sound")
+        non_audio = [u for u in urls if not any(h in u.lower() for h in _AUDIO_HINTS)]
+        if non_audio:
+            return non_audio[0]
+
+        # 모두 audio 힌트가 있으면 마지막 URL (보통 비디오가 나중에 로드)
+        return urls[-1]
+
     async def extract(self, page: Page, timeout: float = 60) -> tuple[str, str]:
-        shared_state = {"video_url": None, "title": None}
+        shared_state = {"mp4_urls": [], "title": None}
         await self._register_sniffer(page, shared_state)
 
         video_frame = await find_canvas_video_frame(page, shared_state, log=self._log)
@@ -266,15 +290,30 @@ class CdpVideoExtractor(VideoUrlExtractor):
         poll_interval = 0.5
         max_polls = int(timeout / poll_interval)
         dialog_dismissed = False
+        first_found_at = None
+        SETTLE_TIME = 3.0  # 첫 mp4 감지 후 추가 URL 대기 시간
 
         for _ in range(max_polls):
             if not dialog_dismissed:
                 dialog_dismissed = await try_dismiss_confirm_dialog(video_frame, resume=True)
 
-            if shared_state["video_url"]:
-                self._log(f"[DEBUG] CDP 비디오 URL 찾음: {shared_state['video_url']}")
-                return shared_state["video_url"], shared_state["title"]
+            if shared_state["mp4_urls"]:
+                if first_found_at is None:
+                    first_found_at = asyncio.get_event_loop().time()
+                # 첫 감지 후 SETTLE_TIME 대기하여 추가 mp4 URL 수집
+                elapsed = asyncio.get_event_loop().time() - first_found_at
+                if elapsed >= SETTLE_TIME:
+                    url = self._pick_video_url(shared_state["mp4_urls"])
+                    self._log(f"[DEBUG] CDP 비디오 URL 선택: {url}")
+                    return url, shared_state["title"]
+
             await asyncio.sleep(poll_interval)
+
+        # 타임아웃이지만 수집된 URL이 있으면 최선의 선택
+        if shared_state["mp4_urls"]:
+            url = self._pick_video_url(shared_state["mp4_urls"])
+            self._log(f"[DEBUG] CDP 비디오 URL 선택 (타임아웃): {url}")
+            return url, shared_state["title"]
 
         self._log("[DEBUG] CDP 비디오 URL을 찾지 못했습니다.")
         return None, None
