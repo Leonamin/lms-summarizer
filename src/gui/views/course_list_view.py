@@ -21,6 +21,9 @@ from src.gui.workers.course_list_worker import CourseListWorker
 _ATTENDANCE_MAP = {"attendance": "출석", "late": "지각", "absent": "결석"}
 _ATTENDANCE_COLOR = {"attendance": Colors.SUCCESS, "late": Colors.WARNING, "absent": Colors.ERROR}
 
+# 앱 세션 동안 유지되는 강의 목록 캐시 (course_id → CourseDetail)
+_lecture_cache: dict[str, CourseDetail] = {}
+
 
 class CourseListView:
     """과목 선택 -> 강의 선택 2단계 다이얼로그"""
@@ -316,6 +319,14 @@ class CourseListView:
                     controls=[
                         self._video_only_checkbox,
                         ft.Container(expand=True),
+                        ft.IconButton(
+                            icon=ft.Icons.REFRESH,
+                            icon_size=18,
+                            icon_color=Colors.TEXT_MUTED,
+                            tooltip="새로고침",
+                            style=ft.ButtonStyle(padding=ft.padding.all(4)),
+                            on_click=lambda e: self._refresh_lectures(),
+                        ),
                         ft.TextButton(
                             content=ft.Text("모두 선택"),
                             icon=ft.Icons.SELECT_ALL,
@@ -367,7 +378,7 @@ class CourseListView:
             expand=True,
         )
 
-    def _start_loading_lectures(self, course: Course):
+    def _start_loading_lectures(self, course: Course, force_refresh: bool = False):
         self._cleanup_worker()
 
         # Step 전환: 1 -> 2
@@ -383,11 +394,20 @@ class CourseListView:
         self._title_icon.on_click = lambda e: self._go_back_to_courses()
 
         self._lecture_list.controls.clear()
-        self._lecture_status.value = "강의 목록을 불러오는 중..."
-        self._lecture_loading.visible = True
         self._selected_lectures.clear()
         self._confirm_btn.disabled = True
         self._confirm_btn.content.value = "선택한 강의 추가"
+
+        # 캐시 히트 시 즉시 표시
+        if not force_refresh and course.id in _lecture_cache:
+            self._lecture_loading.visible = False
+            self._lecture_status.value = ""
+            self._page.update()
+            self._on_lectures_loaded(_lecture_cache[course.id])
+            return
+
+        self._lecture_status.value = "강의 목록을 불러오는 중..."
+        self._lecture_loading.visible = True
         self._page.update()
 
         self._worker = CourseListWorker(
@@ -401,6 +421,7 @@ class CourseListView:
 
     def _on_lectures_loaded(self, detail: CourseDetail):
         self._course_detail = detail
+        _lecture_cache[detail.course.id] = detail
         self._lecture_loading.visible = False
         self._populate_lecture_tree(detail)
 
@@ -588,6 +609,10 @@ class CourseListView:
         if self._course_detail:
             self._populate_lecture_tree(self._course_detail)
             self._page.update()
+
+    def _refresh_lectures(self):
+        if self._selected_course:
+            self._start_loading_lectures(self._selected_course, force_refresh=True)
 
     # ── 네비게이션 ───────────────────────────────────────
 

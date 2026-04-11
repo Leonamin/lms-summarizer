@@ -72,6 +72,7 @@ class ProcessingWorker:
         self.input_files = input_files or []
         self._cancel_event = threading.Event()
         self._thread: Optional[threading.Thread] = None
+        self._fail_count = 0
 
         # 콜백
         self._on_log = on_log or (lambda msg: None)
@@ -102,23 +103,38 @@ class ProcessingWorker:
         if self._cancel_event.is_set():
             raise CancelledException("사용자가 작업을 취소했습니다.")
 
+    def _interruptible(self, fn, *args, **kwargs):
+        """블로킹 작업을 별도 스레드에서 실행하고, 취소 신호 시 즉시 중단.
+
+        모델 다운로드 등 장시간 블로킹되는 호출을 래핑하면
+        사용자가 중지 버튼을 눌렀을 때 즉시 CancelledException이 발생한다.
+        백그라운드 스레드는 daemon이므로 프로세스 종료 시 자동 정리된다.
+        """
+        result, error = [None], [None]
+
+        def _run():
+            try:
+                result[0] = fn(*args, **kwargs)
+            except Exception as e:
+                error[0] = e
+
+        t = threading.Thread(target=_run, daemon=True)
+        t.start()
+        while t.is_alive():
+            self._check_cancelled()
+            t.join(timeout=0.5)
+
+        if error[0]:
+            raise error[0]
+        return result[0]
+
     def _emit_log(self, message: str):
         self._file_logger.info(message)
         self._on_log(message)
 
     def _check_stt_model_available(self):
-        """STT 단계 시작 전 모델 다운로드 여부 확인"""
-        if self.stt_engine != "whisper-cpp":
-            return
-        from src.audio_pipeline.model_manager import is_available, MODEL_REGISTRY
-        if not is_available(self.stt_model):
-            info = MODEL_REGISTRY.get(self.stt_model, {})
-            label = info.get("label", self.stt_model)
-            size = info.get("size_mb", "?")
-            raise FileNotFoundError(
-                f"'{label}' STT 모델이 다운로드되지 않았습니다. "
-                f"좌측 패널 > STT 설정에서 모델을 먼저 다운로드하세요. (약 {size}MB)"
-            )
+        """STT 단계 시작 전 모델 확인 (faster-whisper는 자동 다운로드)"""
+        pass
 
     def _run(self):
         """실제 처리 작업 실행"""
@@ -140,8 +156,12 @@ class ProcessingWorker:
             self._check_cancelled()
             self._execute_processing_pipeline()
 
-            self._emit_log(Messages.PROCESSING_COMPLETE)
-            self._on_finished(True, "작업이 성공적으로 완료되었습니다.")
+            if self._fail_count > 0:
+                self._emit_log(f"⚠️ 작업 완료 (일부 실패: {self._fail_count}건)")
+                self._on_finished(True, f"작업 완료 — {self._fail_count}건의 파일 처리에 실패했습니다. 로그를 확인하세요.")
+            else:
+                self._emit_log(Messages.PROCESSING_COMPLETE)
+                self._on_finished(True, "작업이 성공적으로 완료되었습니다.")
 
         except CancelledException:
             self._emit_log("⚠️ 사용자에 의해 작업이 취소되었습니다.")
@@ -342,6 +362,7 @@ class ProcessingWorker:
             except CancelledException:
                 raise
             except Exception as e:
+                self._fail_count += 1
                 self._emit_log(f"❌ WAV 변환 실패 ({Path(video_path).name}): {e}")
 
         return wav_paths
@@ -360,13 +381,14 @@ class ProcessingWorker:
                 audio_pipeline.downloads_dir = str(Path(wav_path).parent)
                 self._emit_log(f"({i}/{len(wav_paths)}) 텍스트 변환 중: {Path(wav_path).name}")
 
-                text_path = audio_pipeline.transcribe(wav_path, remove_wav=True)
+                text_path = self._interruptible(audio_pipeline.transcribe, wav_path, remove_wav=True)
                 text_paths.append(text_path)
                 self._emit_log(f"{Messages.CONVERSION_COMPLETE}: {text_path}")
 
             except CancelledException:
                 raise
             except Exception as e:
+                self._fail_count += 1
                 self._emit_log(f"{Messages.CONVERSION_FAILED} ({Path(wav_path).name}): {e}")
 
         if text_paths:
@@ -408,13 +430,14 @@ class ProcessingWorker:
                 if is_clipboard:
                     self._write_chatbot_text(text_path)
 
-                summary_path = summarize_pipeline.process(text_path)
+                summary_path = self._interruptible(summarize_pipeline.process, text_path)
                 summary_paths.append(summary_path)
                 self._emit_log(f"{Messages.SUMMARY_COMPLETE}: {summary_path}")
 
             except CancelledException:
                 raise
             except Exception as e:
+                self._fail_count += 1
                 self._emit_log(f"{Messages.SUMMARY_FAILED} ({Path(text_path).name}): {e}")
 
         return summary_paths

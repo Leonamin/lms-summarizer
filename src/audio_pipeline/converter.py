@@ -7,6 +7,8 @@ def convert_mp4_to_wav(mp4_path: str, wav_path: str, sample_rate: int = 16000):
     if not os.path.exists(mp4_path):
         raise FileNotFoundError(f"입력 파일이 존재하지 않음: {mp4_path}")
 
+    os.makedirs(os.path.dirname(wav_path), exist_ok=True)
+
     try:
         input_container = av.open(mp4_path)
         output_container = av.open(wav_path, mode='w')

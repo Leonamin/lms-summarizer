@@ -21,15 +21,13 @@ def clean_transcript(text: str, repeat_threshold: int = 4) -> str:
     return re.sub(pattern, r'\1', text)
 
 
-def transcribe_audio_to_text(audio_path: str, txt_path: str, engine="whisper-cpp", model_name="base", params=None, on_log=None):
+def transcribe_audio_to_text(audio_path: str, txt_path: str, engine="faster-whisper", model_name="large-v3-turbo", params=None, on_log=None):
     """오디오/비디오 파일을 텍스트로 변환"""
     _log = on_log or (lambda msg: None)
     params = dict(params or {})
     repeat_threshold = int(params.pop("repeat_threshold", 4))
 
-    if engine == "whisper-cpp":
-        transcriber = WhisperCppTranscriber(model_name=model_name, params=params, on_log=on_log)
-    elif engine == "faster-whisper":
+    if engine == "faster-whisper":
         device = params.pop("device", "auto")
         compute_type = params.pop("compute_type", "auto")
         transcriber = FasterWhisperTranscriber(
@@ -64,91 +62,6 @@ class Transcriber(ABC):
         pass
 
 
-class WhisperCppTranscriber(Transcriber):
-    def __init__(self, model_name="base", language="ko", params=None, on_log=None):
-        from pywhispercpp.model import Model
-        from src.audio_pipeline.model_manager import resolve_for_transcriber
-        import sys
-
-        self._language = language
-        self._on_log = on_log or (lambda msg: None)
-        # suppress_non_speech_tokens, repeat_threshold은 pywhispercpp C 바인딩에서 미지원 → 제거
-        _exclude = {"suppress_non_speech_tokens", "repeat_threshold"}
-        sanitized = {k: v for k, v in (params or {}).items() if k not in _exclude}
-        self._params = sanitized
-        load_start = time.time()
-
-        # .app 번들 내부의 모델 확인
-        if getattr(sys, 'frozen', False):
-            model_path = os.path.join(sys._MEIPASS, 'whisper_models', f'ggml-{model_name}.bin')
-            if os.path.exists(model_path):
-                print(f"[INFO] 번들된 whisper.cpp 모델 사용: {model_path}")
-                self.model = Model(model_path)
-                self.model_load_sec = time.time() - load_start
-                print(f"[INFO] 모델 로드 시간: {self.model_load_sec:.1f}초")
-                return
-
-        # model_key → (custom_path, builtin_name) 결정
-        custom_path, builtin_name = resolve_for_transcriber(model_name)
-        if custom_path:
-            print(f"[INFO] 커스텀 whisper.cpp 모델 로드: {os.path.basename(custom_path)}")
-            self.model = Model(custom_path)
-        else:
-            print(f"[INFO] whisper.cpp 내장 모델 로드: {builtin_name}")
-            self.model = Model(builtin_name)
-
-        self.model_load_sec = time.time() - load_start
-        print(f"[INFO] 모델 로드 시간: {self.model_load_sec:.1f}초")
-
-    def transcribe(self, audio_path: str, txt_path: str):
-        import os
-        import re
-        import threading
-
-        # C 라이브러리의 stdout(fd 1)을 파이프로 리다이렉트해 Progress: N% 파싱
-        old_fd = os.dup(1)
-        r_fd, w_fd = os.pipe()
-        os.dup2(w_fd, 1)
-        os.close(w_fd)
-
-        last_pct = [-1]
-
-        def _read_stdout():
-            try:
-                with os.fdopen(r_fd, "r", encoding="utf-8", errors="replace") as pipe:
-                    for line in pipe:
-                        m = re.search(r"Progress:\s*(\d+)%", line)
-                        if m:
-                            pct = int(m.group(1))
-                            if pct != last_pct[0] and pct % 10 == 0:
-                                last_pct[0] = pct
-                                self._on_log(f"  STT 진행: {pct}%")
-            except Exception:
-                pass
-
-        reader = threading.Thread(target=_read_stdout, daemon=True)
-        reader.start()
-
-        try:
-            transcribe_start = time.time()
-            segments = self.model.transcribe(audio_path, language=self._language, **self._params)
-            text = " ".join(segment.text.strip() for segment in segments if segment.text.strip())
-            with open(txt_path, "w", encoding="utf-8") as f:
-                f.write(text)
-            self.last_transcribe_sec = time.time() - transcribe_start
-        except Exception as e:
-            raise e
-        finally:
-            # 파이프 닫기 → reader 스레드 종료
-            os.dup2(old_fd, 1)
-            os.close(old_fd)
-            reader.join(timeout=5)
-
-        self._on_log(f"[whisper.cpp] 변환 완료: {txt_path}")
-        self._on_log(f"[whisper.cpp] STT 소요 시간: {self.last_transcribe_sec:.1f}초")
-        if self._params:
-            self._on_log(f"[whisper.cpp] 적용된 파라미터: {self._params}")
-
 
 class FasterWhisperTranscriber(Transcriber):
     def __init__(self, model_name="large-v3-turbo", device="auto", compute_type="auto", params=None, on_log=None):
@@ -158,11 +71,62 @@ class FasterWhisperTranscriber(Transcriber):
         self._initial_prompt = (params or {}).get("initial_prompt", "한국어 강의입니다.")
         self._vad_filter = bool((params or {}).get("vad_filter", True))
 
-        self._on_log(f"[faster-whisper] 모델 로드 중: {model_name} (device={device})")
+        resolved_device, resolved_compute = self._resolve_device(device, compute_type, self._on_log)
+        self._on_log(f"[faster-whisper] 모델 로드 중: {model_name} (device={resolved_device}, compute_type={resolved_compute})")
+        self._on_log("[faster-whisper] 첫 실행이면 모델 다운로드가 자동으로 진행됩니다. 잠시 기다려주세요...")
         load_start = time.time()
-        self.model = WhisperModel(model_name, device=device, compute_type=compute_type)
+
+        try:
+            self.model = WhisperModel(model_name, device=resolved_device, compute_type=resolved_compute)
+        except Exception as e:
+            if resolved_device != "cpu":
+                self._on_log(f"⚠️ GPU 초기화 실패: {e}")
+                self._on_log("[faster-whisper] CPU 모드로 전환합니다...")
+                resolved_device = "cpu"
+                resolved_compute = "int8"
+                self.model = WhisperModel(model_name, device="cpu", compute_type="int8")
+            else:
+                raise
+
         self.model_load_sec = time.time() - load_start
-        self._on_log(f"[faster-whisper] 모델 로드: {self.model_load_sec:.1f}초")
+        self._on_log(f"[faster-whisper] 모델 로드 완료: {self.model_load_sec:.1f}초 (device={resolved_device})")
+
+    @staticmethod
+    def _resolve_device(device: str, compute_type: str, on_log=None) -> tuple:
+        """device='auto'일 때 CUDA 가용 여부를 판단하여 실제 디바이스를 결정.
+
+        faster-whisper(CTranslate2)는 CUDA(NVIDIA)만 GPU 가속을 지원함.
+        Apple Silicon(M1~M5), Intel Arc, AMD 내장 GPU는 CUDA 미지원 → CPU 폴백.
+        """
+        _log = on_log or print
+
+        if device != "auto":
+            return device, compute_type
+
+        try:
+            import torch
+            if torch.cuda.is_available():
+                gpu_name = torch.cuda.get_device_name(0)
+                _log(f"[faster-whisper] CUDA GPU 감지: {gpu_name}")
+                return "cuda", compute_type if compute_type != "auto" else "float16"
+        except ImportError:
+            pass
+
+        # ctranslate2 자체 CUDA 감지 시도
+        try:
+            import ctranslate2
+            if "cuda" in ctranslate2.get_supported_compute_types("cuda"):
+                return "cuda", compute_type if compute_type != "auto" else "float16"
+        except Exception:
+            pass
+
+        import sys
+        if sys.platform == "darwin":
+            _log("[faster-whisper] macOS 감지 — Apple Silicon은 CUDA 미지원, CPU 모드 사용")
+        else:
+            _log("[faster-whisper] CUDA GPU 미감지 — CPU 모드 사용")
+
+        return "cpu", compute_type if compute_type != "auto" else "int8"
 
     def transcribe(self, audio_path: str, txt_path: str):
         transcribe_start = time.time()

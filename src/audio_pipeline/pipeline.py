@@ -6,7 +6,7 @@ from src.audio_pipeline.transcriber import transcribe_audio_to_text
 
 
 class AudioToTextPipeline:
-    def __init__(self, sample_rate=16000, engine="whisper-cpp", model_name="base", stt_params=None, on_log=None):
+    def __init__(self, sample_rate=16000, engine="faster-whisper", model_name="large-v3-turbo", stt_params=None, on_log=None):
         self.sample_rate = sample_rate
         self.engine = engine
         self.model_name = model_name
@@ -20,6 +20,7 @@ class AudioToTextPipeline:
 
         filename = Path(mp4_path).stem
         wav_path = os.path.join(self.downloads_dir, f"{filename}.wav")
+        os.makedirs(self.downloads_dir, exist_ok=True)
 
         print(f"[INFO] WAV 변환 시작: {mp4_path}")
         start_time = time.time()
@@ -27,18 +28,25 @@ class AudioToTextPipeline:
         elapsed = time.time() - start_time
         print(f"[DONE] WAV 변환 완료: {wav_path} ({elapsed:.1f}초)")
 
+        if not os.path.exists(wav_path):
+            raise RuntimeError(f"WAV 파일 생성 실패: {wav_path}")
+
         return wav_path
 
     def transcribe(self, wav_path: str, remove_wav: bool = True) -> str:
         """WAV 파일을 텍스트로 변환하고 텍스트 파일 경로를 반환"""
         filename = Path(wav_path).stem
         txt_path = os.path.join(self.downloads_dir, f"{filename}.txt")
+        os.makedirs(self.downloads_dir, exist_ok=True)
 
         print(f"[INFO] STT 변환 시작: {wav_path}")
         start_time = time.time()
         transcribe_audio_to_text(wav_path, txt_path, engine=self.engine, model_name=self.model_name, params=self.stt_params, on_log=self.on_log)
         elapsed = time.time() - start_time
         print(f"[DONE] 텍스트 저장 완료: {txt_path} ({elapsed:.1f}초)")
+
+        if not os.path.exists(txt_path):
+            raise RuntimeError(f"텍스트 파일 생성 실패: {txt_path}")
 
         if remove_wav:
             os.remove(wav_path)
