@@ -37,6 +37,12 @@ depends_on: []
 
 ## 체크리스트
 
-- [ ] 방안 결정 (A: 제거 / B: 경고)
-- [ ] model_manager.py 수정
-- [ ] stt_settings.py UI 반영
+- [x] 방안 결정 (A: 제거 / B: 경고) → A. 제거 선택
+- [x] model_manager.py 수정 — distil-large-v3 제거, small(461MB) 경량 모델로 교체
+- [x] stt_settings.py UI 반영 — 동적 렌더링으로 자동 반영
+
+## 결과
+
+- distil-large-v3 제거됨 (한국어 미지원, 속도 이점 없음)
+- `small`(461MB) 경량 모델 추가 — 저사양/CPU 환경용
+- 모델 체계: 표준(large-v3-turbo) → 경량(small) → 고정밀(large-v3)

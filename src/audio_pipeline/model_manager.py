@@ -14,25 +14,25 @@ FW_MODEL_REGISTRY: dict[str, dict] = {
         "source": "hf_auto",
         "hf_model": "large-v3-turbo",
     },
-    "distil-large-v3": {
-        "label": "고속 모드",
-        "emoji": "⚡",
-        "description": "2~3배 빠른 인식, 정확도 거의 동일",
-        "size_mb": 760,
+    "small": {
+        "label": "경량 모드",
+        "emoji": "🪶",
+        "description": "빠른 인식, 저사양/CPU 환경에 적합 (461MB)",
+        "size_mb": 461,
         "source": "hf_auto",
-        "hf_model": "distil-large-v3",
+        "hf_model": "small",
     },
     "large-v3": {
         "label": "고정밀 모드",
         "emoji": "💎",
-        "description": "최고 정확도 (속도 느림)",
+        "description": "최고 정확도 (속도 느림, 3.1GB)",
         "size_mb": 3100,
         "source": "hf_auto",
         "hf_model": "large-v3",
     },
 }
 
-FW_MODE_ORDER = ["large-v3-turbo", "distil-large-v3", "large-v3"]
+FW_MODE_ORDER = ["large-v3-turbo", "small", "large-v3"]
 
 
 def is_available(model_key: str, engine: str = "faster-whisper") -> bool:
