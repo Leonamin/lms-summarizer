@@ -1,3 +1,12 @@
+"""
+⚠️ DEPRECATED: 이 모듈은 새 Provider 시스템(src/summarize_pipeline/providers/)으로 대체되었습니다.
+- OpenAISummarizer → providers/openai_provider.py (OpenAIProvider)
+- GeminiSummarizer → providers/gemini_provider.py (GeminiProvider)
+- ChatGPTSummarizer → providers/clipboard_provider.py (ClipboardProvider)
+- summarize_text() → providers/__init__.py (create_provider()) + pipeline.py (SummarizePipeline)
+
+이 파일은 하위 호환성을 위해 유지되며, 향후 버전에서 제거될 예정입니다.
+"""
 from abc import ABC, abstractmethod
 import webbrowser
 from openai import OpenAI
