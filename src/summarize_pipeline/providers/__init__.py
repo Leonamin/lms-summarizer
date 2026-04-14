@@ -10,6 +10,8 @@ from .openai_provider import OpenAIProvider
 from .claude_provider import ClaudeProvider
 from .grok_provider import GrokProvider
 from .clipboard_provider import ClipboardProvider
+from .ollama_provider import OllamaProvider
+from .custom_provider import CustomProvider
 
 # 엔진 이름 → Provider 클래스 매핑
 ENGINE_REGISTRY: dict[str, type[AIProvider]] = {
@@ -17,6 +19,8 @@ ENGINE_REGISTRY: dict[str, type[AIProvider]] = {
     "openai": OpenAIProvider,
     "claude": ClaudeProvider,
     "grok": GrokProvider,
+    "ollama": OllamaProvider,
+    "custom": CustomProvider,
 }
 
 # 엔진 이름 → API 키 설정 필드명 매핑
@@ -25,6 +29,7 @@ ENGINE_API_KEY_MAP: dict[str, str] = {
     "openai": "OPENAI_API_KEY",
     "claude": "ANTHROPIC_API_KEY",
     "grok": "XAI_API_KEY",
+    # ollama, custom: API 키 불필요
 }
 
 
@@ -32,8 +37,8 @@ def create_provider(engine: str, api_key: str = None, model_name: str = None) ->
     """엔진 이름으로 Provider 인스턴스를 생성하는 팩토리 함수
 
     Args:
-        engine: 엔진 이름 ("gemini", "openai", "claude", "grok", "clipboard")
-        api_key: API 키 (clipboard 모드에서는 불필요)
+        engine: 엔진 이름 ("gemini", "openai", "claude", "grok", "ollama", "custom", "clipboard")
+        api_key: API 키 (clipboard, ollama 모드에서는 불필요)
         model_name: 모델명 (None이면 기본 모델 사용)
 
     Returns:
@@ -56,6 +61,8 @@ __all__ = [
     "ClaudeProvider",
     "GrokProvider",
     "ClipboardProvider",
+    "OllamaProvider",
+    "CustomProvider",
     "ENGINE_REGISTRY",
     "ENGINE_API_KEY_MAP",
     "create_provider",

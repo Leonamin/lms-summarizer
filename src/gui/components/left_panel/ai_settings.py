@@ -16,6 +16,8 @@ _ENGINE_LABELS = {
     "openai": "OpenAI API 키",
     "claude": "Anthropic API 키",
     "grok": "xAI API 키",
+    "ollama": "API 키 (불필요)",
+    "custom": "API 키 (선택사항)",
     "clipboard": "API 키 (불필요)",
 }
 
@@ -41,6 +43,21 @@ class AISettingsSection:
             visible=False,
             bgcolor="#FFFBEB",  # amber-50
             border=ft.border.all(1, "#FDE68A"),  # amber-200
+            border_radius=Radius.MD,
+            padding=ft.padding.symmetric(horizontal=12, vertical=8),
+        )
+
+        # Ollama 모드 안내
+        self._ollama_notice = ft.Container(
+            content=ft.Text(
+                "로컬 LLM (Ollama)을 사용합니다. Ollama가 실행 중이어야 합니다.\n"
+                "설치: ollama.com → 모델 다운로드 후 서버 실행",
+                size=Typography.SMALL,
+                color="#1D4ED8",
+            ),
+            visible=False,
+            bgcolor="#EFF6FF",
+            border=ft.border.all(1, "#BFDBFE"),
             border_radius=Radius.MD,
             padding=ft.padding.symmetric(horizontal=12, vertical=8),
         )
@@ -80,6 +97,7 @@ class AISettingsSection:
                 self._model_selector.control,
                 self._api_field.container,
                 self._clipboard_notice,
+                self._ollama_notice,
             ],
             spacing=Spacing.SM,
             horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
@@ -97,7 +115,8 @@ class AISettingsSection:
         model = self._model_selector.get_model()
         engine_label = {
             "gemini": "Gemini", "openai": "OpenAI", "claude": "Claude",
-            "grok": "Grok", "clipboard": "클립보드",
+            "grok": "Grok", "ollama": "Ollama", "custom": "Custom",
+            "clipboard": "클립보드",
         }.get(engine, engine)
         if engine == "clipboard":
             key_status = "API 불필요"
@@ -123,8 +142,10 @@ class AISettingsSection:
         new_label = _ENGINE_LABELS.get(engine, "AI API 키")
         self._api_field.control.label = new_label
         is_clipboard = engine == "clipboard"
-        self._api_field.set_enabled(not is_clipboard)
+        is_no_key = engine in ("clipboard", "ollama")
+        self._api_field.set_enabled(not is_no_key)
         self._clipboard_notice.visible = is_clipboard
+        self._ollama_notice.visible = (engine == "ollama")
 
         # 엔진별 저장된 API 키 복원 (없으면 필드 비움)
         if not is_clipboard:
@@ -135,6 +156,8 @@ class AISettingsSection:
             self._api_field.control.update()
         if self._clipboard_notice.page:
             self._clipboard_notice.update()
+        if self._ollama_notice.page:
+            self._ollama_notice.update()
 
         if self._external_engine_cb:
             self._external_engine_cb(engine)
@@ -167,7 +190,7 @@ class AISettingsSection:
 
     def set_enabled(self, enabled: bool):
         self._model_selector.set_enabled(enabled)
-        if self.get_engine() != "clipboard":
+        if self.get_engine() not in ("clipboard", "ollama"):
             self._api_field.set_enabled(enabled)
 
     def clear(self):

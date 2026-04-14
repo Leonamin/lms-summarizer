@@ -9,7 +9,7 @@
 ## 설계 의도
 
 - **GUI 중심 개발**: CLI(`src/main.py`)는 폐기 예정. 단, 각 파이프라인 모듈은 독립 실행/테스트 가능하도록 추상화를 유지한다.
-- **기본 엔진**: STT는 faster-whisper(CTranslate2 기반), 요약은 Gemini. 나머지(ReturnZero, OpenAI, ChatGPT)는 대안 옵션이다. 모델은 표준(`large-v3-turbo`), 고속(`distil-large-v3`) 두 가지.
+- **기본 엔진**: STT는 faster-whisper(CTranslate2 기반), 요약은 Gemini. 나머지(OpenAI, Claude, Grok, Ollama, Custom, Clipboard)는 대안 옵션이다. Ollama는 로컬 LLM으로 API 키 불필요. Custom은 임의 OpenAI 호환 엔드포인트 지원.
 - **ChatGPTSummarizer**: API 호출이 아니라 클립보드 복사 + 브라우저 열기 방식이다. 의도된 동작이다.
 - **Python >=3.11,<3.13**: `.python-version`에 `3.11`로 설정되어 있고 uv가 자동 관리한다.
 
