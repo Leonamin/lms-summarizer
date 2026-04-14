@@ -34,6 +34,9 @@ def transcribe_audio_to_text(audio_path: str, txt_path: str, engine="faster-whis
             model_name=model_name, device=device, compute_type=compute_type,
             params=params, on_log=on_log,
         )
+    elif engine == "openai-whisper":
+        api_key = params.pop("api_key", None)
+        transcriber = OpenAIWhisperTranscriber(api_key=api_key, on_log=on_log)
     elif engine == "returnzero":
         transcriber = ReturnZeroTranscriber()
     else:
@@ -151,6 +154,39 @@ class FasterWhisperTranscriber(Transcriber):
         self._on_log(f"[faster-whisper] 변환 완료: {txt_path}")
         self._on_log(f"[faster-whisper] 소요 시간: {elapsed:.1f}초")
         self._on_log(f"[faster-whisper] 감지 언어: {info.language} ({info.language_probability:.0%})")
+
+
+class OpenAIWhisperTranscriber(Transcriber):
+    """OpenAI Whisper API 기반 클라우드 STT (로컬 모델 다운로드 불필요)"""
+
+    def __init__(self, api_key: str = None, on_log=None):
+        from openai import OpenAI
+        self._on_log = on_log or (lambda msg: None)
+        if not api_key:
+            raise ValueError("OpenAI Whisper API 키가 필요합니다.")
+        self.client = OpenAI(api_key=api_key)
+        self._on_log("[openai-whisper] 클라우드 STT 엔진 초기화 완료")
+
+    def transcribe(self, audio_path: str, txt_path: str):
+        self._on_log(f"[openai-whisper] 클라우드 STT 시작: {audio_path}")
+        transcribe_start = time.time()
+
+        with open(audio_path, "rb") as audio_file:
+            response = self.client.audio.transcriptions.create(
+                model="whisper-1",
+                file=audio_file,
+                language="ko",
+                response_format="text",
+            )
+
+        text = response if isinstance(response, str) else response.text
+
+        with open(txt_path, "w", encoding="utf-8") as f:
+            f.write(text)
+
+        elapsed = time.time() - transcribe_start
+        self._on_log(f"[openai-whisper] 변환 완료: {txt_path}")
+        self._on_log(f"[openai-whisper] 소요 시간: {elapsed:.1f}초")
 
 
 class ReturnZeroTranscriber(Transcriber):

@@ -14,6 +14,7 @@ from src.gui.core.file_manager import (
 
 _STT_ENGINE_OPTIONS = [
     ("faster-whisper", "faster-whisper (로컬, GPU 지원)"),
+    ("openai-whisper", "OpenAI Whisper API (클라우드, $0.006/분)"),
     ("returnzero", "ReturnZero API (유료)"),
 ]
 
@@ -168,6 +169,37 @@ class STTSettingsSection:
             tooltip="ReturnZero API 키를 client_id:client_secret 형식으로 입력하세요",
         )
 
+        # ── OpenAI Whisper API 키 ──────────────────────────
+        self._openai_stt_key_field = ft.TextField(
+            value=get_stt_api_key(engine="openai-whisper"),
+            hint_text="sk-...",
+            border_radius=Radius.SM, border_color=Colors.BORDER,
+            focused_border_color=Colors.PRIMARY, text_size=Typography.BODY,
+            label="OpenAI API 키",
+            label_style=ft.TextStyle(size=Typography.CAPTION, color=Colors.TEXT_SECONDARY),
+            prefix_icon=ft.Icons.KEY,
+            visible=(current_stt == "openai-whisper"),
+            dense=True,
+            password=True,
+            can_reveal_password=True,
+            tooltip="OpenAI Whisper API에 사용할 API 키를 입력하세요",
+        )
+
+        # ── OpenAI Whisper 안내 ────────────────────────────
+        self._openai_whisper_notice = ft.Container(
+            content=ft.Text(
+                "클라우드 STT — 로컬 모델 다운로드 없이 빠른 음성 인식\n"
+                "요금: $0.006/분 (OpenAI 계정 필요)",
+                size=Typography.SMALL,
+                color="#1D4ED8",
+            ),
+            bgcolor="#EFF6FF",
+            border=ft.border.all(1, "#BFDBFE"),
+            border_radius=Radius.SM,
+            padding=ft.padding.symmetric(horizontal=10, vertical=6),
+            visible=(current_stt == "openai-whisper"),
+        )
+
         # ── 엔진 드롭다운 ──────────────────────────────────
         self._engine_dd = ft.Dropdown(
             options=[ft.dropdown.Option(key=k, text=t) for k, t in _STT_ENGINE_OPTIONS],
@@ -197,6 +229,8 @@ class STTSettingsSection:
             controls=[
                 self._engine_dd,
                 self._fw_section,
+                self._openai_whisper_notice,
+                self._openai_stt_key_field,
                 self._rtzr_api_field,
                 self._save_btn,
             ],
@@ -216,6 +250,8 @@ class STTSettingsSection:
         engine = get_stt_engine()
         if engine == "returnzero":
             return "ReturnZero API"
+        if engine == "openai-whisper":
+            return "OpenAI Whisper API (클라우드)"
         model = get_stt_model()
         from src.audio_pipeline.model_manager import FW_MODEL_REGISTRY
         info = FW_MODEL_REGISTRY.get(model)
@@ -274,8 +310,12 @@ class STTSettingsSection:
         engine = self._engine_dd.value or "faster-whisper"
         self._fw_section.visible = (engine == "faster-whisper")
         self._rtzr_api_field.visible = (engine == "returnzero")
+        self._openai_stt_key_field.visible = (engine == "openai-whisper")
+        self._openai_whisper_notice.visible = (engine == "openai-whisper")
         self._fw_section.update()
         self._rtzr_api_field.update()
+        self._openai_stt_key_field.update()
+        self._openai_whisper_notice.update()
         self._summary.value = self._get_summary_text()
         try:
             if self._summary.page:
@@ -288,6 +328,12 @@ class STTSettingsSection:
         set_stt_engine(engine)
         if engine == "returnzero":
             set_stt_api_key((self._rtzr_api_field.value or "").strip())
+        elif engine == "openai-whisper":
+            set_stt_api_key((self._openai_stt_key_field.value or "").strip(), engine="openai-whisper")
+            # openai-whisper STT 파라미터에 API 키 전달
+            params = get_stt_params()
+            params["api_key"] = (self._openai_stt_key_field.value or "").strip()
+            set_stt_params(params)
         elif engine == "faster-whisper":
             set_stt_model(self._fw_selected_mode[0])
             try:
