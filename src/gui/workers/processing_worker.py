@@ -372,6 +372,10 @@ class ProcessingWorker:
         self._emit_log(Messages.AUDIO_CONVERTING)
 
         audio_pipeline = self.modules['AudioToTextPipeline'](engine=self.stt_engine, model_name=self.stt_model, stt_params=self.stt_params, on_log=self._emit_log)
+        # OpenAI Whisper 클라우드 STT인 경우 API 키를 파라미터에 주입
+        if self.stt_engine == "openai-whisper":
+            from src.gui.core.file_manager import get_stt_api_key
+            self.stt_params["api_key"] = get_stt_api_key(engine="openai-whisper")
         self._emit_log(f"STT 엔진: {self.stt_engine} / 모델: {self.stt_model}")
         text_paths = []
 

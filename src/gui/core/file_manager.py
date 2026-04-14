@@ -327,15 +327,23 @@ def set_stt_params(params: dict) -> None:
     save_settings(settings)
 
 
-def get_stt_api_key() -> str:
-    """ReturnZero STT API 키(client_id:client_secret 형식) 반환"""
-    return load_settings().get("stt_api_key", "")
-
-
-def set_stt_api_key(api_key: str) -> None:
-    """ReturnZero STT API 키를 settings.json에 저장"""
+def get_stt_api_key(engine: str = None) -> str:
+    """STT API 키 반환. engine 지정 시 해당 엔진별 키, 미지정 시 ReturnZero 호환."""
     settings = load_settings()
-    settings["stt_api_key"] = api_key
+    if engine:
+        return settings.get("stt_api_keys", {}).get(engine, "")
+    return settings.get("stt_api_key", "")
+
+
+def set_stt_api_key(api_key: str, engine: str = None) -> None:
+    """STT API 키를 settings.json에 저장. engine 지정 시 엔진별 저장."""
+    settings = load_settings()
+    if engine:
+        keys = settings.get("stt_api_keys", {})
+        keys[engine] = api_key
+        settings["stt_api_keys"] = keys
+    else:
+        settings["stt_api_key"] = api_key
     save_settings(settings)
 
 
