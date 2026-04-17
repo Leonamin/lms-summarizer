@@ -36,6 +36,15 @@ datas = [
 if certifi_cacert:
     datas.append((certifi_cacert, "certifi"))
 
+# faster_whisper VAD(silero) ONNX 모델 포함
+try:
+    import faster_whisper
+    fw_assets = os.path.join(os.path.dirname(faster_whisper.__file__), "assets")
+    if os.path.isdir(fw_assets):
+        datas.append((fw_assets, "faster_whisper/assets"))
+except ImportError:
+    pass
+
 binaries = []
 
 a = Analysis(

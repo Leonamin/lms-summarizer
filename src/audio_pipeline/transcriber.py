@@ -1,5 +1,7 @@
 import json
 import re
+import subprocess
+import sys
 import time
 from abc import ABC, abstractmethod
 import os
@@ -21,24 +23,49 @@ def clean_transcript(text: str, repeat_threshold: int = 4) -> str:
     return re.sub(pattern, r'\1', text)
 
 
-def transcribe_audio_to_text(audio_path: str, txt_path: str, engine="faster-whisper", model_name="large-v3-turbo", params=None, on_log=None):
-    """오디오/비디오 파일을 텍스트로 변환"""
+def transcribe_audio_to_text(
+    audio_path: str,
+    txt_path: str,
+    engine="faster-whisper",
+    model_name="large-v3-turbo",
+    params=None,
+    on_log=None,
+    _reuse_transcriber=None,
+):
+    """오디오/비디오 파일을 텍스트로 변환.
+
+    Args:
+        _reuse_transcriber: 이전 호출에서 반환된 Transcriber 인스턴스.
+            전달하면 모델 재로드를 생략하여 성능이 크게 향상됩니다.
+
+    Returns:
+        사용된 Transcriber 인스턴스 (다음 호출 시 _reuse_transcriber로 전달)
+    """
     _log = on_log or (lambda msg: None)
     params = dict(params or {})
     repeat_threshold = int(params.pop("repeat_threshold", 4))
 
     if engine == "faster-whisper":
-        device = params.pop("device", "auto")
-        compute_type = params.pop("compute_type", "auto")
-        transcriber = FasterWhisperTranscriber(
-            model_name=model_name, device=device, compute_type=compute_type,
-            params=params, on_log=on_log,
-        )
+        if _reuse_transcriber is not None:
+            transcriber = _reuse_transcriber
+        else:
+            device = params.pop("device", "auto")
+            compute_type = params.pop("compute_type", "auto")
+            transcriber = FasterWhisperTranscriber(
+                model_name=model_name, device=device, compute_type=compute_type,
+                params=params, on_log=on_log,
+            )
     elif engine == "openai-whisper":
-        api_key = params.pop("api_key", None)
-        transcriber = OpenAIWhisperTranscriber(api_key=api_key, on_log=on_log)
+        if _reuse_transcriber is not None:
+            transcriber = _reuse_transcriber
+        else:
+            api_key = params.pop("api_key", None)
+            transcriber = OpenAIWhisperTranscriber(api_key=api_key, on_log=on_log)
     elif engine == "returnzero":
-        transcriber = ReturnZeroTranscriber()
+        if _reuse_transcriber is not None:
+            transcriber = _reuse_transcriber
+        else:
+            transcriber = ReturnZeroTranscriber()
     else:
         raise ValueError("지원하지 않는 엔진입니다")
 
@@ -53,6 +80,8 @@ def transcribe_audio_to_text(audio_path: str, txt_path: str, engine="faster-whis
             with open(txt_path, "w", encoding="utf-8") as f:
                 f.write(cleaned)
             _log(f"[후처리] 반복 구문 제거 완료 (임계값: {repeat_threshold}회)")
+
+    return transcriber
 
 
 # 하위 호환성 유지
@@ -73,6 +102,17 @@ class FasterWhisperTranscriber(Transcriber):
         self._language = (params or {}).get("language", "ko")
         self._initial_prompt = (params or {}).get("initial_prompt", "한국어 강의입니다.")
         self._vad_filter = bool((params or {}).get("vad_filter", True))
+
+        # VAD(silero) ONNX 파일 가용성 확인 — PyInstaller 빌드 환경에서 누락 가능
+        if self._vad_filter:
+            vad_available = self._check_vad_available()
+            if not vad_available:
+                self._vad_filter = False
+                self._on_log(
+                    "⚠️ [faster-whisper] silero VAD 모델 파일 없음 — VAD 필터 비활성화됨\n"
+                    "   (음성 구간 탐지가 꺼져서 전체 구간을 처리하므로 속도가 느려질 수 있습니다)\n"
+                    "   PyInstaller 빌드 시 faster_whisper/assets/ 디렉토리를 포함하면 VAD가 활성화됩니다."
+                )
 
         resolved_device, resolved_compute = self._resolve_device(device, compute_type, self._on_log)
         self._on_log(f"[faster-whisper] 모델 로드 중: {model_name} (device={resolved_device}, compute_type={resolved_compute})")
@@ -95,35 +135,76 @@ class FasterWhisperTranscriber(Transcriber):
         self._on_log(f"[faster-whisper] 모델 로드 완료: {self.model_load_sec:.1f}초 (device={resolved_device})")
 
     @staticmethod
+    def _check_vad_available() -> bool:
+        """silero VAD ONNX 모델 파일이 존재하는지 확인.
+
+        PyInstaller 빌드 환경에서 faster_whisper/assets/ 디렉토리가 누락될 수 있어
+        VAD 활성화 전에 파일 존재 여부를 검사합니다.
+        """
+        try:
+            import faster_whisper
+            assets_dir = os.path.join(os.path.dirname(faster_whisper.__file__), "assets")
+            silero_path = os.path.join(assets_dir, "silero_vad_v6.onnx")
+            return os.path.isfile(silero_path)
+        except Exception:
+            return False
+
+    @staticmethod
     def _resolve_device(device: str, compute_type: str, on_log=None) -> tuple:
         """device='auto'일 때 CUDA 가용 여부를 판단하여 실제 디바이스를 결정.
 
         faster-whisper(CTranslate2)는 CUDA(NVIDIA)만 GPU 가속을 지원함.
         Apple Silicon(M1~M5), Intel Arc, AMD 내장 GPU는 CUDA 미지원 → CPU 폴백.
+
+        감지 우선순위:
+        1. ctranslate2 내장 CUDA 지원 확인 (가장 신뢰도 높음)
+        2. torch.cuda.is_available() (torch 설치 시)
+        3. nvidia-smi 시스템 명령 (드라이버만 있어도 감지)
         """
         _log = on_log or print
 
         if device != "auto":
             return device, compute_type
 
+        # 1. ctranslate2 자체 CUDA 감지 (가장 신뢰도 높음 — 실제 사용 라이브러리)
+        try:
+            import ctranslate2
+            compute_types = ctranslate2.get_supported_compute_types("cuda")
+            if compute_types:
+                gpu_info = f"CTranslate2 CUDA 지원 (types: {', '.join(compute_types)})"
+                _log(f"[faster-whisper] CUDA GPU 감지: {gpu_info}")
+                return "cuda", compute_type if compute_type != "auto" else "float16"
+        except (ValueError, RuntimeError):
+            # ctranslate2 CUDA 빌드가 아닌 경우 ValueError 발생
+            pass
+        except Exception as e:
+            _log(f"[faster-whisper] ctranslate2 CUDA 확인 중 예외 (무시): {e}")
+
+        # 2. PyTorch CUDA 감지 (torch 설치 시)
         try:
             import torch
             if torch.cuda.is_available():
                 gpu_name = torch.cuda.get_device_name(0)
-                _log(f"[faster-whisper] CUDA GPU 감지: {gpu_name}")
+                _log(f"[faster-whisper] CUDA GPU 감지 (torch): {gpu_name}")
                 return "cuda", compute_type if compute_type != "auto" else "float16"
         except ImportError:
             pass
 
-        # ctranslate2 자체 CUDA 감지 시도
+        # 3. nvidia-smi 시스템 명령 (드라이버 설치 여부만 확인)
         try:
-            import ctranslate2
-            if "cuda" in ctranslate2.get_supported_compute_types("cuda"):
-                return "cuda", compute_type if compute_type != "auto" else "float16"
-        except Exception:
+            result = subprocess.run(
+                ["nvidia-smi", "--query-gpu=name", "--format=csv,noheader"],
+                capture_output=True, text=True, timeout=5,
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                gpu_name = result.stdout.strip().split("\n")[0]
+                _log(f"[faster-whisper] NVIDIA GPU 감지 (nvidia-smi): {gpu_name}")
+                _log("[faster-whisper] ⚠️ ctranslate2/torch에서 CUDA를 감지하지 못했습니다.")
+                _log("[faster-whisper] CUDA Toolkit 또는 ctranslate2 CUDA 빌드 버전이 필요합니다.")
+                _log("[faster-whisper] → https://developer.nvidia.com/cuda-downloads 참조")
+        except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
             pass
 
-        import sys
         if sys.platform == "darwin":
             _log("[faster-whisper] macOS 감지 — Apple Silicon은 CUDA 미지원, CPU 모드 사용")
         else:

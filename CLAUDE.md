@@ -22,6 +22,8 @@
 
 - **패키지 매니저**: uv 사용. 의존성 추가는 `uv add`, 설치는 `uv sync`.
 - PyInstaller 빌드 시 faster-whisper(CTranslate2) + PyAV 포함. 모델은 런타임 다운로드이므로 번들 크기 감소.
+- PyInstaller 빌드에서 **torch는 excludes에 명시적 제외**됨 (~275MB 절감). 따라서 CUDA 감지는 `ctranslate2` 내장 API와 `nvidia-smi` 명령에 의존.
+- PyInstaller 빌드 시 `faster_whisper/assets/silero_vad_v6.onnx`를 datas에 포함해야 VAD 필터가 동작함 (미포함 시 VAD 자동 비활성화).
 - Chrome 경로가 Mac용(`/Applications/Google Chrome.app/...`)으로 하드코딩되어 있다. Windows 배포 시 경로 분기 필요.
 
 ## 커밋 메시지 컨벤션

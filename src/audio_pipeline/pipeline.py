@@ -13,18 +13,19 @@ class AudioToTextPipeline:
         self.stt_params = stt_params or {}
         self.on_log = on_log
         self.downloads_dir = None  # 다운로드 경로는 나중에 설정됨
+        self._cached_transcriber = None  # 모델 로드 캐싱 (다중 파일 처리 시 재사용)
 
-    def convert_to_wav(self, mp4_path: str) -> str:
-        """MP4 파일을 WAV로 변환하고 WAV 경로를 반환"""
-        from src.audio_pipeline.converter import convert_mp4_to_wav
+    def convert_to_wav(self, input_path: str) -> str:
+        """오디오/비디오 파일을 WAV로 변환하고 WAV 경로를 반환"""
+        from src.audio_pipeline.converter import convert_audio_to_wav
 
-        filename = Path(mp4_path).stem
+        filename = Path(input_path).stem
         wav_path = os.path.join(self.downloads_dir, f"{filename}.wav")
         os.makedirs(self.downloads_dir, exist_ok=True)
 
-        print(f"[INFO] WAV 변환 시작: {mp4_path}")
+        print(f"[INFO] WAV 변환 시작: {input_path}")
         start_time = time.time()
-        convert_mp4_to_wav(mp4_path, wav_path, self.sample_rate)
+        convert_audio_to_wav(input_path, wav_path, self.sample_rate)
         elapsed = time.time() - start_time
         print(f"[DONE] WAV 변환 완료: {wav_path} ({elapsed:.1f}초)")
 
@@ -41,7 +42,12 @@ class AudioToTextPipeline:
 
         print(f"[INFO] STT 변환 시작: {wav_path}")
         start_time = time.time()
-        transcribe_audio_to_text(wav_path, txt_path, engine=self.engine, model_name=self.model_name, params=self.stt_params, on_log=self.on_log)
+        self._cached_transcriber = transcribe_audio_to_text(
+            wav_path, txt_path,
+            engine=self.engine, model_name=self.model_name,
+            params=self.stt_params, on_log=self.on_log,
+            _reuse_transcriber=self._cached_transcriber,
+        )
         elapsed = time.time() - start_time
         print(f"[DONE] 텍스트 저장 완료: {txt_path} ({elapsed:.1f}초)")
 
@@ -54,15 +60,12 @@ class AudioToTextPipeline:
 
         return txt_path
 
-    def process(self, mp4_path: str, remove_wav: bool = True) -> str:
-        """MP4 → WAV → 텍스트 전체 파이프라인 (하위 호환성 유지)"""
-        if not mp4_path.endswith(".mp4"):
-            raise ValueError("mp4 파일만 처리 가능합니다.")
-
-        print(f"[INFO] 변환 시작: {mp4_path}")
+    def process(self, input_path: str, remove_wav: bool = True) -> str:
+        """오디오/비디오 → WAV → 텍스트 전체 파이프라인 (하위 호환성 유지)"""
+        print(f"[INFO] 변환 시작: {input_path}")
         start_time = time.time()
 
-        wav_path = self.convert_to_wav(mp4_path)
+        wav_path = self.convert_to_wav(input_path)
         txt_path = self.transcribe(wav_path, remove_wav=remove_wav)
 
         end_time = time.time()
