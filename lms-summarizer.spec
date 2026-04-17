@@ -16,7 +16,17 @@ import os
 from pathlib import Path
 
 APP_NAME = "LMS-Summarizer"
-APP_VERSION = "1.9.0"
+
+# pyproject.toml에서 버전 자동 읽기
+def _read_version():
+    try:
+        import tomllib
+        with open("pyproject.toml", "rb") as f:
+            return tomllib.load(f)["project"]["version"]
+    except Exception:
+        return "0.0.0"
+
+APP_VERSION = _read_version()
 
 # SSL 인증서 번들 경로 (PyInstaller에서 requests HTTPS 요청에 필요)
 def find_certifi_cacert():
@@ -32,6 +42,7 @@ certifi_cacert = find_certifi_cacert()
 datas = [
     ("src", "src"),
     ("assets", "assets"),
+    ("pyproject.toml", "."),  # 버전 정보 (src/__init__.py에서 읽음)
 ]
 if certifi_cacert:
     datas.append((certifi_cacert, "certifi"))
