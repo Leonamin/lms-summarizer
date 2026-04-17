@@ -1,5 +1,5 @@
 """
-AI 설정 섹션 - 엔진/모델 선택 + API 키 입력
+AI 설정 섹션 - 엔진/모델 선택 + API 키 입력 + 엔드포인트 URL
 """
 
 import flet as ft
@@ -8,7 +8,7 @@ from src.gui.theme import Colors, Typography, Spacing, Radius
 from src.gui.config.settings import INPUT_FIELD_CONFIGS
 from src.gui.components.input_field import InputField
 from src.gui.components.model_selector import EngineModelSelector
-from src.gui.core.file_manager import get_api_key_for_engine
+from src.gui.core.file_manager import get_api_key_for_engine, get_base_url_for_engine
 
 
 _ENGINE_LABELS = {
@@ -21,9 +21,12 @@ _ENGINE_LABELS = {
     "clipboard": "API 키 (불필요)",
 }
 
+# base_url 입력이 필요한 엔진
+_URL_ENGINES = {"ollama", "custom"}
+
 
 class AISettingsSection:
-    """AI 엔진 + 모델 + API 키 통합 섹션"""
+    """AI 엔진 + 모델 + API 키 + 엔드포인트 URL 통합 섹션"""
 
     def __init__(self, on_engine_change=None):
         self._external_engine_cb = on_engine_change
@@ -31,6 +34,21 @@ class AISettingsSection:
         self._api_field = InputField(INPUT_FIELD_CONFIGS['api_key'])
         self._model_selector = EngineModelSelector(
             on_engine_change=self._handle_engine_change,
+        )
+
+        # 엔드포인트 URL 입력 (Ollama / Custom 전용)
+        self._base_url_field = ft.TextField(
+            label="엔드포인트 URL",
+            hint_text="http://localhost:11434/v1",
+            prefix_icon=ft.Icons.LINK,
+            border_radius=Radius.SM,
+            border_color=Colors.BORDER,
+            focused_border_color=Colors.PRIMARY,
+            text_size=Typography.BODY,
+            label_style=ft.TextStyle(size=Typography.CAPTION, color=Colors.TEXT_SECONDARY),
+            tooltip="OpenAI 호환 API 엔드포인트 URL",
+            visible=False,
+            dense=True,
         )
 
         # 클립보드 모드 안내 (HTML: bg-amber-50 border-amber-200)
@@ -96,6 +114,7 @@ class AISettingsSection:
             controls=[
                 self._model_selector.control,
                 self._api_field.container,
+                self._base_url_field,
                 self._clipboard_notice,
                 self._ollama_notice,
             ],
@@ -138,7 +157,7 @@ class AISettingsSection:
         self._chevron.update()
 
     def _handle_engine_change(self, engine: str):
-        """엔진 변경 시 API 키 라벨/활성 상태 업데이트"""
+        """엔진 변경 시 API 키 라벨/활성 상태 + 엔드포인트 URL 표시 업데이트"""
         new_label = _ENGINE_LABELS.get(engine, "AI API 키")
         self._api_field.control.label = new_label
         is_clipboard = engine == "clipboard"
@@ -146,6 +165,19 @@ class AISettingsSection:
         self._api_field.set_enabled(not is_no_key)
         self._clipboard_notice.visible = is_clipboard
         self._ollama_notice.visible = (engine == "ollama")
+
+        # 엔드포인트 URL 필드 표시/숨김
+        show_url = engine in _URL_ENGINES
+        self._base_url_field.visible = show_url
+        if show_url:
+            # 엔진별 기본 URL 힌트 설정
+            if engine == "ollama":
+                self._base_url_field.hint_text = "http://localhost:11434/v1"
+            else:
+                self._base_url_field.hint_text = "http://localhost:8080/v1"
+            # 저장된 URL 복원
+            saved_url = get_base_url_for_engine(engine)
+            self._base_url_field.value = saved_url
 
         # 엔진별 저장된 API 키 복원 (없으면 필드 비움)
         if not is_clipboard:
@@ -158,6 +190,8 @@ class AISettingsSection:
             self._clipboard_notice.update()
         if self._ollama_notice.page:
             self._ollama_notice.update()
+        if self._base_url_field.page:
+            self._base_url_field.update()
 
         if self._external_engine_cb:
             self._external_engine_cb(engine)
@@ -179,6 +213,13 @@ class AISettingsSection:
     def get_api_key(self) -> str:
         return self._api_field.get_value()
 
+    def get_base_url(self) -> str:
+        """현재 엔진의 엔드포인트 URL 반환 (빈 값이면 Provider 기본값 사용)"""
+        engine = self.get_engine()
+        if engine not in _URL_ENGINES:
+            return ""
+        return (self._base_url_field.value or "").strip()
+
     def set_engine(self, engine: str):
         self._model_selector.set_engine(engine)
 
@@ -188,10 +229,18 @@ class AISettingsSection:
     def set_api_key(self, key: str):
         self._api_field.set_value(key)
 
+    def set_base_url(self, url: str):
+        """엔드포인트 URL 설정"""
+        self._base_url_field.value = url
+        self._base_url_field.visible = True
+
     def set_enabled(self, enabled: bool):
         self._model_selector.set_enabled(enabled)
         if self.get_engine() not in ("clipboard", "ollama"):
             self._api_field.set_enabled(enabled)
+        if self.get_engine() in _URL_ENGINES:
+            self._base_url_field.disabled = not enabled
 
     def clear(self):
         self._api_field.clear()
+        self._base_url_field.value = ""

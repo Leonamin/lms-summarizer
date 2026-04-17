@@ -17,12 +17,14 @@ class SummarizePipeline:
         prompt: str = None,
         engine: str = "gemini",
         api_key: str = None,
+        base_url: str = None,
     ):
         self.downloads_dir = None  # 다운로드 경로는 나중에 설정됨
         self.model_name = model_name
         self.prompt = prompt or _DEFAULT_PROMPT
         self.engine = engine
         self.api_key = api_key
+        self.base_url = base_url
 
     def process(self, text_path: str) -> str:
         """텍스트 요약"""
@@ -39,7 +41,7 @@ class SummarizePipeline:
             content = f.read()
 
         # Provider를 통해 요약 생성
-        provider = create_provider(self.engine, api_key=self.api_key, model_name=self.model_name)
+        provider = create_provider(self.engine, api_key=self.api_key, model_name=self.model_name, base_url=self.base_url)
         summary = provider.summarize(content, self.prompt)
 
         end_time = time.time()

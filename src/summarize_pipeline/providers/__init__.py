@@ -33,13 +33,15 @@ ENGINE_API_KEY_MAP: dict[str, str] = {
 }
 
 
-def create_provider(engine: str, api_key: str = None, model_name: str = None) -> AIProvider:
+def create_provider(engine: str, api_key: str = None, model_name: str = None,
+                    base_url: str = None) -> AIProvider:
     """엔진 이름으로 Provider 인스턴스를 생성하는 팩토리 함수
 
     Args:
         engine: 엔진 이름 ("gemini", "openai", "claude", "grok", "ollama", "custom", "clipboard")
         api_key: API 키 (clipboard, ollama 모드에서는 불필요)
         model_name: 모델명 (None이면 기본 모델 사용)
+        base_url: 엔드포인트 URL (ollama, custom에서 사용)
 
     Returns:
         AIProvider 인스턴스
@@ -51,7 +53,11 @@ def create_provider(engine: str, api_key: str = None, model_name: str = None) ->
     if not cls:
         raise ValueError(f"지원하지 않는 엔진: {engine}")
 
-    return cls(api_key=api_key, model_name=model_name or cls.default_model())
+    kwargs = {"api_key": api_key, "model_name": model_name or cls.default_model()}
+    # ollama, custom에만 base_url 전달 (다른 Provider는 파라미터를 무시)
+    if base_url and engine in ("ollama", "custom"):
+        kwargs["base_url"] = base_url
+    return cls(**kwargs)
 
 
 __all__ = [

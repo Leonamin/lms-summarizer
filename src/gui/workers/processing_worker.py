@@ -50,6 +50,7 @@ class ProcessingWorker:
         save_video_dir: str = None,
         model_name: str = "gemini-2.5-flash",
         engine: str = "gemini",
+        base_url: str = "",
         on_log: Optional[Callable[[str], None]] = None,
         on_finished: Optional[Callable[[bool, str], None]] = None,
         on_step_changed: Optional[Callable[[int, str], None]] = None,
@@ -62,6 +63,7 @@ class ProcessingWorker:
         self.save_video_dir = save_video_dir
         self.model_name = model_name
         self.engine = engine
+        self.base_url = base_url
         self.summary_prompt = get_summary_prompt()
         self.chrome_path = get_chrome_path()
         self.debug_mode = get_debug_mode()
@@ -421,6 +423,7 @@ class ProcessingWorker:
             prompt=self.summary_prompt,
             engine=self.engine,
             api_key=api_key,
+            base_url=self.base_url,
         )
         summary_paths = []
 

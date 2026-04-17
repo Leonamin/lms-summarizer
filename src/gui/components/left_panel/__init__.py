@@ -61,6 +61,7 @@ class LeftPanel:
     def get_all_inputs(self) -> Dict[str, str]:
         values = self.account.get_values()
         values['api_key'] = self.ai_settings.get_api_key()
+        values['base_url'] = self.ai_settings.get_base_url()
         return values
 
     def set_enabled(self, enabled: bool):
@@ -83,3 +84,5 @@ class LeftPanel:
             self.ai_settings.set_engine(saved['ai_engine'])
         if 'ai_model' in saved:
             self.ai_settings.set_model(saved['ai_model'])
+        if 'base_url' in saved and saved['base_url']:
+            self.ai_settings.set_base_url(saved['base_url'])

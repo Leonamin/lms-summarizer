@@ -150,14 +150,16 @@ class MainView:
 
         # 검증
         if start_stage == PipelineStage.DOWNLOAD:
+            # clipboard, ollama, custom은 API 키 불필요
+            skip_key = engine in ("clipboard", "ollama", "custom")
             valid, error_message = InputValidator.validate_all_inputs(
-                inputs, skip_api_key=(engine == "clipboard"),
+                inputs, skip_api_key=skip_key,
             )
             if not valid:
                 self._show_snackbar(error_message, Colors.ERROR)
                 return
         else:
-            if start_stage <= PipelineStage.SUMMARIZE and engine != "clipboard":
+            if start_stage <= PipelineStage.SUMMARIZE and engine not in ("clipboard", "ollama", "custom"):
                 valid, error = InputValidator.validate_api_key(inputs.get('api_key', ''))
                 if not valid:
                     self._show_snackbar(error, Colors.ERROR)
@@ -246,6 +248,7 @@ class MainView:
             save_video_dir=save_video_dir,
             model_name=model_name,
             engine=engine,
+            base_url=inputs.get('base_url', ''),
             on_log=invoke_on_ui(self.page, on_log),
             on_finished=on_finished,
             on_step_changed=invoke_on_ui(self.page, on_step),

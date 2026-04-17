@@ -132,7 +132,7 @@ def extract_urls_from_input(url_input: str) -> List[str]:
     return urls
 
 
-_PERSISTABLE_FIELDS = ['student_id', 'api_key', 'ai_model', 'ai_engine']
+_PERSISTABLE_FIELDS = ['student_id', 'api_key', 'ai_model', 'ai_engine', 'base_url']
 
 
 def save_user_inputs(inputs: Dict[str, str]) -> None:
@@ -152,8 +152,16 @@ def save_user_inputs(inputs: Dict[str, str]) -> None:
         api_keys[engine] = api_key
     saved['api_keys'] = api_keys
 
+    # 엔진별 base_url 저장 (ollama, custom만 해당)
+    base_url = inputs.get('base_url', '')
+    base_urls = settings.get('base_urls', {})
+    if base_url:
+        base_urls[engine] = base_url
+    saved['base_urls'] = base_urls
+
     settings['user_inputs'] = saved
     settings['api_keys'] = api_keys
+    settings['base_urls'] = base_urls
     save_settings(settings)
 
 
@@ -176,6 +184,13 @@ def load_user_inputs() -> Dict[str, str]:
         saved['api_key'] = api_keys[engine]
 
     saved['api_keys'] = api_keys
+
+    # 엔진별 base_url 복원
+    base_urls = settings.get('base_urls', saved.get('base_urls', {}))
+    if base_urls.get(engine):
+        saved['base_url'] = base_urls[engine]
+    saved['base_urls'] = base_urls
+
     return saved
 
 
@@ -184,6 +199,13 @@ def get_api_key_for_engine(engine: str) -> str:
     settings = load_settings()
     api_keys = settings.get('api_keys', {})
     return api_keys.get(engine, '')
+
+
+def get_base_url_for_engine(engine: str) -> str:
+    """특정 엔진의 저장된 엔드포인트 URL 반환"""
+    settings = load_settings()
+    base_urls = settings.get('base_urls', {})
+    return base_urls.get(engine, '')
 
 
 def get_downloads_dir() -> str:
