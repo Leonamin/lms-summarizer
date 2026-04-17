@@ -125,6 +125,11 @@ class FasterWhisperTranscriber(Transcriber):
                 )
 
         resolved_device, resolved_compute = self._resolve_device(device, compute_type, self._on_log)
+
+        # GPU 메모리 진단 로그 (CUDA 사용 시)
+        if resolved_device == "cuda":
+            self._log_gpu_memory()
+
         self._on_log(f"[faster-whisper] 모델 로드 중: {model_name} (device={resolved_device}, compute_type={resolved_compute})")
         self._on_log("[faster-whisper] 첫 실행이면 모델 다운로드가 자동으로 진행됩니다. 잠시 기다려주세요...")
         load_start = time.time()
@@ -222,28 +227,77 @@ class FasterWhisperTranscriber(Transcriber):
 
         return "cpu", compute_type if compute_type != "auto" else "int8"
 
+    def _log_gpu_memory(self):
+        """CUDA GPU 메모리 정보를 로그에 출력 (VRAM 부족 진단용)"""
+        try:
+            import subprocess
+            result = subprocess.run(
+                ["nvidia-smi",
+                 "--query-gpu=name,memory.total,memory.free,memory.used",
+                 "--format=csv,noheader,nounits"],
+                capture_output=True, text=True, timeout=5,
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                for line in result.stdout.strip().split("\n"):
+                    parts = [p.strip() for p in line.split(",")]
+                    if len(parts) >= 4:
+                        name, total, free, used = parts[0], parts[1], parts[2], parts[3]
+                        self._on_log(
+                            f"[faster-whisper] GPU: {name} — "
+                            f"VRAM {used}/{total} MB (사용 가능: {free} MB)"
+                        )
+        except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
+            pass
+
     def transcribe(self, audio_path: str, txt_path: str):
         transcribe_start = time.time()
+
+        # 오디오 파일 크기로 예상 소요 시간 가이드 표시
+        try:
+            audio_size_mb = os.path.getsize(audio_path) / (1024 * 1024)
+            self._on_log(f"[faster-whisper] 오디오 파일: {audio_size_mb:.1f} MB")
+        except OSError:
+            pass
+
+        self._on_log(f"[faster-whisper] 변환 시작: {os.path.basename(audio_path)}")
         segments, info = self.model.transcribe(
             audio_path,
             language=self._language,
             initial_prompt=self._initial_prompt,
             vad_filter=self._vad_filter,
+            beam_size=1,                  # 빔 서치 1로 고정 (속도 우선)
         )
+
         text_parts = []
+        last_log_time = time.time()
+        LOG_INTERVAL = 10  # 최소 10초 간격으로 진행 상황 로그
+        first_segment = True
+
         for i, seg in enumerate(segments):
+            if first_segment:
+                first_elapsed = time.time() - transcribe_start
+                self._on_log(f"[faster-whisper] 첫 세그먼트 디코딩 완료 ({first_elapsed:.1f}초)")
+                first_segment = False
+
             if seg.text.strip():
                 text_parts.append(seg.text.strip())
-            if (i + 1) % 50 == 0:
-                self._on_log(f"  처리 중... {i+1} 세그먼트")
+
+            now = time.time()
+            # 정기 진척도 로그 (10초 간격 + 최소 1세그먼트 경과)
+            if i > 0 and (now - last_log_time) >= LOG_INTERVAL:
+                elapsed_so_far = now - transcribe_start
+                self._on_log(
+                    f"  처리 중... {i+1} 세그먼트 ({elapsed_so_far:.0f}초 경과)"
+                )
+                last_log_time = now
 
         text = " ".join(text_parts)
         with open(txt_path, "w", encoding="utf-8") as f:
             f.write(text)
 
         elapsed = time.time() - transcribe_start
-        self._on_log(f"[faster-whisper] 변환 완료: {txt_path}")
-        self._on_log(f"[faster-whisper] 소요 시간: {elapsed:.1f}초")
+        self._on_log(f"[faster-whisper] 변환 완료: {os.path.basename(txt_path)}")
+        self._on_log(f"[faster-whisper] 소요 시간: {elapsed:.1f}초 / 세그먼트: {len(text_parts)}개")
         self._on_log(f"[faster-whisper] 감지 언어: {info.language} ({info.language_probability:.0%})")
 
 
@@ -281,11 +335,16 @@ class OpenAIWhisperTranscriber(Transcriber):
 
 
 class OpenAICompatibleSTTTranscriber(Transcriber):
-    """OpenAI 호환 STT 엔드포인트 (Speaches, 로컬 LLM 서버 등)
+    """OpenAI 호환 STT 엔드포인트 (AI Orchestrator, Speaches 등)
 
-    OpenAI SDK를 사용하여 /v1/audio/transcriptions 엔드포인트로 STT를 수행합니다.
-    Speaches, faster-whisper-server, 또는 임의의 OpenAI API 호환 서버에 연결 가능합니다.
-    API 키는 선택사항이며, base_url만 필수입니다.
+    OpenAI SDK를 사용하여 /audio/transcriptions 엔드포인트로 STT를 수행합니다.
+    AI Orchestrator, Speaches, faster-whisper-server, 또는 임의의 OpenAI API
+    호환 서버에 연결 가능합니다.
+
+    base_url은 서비스의 루트까지만 지정합니다.
+    예: http://localhost:8765/aio/v1 (SDK가 /audio/transcriptions를 자동으로 붙임)
+
+    AI Orchestrator 사용 시 STT 서비스가 꺼져 있으면 자동으로 시작을 시도합니다.
     """
 
     def __init__(self, base_url: str = None, api_key: str = None,
@@ -296,8 +355,12 @@ class OpenAICompatibleSTTTranscriber(Transcriber):
         if not base_url:
             raise ValueError("STT 엔드포인트 URL이 필요합니다.")
 
-        # 후행 슬래시 제거 (OpenAI SDK가 자동으로 /v1/audio/transcriptions를 붙임)
+        # 후행 슬래시 제거 (SDK가 자동으로 /audio/transcriptions를 붙임)
         self._base_url = base_url.rstrip("/")
+
+        # AI Orchestrator 패턴 감지: base_url에 /aio/v1이 포함되면 오케스트레이터로 판단
+        self._is_orchestrator = "/aio/" in self._base_url
+
         resolved_model = model_name or "Systran/faster-whisper-small"
 
         self.client = OpenAI(
@@ -307,27 +370,88 @@ class OpenAICompatibleSTTTranscriber(Transcriber):
         self.model_name = resolved_model
         self._on_log(f"[openai-compatible-stt] 엔드포인트: {self._base_url}")
         self._on_log(f"[openai-compatible-stt] 모델: {self.model_name}")
+        if self._is_orchestrator:
+            self._on_log("[openai-compatible-stt] AI Orchestrator 감지 — 서비스 자동 시작 지원")
         self._on_log("[openai-compatible-stt] STT 엔진 초기화 완료")
 
+    def _ensure_service_running(self):
+        """AI Orchestrator에서 STT 서비스가 실행 중인지 확인하고, 꺼져 있으면 시작."""
+        if not self._is_orchestrator:
+            return
+
+        # 오케스트레이터 루트 URL 추출: http://host:port (경로 제외)
+        from urllib.parse import urlparse
+        parsed = urlparse(self._base_url)
+        orchestrator_root = f"{parsed.scheme}://{parsed.netloc}"
+
+        try:
+            # STT 서비스 상태 확인
+            status_resp = requests.get(
+                f"{orchestrator_root}/stt/status",
+                timeout=5,
+            )
+            if status_resp.status_code == 200:
+                status_data = status_resp.json()
+                if status_data.get("running", False):
+                    self._on_log("[openai-compatible-stt] STT 서비스 실행 중 확인")
+                    return
+        except (requests.ConnectionError, requests.Timeout):
+            self._on_log(f"[openai-compatible-stt] ⚠️ 오케스트레이터 연결 실패: {orchestrator_root}")
+            self._on_log("[openai-compatible-stt] 오케스트레이터가 실행 중인지 확인하세요.")
+            return
+        except Exception:
+            pass
+
+        # STT 서비스 시작 요청
+        self._on_log("[openai-compatible-stt] STT 서비스 시작 요청 중...")
+        try:
+            start_resp = requests.post(
+                f"{orchestrator_root}/start/stt",
+                timeout=30,
+            )
+            if start_resp.status_code == 200:
+                self._on_log("[openai-compatible-stt] ✅ STT 서비스 시작됨")
+            else:
+                self._on_log(
+                    f"[openai-compatible-stt] ⚠️ 서비스 시작 응답: {start_resp.status_code}"
+                )
+        except requests.ConnectionError:
+            self._on_log(f"[openai-compatible-stt] ⚠️ 오케스트레이터 연결 실패: {orchestrator_root}")
+        except requests.Timeout:
+            self._on_log("[openai-compatible-stt] ⚠️ 서비스 시작 타임아웃 (30초)")
+
     def transcribe(self, audio_path: str, txt_path: str):
-        self._on_log(f"[openai-compatible-stt] STT 시작: {audio_path}")
+        self._on_log(f"[openai-compatible-stt] STT 시작: {os.path.basename(audio_path)}")
         transcribe_start = time.time()
 
-        with open(audio_path, "rb") as audio_file:
-            response = self.client.audio.transcriptions.create(
-                model=self.model_name,
-                file=audio_file,
-                language="ko",
-                response_format="text",
-            )
+        # 오케스트레이터 STT 서비스 자동 시작
+        self._ensure_service_running()
 
-        text = response if isinstance(response, str) else response.text
+        try:
+            with open(audio_path, "rb") as audio_file:
+                response = self.client.audio.transcriptions.create(
+                    model=self.model_name,
+                    file=audio_file,
+                    language="ko",
+                )
+        except Exception as e:
+            # 연결 실패 시 더 상세한 에러 메시지
+            err_msg = str(e)
+            if "Connection" in err_msg or "connect" in err_msg.lower():
+                self._on_log(
+                    f"[openai-compatible-stt] ❌ 서버 연결 실패: {self._base_url}\n"
+                    f"   서버가 실행 중인지 확인하세요."
+                )
+            raise
+
+        # 응답 처리: text 문자열 또는 객체의 .text 속성 모두 지원
+        text = response if isinstance(response, str) else getattr(response, "text", str(response))
 
         with open(txt_path, "w", encoding="utf-8") as f:
             f.write(text)
 
         elapsed = time.time() - transcribe_start
-        self._on_log(f"[openai-compatible-stt] 변환 완료: {txt_path}")
+        self._on_log(f"[openai-compatible-stt] 변환 완료: {os.path.basename(txt_path)}")
         self._on_log(f"[openai-compatible-stt] 소요 시간: {elapsed:.1f}초")
 
 
