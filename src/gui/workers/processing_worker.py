@@ -6,6 +6,7 @@ import logging
 import os
 import sys
 import threading
+import time as _time
 import traceback
 from pathlib import Path
 from typing import Dict, List, Callable, Optional
@@ -105,12 +106,17 @@ class ProcessingWorker:
         if self._cancel_event.is_set():
             raise CancelledException("사용자가 작업을 취소했습니다.")
 
-    def _interruptible(self, fn, *args, **kwargs):
+    def _interruptible(self, fn, *args, timeout=None, **kwargs):
         """블로킹 작업을 별도 스레드에서 실행하고, 취소 신호 시 즉시 중단.
 
         모델 다운로드 등 장시간 블로킹되는 호출을 래핑하면
         사용자가 중지 버튼을 눌렀을 때 즉시 CancelledException이 발생한다.
         백그라운드 스레드는 daemon이므로 프로세스 종료 시 자동 정리된다.
+
+        Args:
+            timeout: 최대 대기 시간(초). None이면 무한 대기.
+                초과 시 RuntimeError 발생 (백그라운드 스레드는 daemon이므로 프로세스
+                종료 시 자동 정리됨).
         """
         result, error = [None], [None]
 
@@ -122,9 +128,18 @@ class ProcessingWorker:
 
         t = threading.Thread(target=_run, daemon=True)
         t.start()
+        start_time = _time.time() if timeout else None
+
         while t.is_alive():
             self._check_cancelled()
             t.join(timeout=0.5)
+
+            # 타임아웃 확인
+            if timeout and (_time.time() - start_time) > timeout:
+                raise RuntimeError(
+                    f"작업이 {timeout}초 내에 완료되지 않았습니다. "
+                    f"GPU 메모리 부족 또는 CUDA 오류일 수 있습니다."
+                )
 
         if error[0]:
             raise error[0]
@@ -194,8 +209,6 @@ class ProcessingWorker:
         create_config_files(self.user_inputs)
 
     def _execute_processing_pipeline(self):
-        import time as _time
-
         pipeline_start = _time.time()
         step_timings = {}
 
@@ -395,7 +408,10 @@ class ProcessingWorker:
                 audio_pipeline.downloads_dir = str(Path(wav_path).parent)
                 self._emit_log(f"({i}/{len(wav_paths)}) 텍스트 변환 중: {Path(wav_path).name}")
 
-                text_path = self._interruptible(audio_pipeline.transcribe, wav_path, remove_wav=True)
+                text_path = self._interruptible(
+                    audio_pipeline.transcribe, wav_path, remove_wav=True,
+                    timeout=1800,  # 30분 타임아웃 (파일당)
+                )
                 text_paths.append(text_path)
                 self._emit_log(f"{Messages.CONVERSION_COMPLETE}: {text_path}")
 

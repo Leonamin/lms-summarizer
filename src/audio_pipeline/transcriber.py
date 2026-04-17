@@ -125,6 +125,11 @@ class FasterWhisperTranscriber(Transcriber):
                 )
 
         resolved_device, resolved_compute = self._resolve_device(device, compute_type, self._on_log)
+
+        # GPU 메모리 진단 로그 (CUDA 사용 시)
+        if resolved_device == "cuda":
+            self._log_gpu_memory()
+
         self._on_log(f"[faster-whisper] 모델 로드 중: {model_name} (device={resolved_device}, compute_type={resolved_compute})")
         self._on_log("[faster-whisper] 첫 실행이면 모델 다운로드가 자동으로 진행됩니다. 잠시 기다려주세요...")
         load_start = time.time()
@@ -222,28 +227,77 @@ class FasterWhisperTranscriber(Transcriber):
 
         return "cpu", compute_type if compute_type != "auto" else "int8"
 
+    def _log_gpu_memory(self):
+        """CUDA GPU 메모리 정보를 로그에 출력 (VRAM 부족 진단용)"""
+        try:
+            import subprocess
+            result = subprocess.run(
+                ["nvidia-smi",
+                 "--query-gpu=name,memory.total,memory.free,memory.used",
+                 "--format=csv,noheader,nounits"],
+                capture_output=True, text=True, timeout=5,
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                for line in result.stdout.strip().split("\n"):
+                    parts = [p.strip() for p in line.split(",")]
+                    if len(parts) >= 4:
+                        name, total, free, used = parts[0], parts[1], parts[2], parts[3]
+                        self._on_log(
+                            f"[faster-whisper] GPU: {name} — "
+                            f"VRAM {used}/{total} MB (사용 가능: {free} MB)"
+                        )
+        except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
+            pass
+
     def transcribe(self, audio_path: str, txt_path: str):
         transcribe_start = time.time()
+
+        # 오디오 파일 크기로 예상 소요 시간 가이드 표시
+        try:
+            audio_size_mb = os.path.getsize(audio_path) / (1024 * 1024)
+            self._on_log(f"[faster-whisper] 오디오 파일: {audio_size_mb:.1f} MB")
+        except OSError:
+            pass
+
+        self._on_log(f"[faster-whisper] 변환 시작: {os.path.basename(audio_path)}")
         segments, info = self.model.transcribe(
             audio_path,
             language=self._language,
             initial_prompt=self._initial_prompt,
             vad_filter=self._vad_filter,
+            beam_size=1,                  # 빔 서치 1로 고정 (속도 우선)
         )
+
         text_parts = []
+        last_log_time = time.time()
+        LOG_INTERVAL = 10  # 최소 10초 간격으로 진행 상황 로그
+        first_segment = True
+
         for i, seg in enumerate(segments):
+            if first_segment:
+                first_elapsed = time.time() - transcribe_start
+                self._on_log(f"[faster-whisper] 첫 세그먼트 디코딩 완료 ({first_elapsed:.1f}초)")
+                first_segment = False
+
             if seg.text.strip():
                 text_parts.append(seg.text.strip())
-            if (i + 1) % 50 == 0:
-                self._on_log(f"  처리 중... {i+1} 세그먼트")
+
+            now = time.time()
+            # 정기 진척도 로그 (10초 간격 + 최소 1세그먼트 경과)
+            if i > 0 and (now - last_log_time) >= LOG_INTERVAL:
+                elapsed_so_far = now - transcribe_start
+                self._on_log(
+                    f"  처리 중... {i+1} 세그먼트 ({elapsed_so_far:.0f}초 경과)"
+                )
+                last_log_time = now
 
         text = " ".join(text_parts)
         with open(txt_path, "w", encoding="utf-8") as f:
             f.write(text)
 
         elapsed = time.time() - transcribe_start
-        self._on_log(f"[faster-whisper] 변환 완료: {txt_path}")
-        self._on_log(f"[faster-whisper] 소요 시간: {elapsed:.1f}초")
+        self._on_log(f"[faster-whisper] 변환 완료: {os.path.basename(txt_path)}")
+        self._on_log(f"[faster-whisper] 소요 시간: {elapsed:.1f}초 / 세그먼트: {len(text_parts)}개")
         self._on_log(f"[faster-whisper] 감지 언어: {info.language} ({info.language_probability:.0%})")
 
 
