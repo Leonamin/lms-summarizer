@@ -61,6 +61,16 @@ def transcribe_audio_to_text(
         else:
             api_key = params.pop("api_key", None)
             transcriber = OpenAIWhisperTranscriber(api_key=api_key, on_log=on_log)
+    elif engine == "openai-compatible":
+        if _reuse_transcriber is not None:
+            transcriber = _reuse_transcriber
+        else:
+            base_url = params.pop("base_url", None)
+            api_key = params.pop("api_key", None)
+            transcriber = OpenAICompatibleSTTTranscriber(
+                base_url=base_url, api_key=api_key,
+                model_name=model_name, on_log=on_log,
+            )
     elif engine == "returnzero":
         if _reuse_transcriber is not None:
             transcriber = _reuse_transcriber
@@ -268,6 +278,57 @@ class OpenAIWhisperTranscriber(Transcriber):
         elapsed = time.time() - transcribe_start
         self._on_log(f"[openai-whisper] 변환 완료: {txt_path}")
         self._on_log(f"[openai-whisper] 소요 시간: {elapsed:.1f}초")
+
+
+class OpenAICompatibleSTTTranscriber(Transcriber):
+    """OpenAI 호환 STT 엔드포인트 (Speaches, 로컬 LLM 서버 등)
+
+    OpenAI SDK를 사용하여 /v1/audio/transcriptions 엔드포인트로 STT를 수행합니다.
+    Speaches, faster-whisper-server, 또는 임의의 OpenAI API 호환 서버에 연결 가능합니다.
+    API 키는 선택사항이며, base_url만 필수입니다.
+    """
+
+    def __init__(self, base_url: str = None, api_key: str = None,
+                 model_name: str = None, on_log=None):
+        from openai import OpenAI
+        self._on_log = on_log or (lambda msg: None)
+
+        if not base_url:
+            raise ValueError("STT 엔드포인트 URL이 필요합니다.")
+
+        # 후행 슬래시 제거 (OpenAI SDK가 자동으로 /v1/audio/transcriptions를 붙임)
+        self._base_url = base_url.rstrip("/")
+        resolved_model = model_name or "Systran/faster-whisper-small"
+
+        self.client = OpenAI(
+            api_key=api_key or "not-needed",
+            base_url=self._base_url,
+        )
+        self.model_name = resolved_model
+        self._on_log(f"[openai-compatible-stt] 엔드포인트: {self._base_url}")
+        self._on_log(f"[openai-compatible-stt] 모델: {self.model_name}")
+        self._on_log("[openai-compatible-stt] STT 엔진 초기화 완료")
+
+    def transcribe(self, audio_path: str, txt_path: str):
+        self._on_log(f"[openai-compatible-stt] STT 시작: {audio_path}")
+        transcribe_start = time.time()
+
+        with open(audio_path, "rb") as audio_file:
+            response = self.client.audio.transcriptions.create(
+                model=self.model_name,
+                file=audio_file,
+                language="ko",
+                response_format="text",
+            )
+
+        text = response if isinstance(response, str) else response.text
+
+        with open(txt_path, "w", encoding="utf-8") as f:
+            f.write(text)
+
+        elapsed = time.time() - transcribe_start
+        self._on_log(f"[openai-compatible-stt] 변환 완료: {txt_path}")
+        self._on_log(f"[openai-compatible-stt] 소요 시간: {elapsed:.1f}초")
 
 
 class ReturnZeroTranscriber(Transcriber):

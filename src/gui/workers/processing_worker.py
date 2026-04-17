@@ -378,6 +378,14 @@ class ProcessingWorker:
         if self.stt_engine == "openai-whisper":
             from src.gui.core.file_manager import get_stt_api_key
             self.stt_params["api_key"] = get_stt_api_key(engine="openai-whisper")
+        # OpenAI 호환 STT인 경우 base_url, model, api_key를 파라미터에 주입
+        if self.stt_engine == "openai-compatible":
+            from src.gui.core.file_manager import get_stt_api_key
+            self.stt_params["base_url"] = get_stt_api_key(engine="openai-compatible-base-url")
+            self.stt_params["api_key"] = get_stt_api_key(engine="openai-compatible")
+            compat_model = get_stt_api_key(engine="openai-compatible-model")
+            if compat_model:
+                self.stt_model = compat_model
         self._emit_log(f"STT 엔진: {self.stt_engine} / 모델: {self.stt_model}")
         text_paths = []
 

@@ -14,6 +14,7 @@ from src.gui.core.file_manager import (
 
 _STT_ENGINE_OPTIONS = [
     ("faster-whisper", "faster-whisper (로컬, GPU 지원)"),
+    ("openai-compatible", "OpenAI 호환 엔드포인트 (로컬 서버)"),
     ("openai-whisper", "OpenAI Whisper API (클라우드, $0.006/분)"),
     ("returnzero", "ReturnZero API (유료)"),
 ]
@@ -200,6 +201,59 @@ class STTSettingsSection:
             visible=(current_stt == "openai-whisper"),
         )
 
+        # ── OpenAI Compatible STT (엔드포인트 URL + 선택적 API 키) ──
+        self._compat_stt_url_field = ft.TextField(
+            value=get_stt_api_key(engine="openai-compatible-base-url"),
+            hint_text="http://localhost:8765/aio/v1/stt",
+            border_radius=Radius.SM, border_color=Colors.BORDER,
+            focused_border_color=Colors.PRIMARY, text_size=Typography.BODY,
+            label="STT 엔드포인트 URL",
+            label_style=ft.TextStyle(size=Typography.CAPTION, color=Colors.TEXT_SECONDARY),
+            prefix_icon=ft.Icons.LINK,
+            visible=(current_stt == "openai-compatible"),
+            dense=True,
+            tooltip="OpenAI 호환 STT 서버 URL (예: http://localhost:8765/aio/v1/stt)",
+        )
+        self._compat_stt_model_field = ft.TextField(
+            value=get_stt_api_key(engine="openai-compatible-model"),
+            hint_text="Systran/faster-whisper-small",
+            border_radius=Radius.SM, border_color=Colors.BORDER,
+            focused_border_color=Colors.PRIMARY, text_size=Typography.BODY,
+            label="STT 모델명",
+            label_style=ft.TextStyle(size=Typography.CAPTION, color=Colors.TEXT_SECONDARY),
+            prefix_icon=ft.Icons.MODEL_TRAINING,
+            visible=(current_stt == "openai-compatible"),
+            dense=True,
+            tooltip="서버에서 사용할 모델명 (예: Systran/faster-whisper-small, Systran/faster-whisper-large-v3)",
+        )
+        self._compat_stt_key_field = ft.TextField(
+            value=get_stt_api_key(engine="openai-compatible"),
+            hint_text="선택사항 — 비워두면 인증 없이 전송",
+            border_radius=Radius.SM, border_color=Colors.BORDER,
+            focused_border_color=Colors.PRIMARY, text_size=Typography.BODY,
+            label="API 키 (선택사항)",
+            label_style=ft.TextStyle(size=Typography.CAPTION, color=Colors.TEXT_SECONDARY),
+            prefix_icon=ft.Icons.KEY,
+            visible=(current_stt == "openai-compatible"),
+            dense=True,
+            password=True,
+            can_reveal_password=True,
+            tooltip="인증이 필요한 서버인 경우만 입력하세요",
+        )
+        self._compat_stt_notice = ft.Container(
+            content=ft.Text(
+                "로컬/원격 OpenAI 호환 STT 서버에 연결합니다.\n"
+                "Speaches, faster-whisper-server, LM Studio 등을 사용할 수 있습니다.",
+                size=Typography.SMALL,
+                color="#7C3AED",  # violet-600
+            ),
+            bgcolor="#F5F3FF",  # violet-50
+            border=ft.border.all(1, "#DDD6FE"),  # violet-200
+            border_radius=Radius.SM,
+            padding=ft.padding.symmetric(horizontal=10, vertical=6),
+            visible=(current_stt == "openai-compatible"),
+        )
+
         # ── 엔진 드롭다운 ──────────────────────────────────
         self._engine_dd = ft.Dropdown(
             options=[ft.dropdown.Option(key=k, text=t) for k, t in _STT_ENGINE_OPTIONS],
@@ -231,6 +285,10 @@ class STTSettingsSection:
                 self._fw_section,
                 self._openai_whisper_notice,
                 self._openai_stt_key_field,
+                self._compat_stt_notice,
+                self._compat_stt_url_field,
+                self._compat_stt_model_field,
+                self._compat_stt_key_field,
                 self._rtzr_api_field,
                 self._save_btn,
             ],
@@ -252,6 +310,11 @@ class STTSettingsSection:
             return "ReturnZero API"
         if engine == "openai-whisper":
             return "OpenAI Whisper API (클라우드)"
+        if engine == "openai-compatible":
+            url = get_stt_api_key(engine="openai-compatible-base-url")
+            model = get_stt_api_key(engine="openai-compatible-model") or "faster-whisper-small"
+            short_url = url.replace("http://", "").replace("https://", "") if url else "미설정"
+            return f"OpenAI 호환 · {short_url} · {model}"
         model = get_stt_model()
         from src.audio_pipeline.model_manager import FW_MODEL_REGISTRY
         info = FW_MODEL_REGISTRY.get(model)
@@ -312,10 +375,23 @@ class STTSettingsSection:
         self._rtzr_api_field.visible = (engine == "returnzero")
         self._openai_stt_key_field.visible = (engine == "openai-whisper")
         self._openai_whisper_notice.visible = (engine == "openai-whisper")
-        self._fw_section.update()
-        self._rtzr_api_field.update()
-        self._openai_stt_key_field.update()
-        self._openai_whisper_notice.update()
+        # OpenAI Compatible STT 섹션 토글
+        is_compat = (engine == "openai-compatible")
+        self._compat_stt_notice.visible = is_compat
+        self._compat_stt_url_field.visible = is_compat
+        self._compat_stt_model_field.visible = is_compat
+        self._compat_stt_key_field.visible = is_compat
+        # 업데이트
+        for ctrl in [
+            self._fw_section, self._rtzr_api_field,
+            self._openai_stt_key_field, self._openai_whisper_notice,
+            self._compat_stt_notice, self._compat_stt_url_field,
+            self._compat_stt_model_field, self._compat_stt_key_field,
+        ]:
+            try:
+                ctrl.update()
+            except Exception:
+                pass
         self._summary.value = self._get_summary_text()
         try:
             if self._summary.page:
@@ -334,6 +410,21 @@ class STTSettingsSection:
             params = get_stt_params()
             params["api_key"] = (self._openai_stt_key_field.value or "").strip()
             set_stt_params(params)
+        elif engine == "openai-compatible":
+            base_url = (self._compat_stt_url_field.value or "").strip()
+            model_name = (self._compat_stt_model_field.value or "").strip() or "Systran/faster-whisper-small"
+            api_key = (self._compat_stt_key_field.value or "").strip()
+            # base_url과 model을 stt_api_keys에 저장 (전용 키 사용)
+            set_stt_api_key(base_url, engine="openai-compatible-base-url")
+            set_stt_api_key(model_name, engine="openai-compatible-model")
+            set_stt_api_key(api_key, engine="openai-compatible")
+            # 파라미터에도 주입 (transcriber가 읽도록)
+            params = get_stt_params()
+            params["base_url"] = base_url
+            params["api_key"] = api_key
+            set_stt_params(params)
+            # stt_model에도 모델명 저장 (UI에 표시용)
+            set_stt_model(model_name)
         elif engine == "faster-whisper":
             set_stt_model(self._fw_selected_mode[0])
             try:
