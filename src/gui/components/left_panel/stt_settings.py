@@ -204,7 +204,7 @@ class STTSettingsSection:
         # ── OpenAI Compatible STT (엔드포인트 URL + 선택적 API 키) ──
         self._compat_stt_url_field = ft.TextField(
             value=get_stt_api_key(engine="openai-compatible-base-url"),
-            hint_text="http://localhost:8765/aio/v1",
+            hint_text="http://localhost:8765/aio/v1/stt",
             border_radius=Radius.SM, border_color=Colors.BORDER,
             focused_border_color=Colors.PRIMARY, text_size=Typography.BODY,
             label="STT 엔드포인트 URL",
@@ -212,7 +212,7 @@ class STTSettingsSection:
             prefix_icon=ft.Icons.LINK,
             visible=(current_stt == "openai-compatible"),
             dense=True,
-            tooltip="OpenAI 호환 STT 서버의 base URL (예: http://localhost:8765/aio/v1)",
+            tooltip="OpenAI 호환 STT 서버의 base URL (예: http://localhost:8765/aio/v1/stt)",
         )
         self._compat_stt_model_field = ft.TextField(
             value=get_stt_api_key(engine="openai-compatible-model"),

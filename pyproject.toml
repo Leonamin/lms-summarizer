@@ -29,6 +29,16 @@ required-environments = [
     "sys_platform == 'win32' and platform_machine == 'AMD64'",
 ]
 
+[project.optional-dependencies]
+# CUDA 12 런타임 — 시스템 CUDA 버전(12/13+)과 무관하게 ctranslate2 GPU 가속 제공
+# 시스템에 CUDA 12가 깔려 있어도 충돌 없음. GPU 없는 사용자는 설치 불필요.
+# 설치: uv sync --extra cuda12
+cuda12 = [
+    "nvidia-cublas-cu12",
+    "nvidia-cudnn-cu12",
+    "nvidia-cufft-cu12",
+]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
