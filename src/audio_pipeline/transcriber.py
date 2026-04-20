@@ -27,7 +27,10 @@ if sys.platform == "win32":
                 os.add_dll_directory(_dll_dir)
         except (ImportError, AttributeError, OSError):
             pass
-    del _CUDA_DLL_PACKAGES, _pkg, _mod, _part, _dll_dir  # 네임스페이스 정리
+    try:
+        del _CUDA_DLL_PACKAGES, _pkg, _mod, _part, _dll_dir
+    except NameError:
+        pass
 
 # https://developers.rtzr.ai/docs/stt-file/
 
