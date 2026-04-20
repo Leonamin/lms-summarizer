@@ -8,6 +8,31 @@ import os
 import requests
 from src.user_setting import UserSetting
 
+
+# Windows: nvidia-cublas-cu12 등 pip 패키지의 DLL을 시스템 검색 경로에 등록
+# ctranslate2(faster-whisper)는 cublas64_12.dll 등을 로드하는데,
+# pip로 설치한 nvidia 패키지의 DLL은 site-packages/nvidia/*/lib/ 에 있어서
+# 기본적으로 검색되지 않음. os.add_dll_directory()로 등록해야 찾을 수 있음.
+if sys.platform == "win32":
+    try:
+        import importlib.metadata
+        _nvidia_base = os.path.join(
+            os.path.dirname(importlib.metadata.distribution("nvidia-cublas-cu12").locate_file("")),
+            "nvidia",
+        )
+        if os.path.isdir(_nvidia_base):
+            for _subdir in os.listdir(_nvidia_base):
+                for _lib_name in ("bin", "lib"):
+                    _lib_dir = os.path.join(_nvidia_base, _subdir, _lib_name)
+                    if os.path.isdir(_lib_dir):
+                        os.add_dll_directory(_lib_dir)
+    except (importlib.metadata.PackageNotFoundError, OSError, FileNotFoundError):
+        pass
+    try:
+        del _nvidia_base, _subdir, _lib_dir
+    except NameError:
+        pass
+
 # https://developers.rtzr.ai/docs/stt-file/
 
 
@@ -109,6 +134,7 @@ class FasterWhisperTranscriber(Transcriber):
     def __init__(self, model_name="large-v3-turbo", device="auto", compute_type="auto", params=None, on_log=None):
         from faster_whisper import WhisperModel
         self._on_log = on_log or (lambda msg: None)
+        self._model_name = model_name  # CPU fallback 시 재사용
         self._language = (params or {}).get("language", "ko")
         self._initial_prompt = (params or {}).get("initial_prompt", "한국어 강의입니다.")
         self._vad_filter = bool((params or {}).get("vad_filter", True))
@@ -138,7 +164,7 @@ class FasterWhisperTranscriber(Transcriber):
             self.model = WhisperModel(model_name, device=resolved_device, compute_type=resolved_compute)
         except Exception as e:
             if resolved_device != "cpu":
-                self._on_log(f"⚠️ GPU 초기화 실패: {e}")
+                self._on_log(self._format_cuda_error(e))
                 self._on_log("[faster-whisper] CPU 모드로 전환합니다...")
                 resolved_device = "cpu"
                 resolved_compute = "int8"
@@ -148,6 +174,29 @@ class FasterWhisperTranscriber(Transcriber):
 
         self.model_load_sec = time.time() - load_start
         self._on_log(f"[faster-whisper] 모델 로드 완료: {self.model_load_sec:.1f}초 (device={resolved_device})")
+
+    @staticmethod
+    def _is_cuda_runtime_error(e: Exception) -> bool:
+        """CUDA 런타임 라이브러리(cublas/cudnn/cufft) 누락 에러인지 확인."""
+        msg = str(e).lower()
+        return any(lib in msg for lib in ("cublas", "cudnn", "cufft", "curand", "cusolver", "cusparse"))
+
+    @staticmethod
+    def _format_cuda_error(e: Exception) -> str:
+        """CUDA 런타임 누락 에러를 사용자 친화적으로 포맷."""
+        msg = str(e)
+        lines = [f"⚠️ GPU 초기화 실패: {msg}"]
+
+        if "cublas" in msg.lower():
+            lines.append("")
+            lines.append("💡 해결 방법:")
+            lines.append("   pip install nvidia-cublas-cu12 nvidia-cudnn-cu12 nvidia-cufft-cu12")
+            lines.append("   (또는 uv sync --extra cuda12)")
+            lines.append("")
+            lines.append("   시스템에 설치된 CUDA 버전(12/13+)과 무관하게 Python 환경에")
+            lines.append("   CUDA 12 런타임을 제공합니다. 시스템 CUDA 설치에 영향이 없습니다.")
+
+        return "\n".join(lines)
 
     @staticmethod
     def _check_vad_available() -> bool:
@@ -260,36 +309,68 @@ class FasterWhisperTranscriber(Transcriber):
             pass
 
         self._on_log(f"[faster-whisper] 변환 시작: {os.path.basename(audio_path)}")
-        segments, info = self.model.transcribe(
-            audio_path,
-            language=self._language,
-            initial_prompt=self._initial_prompt,
-            vad_filter=self._vad_filter,
-            beam_size=1,                  # 빔 서치 1로 고정 (속도 우선)
-        )
 
-        text_parts = []
-        last_log_time = time.time()
-        LOG_INTERVAL = 10  # 최소 10초 간격으로 진행 상황 로그
-        first_segment = True
+        try:
+            segments, info = self.model.transcribe(
+                audio_path,
+                language=self._language,
+                initial_prompt=self._initial_prompt,
+                vad_filter=self._vad_filter,
+                beam_size=1,                  # 빔 서치 1로 고정 (속도 우선)
+            )
 
-        for i, seg in enumerate(segments):
-            if first_segment:
-                first_elapsed = time.time() - transcribe_start
-                self._on_log(f"[faster-whisper] 첫 세그먼트 디코딩 완료 ({first_elapsed:.1f}초)")
-                first_segment = False
+            text_parts = []
+            last_log_time = time.time()
+            LOG_INTERVAL = 10  # 최소 10초 간격으로 진행 상황 로그
+            first_segment = True
 
-            if seg.text.strip():
-                text_parts.append(seg.text.strip())
+            for i, seg in enumerate(segments):
+                if first_segment:
+                    first_elapsed = time.time() - transcribe_start
+                    self._on_log(f"[faster-whisper] 첫 세그먼트 디코딩 완료 ({first_elapsed:.1f}초)")
+                    first_segment = False
 
-            now = time.time()
-            # 정기 진척도 로그 (10초 간격 + 최소 1세그먼트 경과)
-            if i > 0 and (now - last_log_time) >= LOG_INTERVAL:
-                elapsed_so_far = now - transcribe_start
-                self._on_log(
-                    f"  처리 중... {i+1} 세그먼트 ({elapsed_so_far:.0f}초 경과)"
-                )
-                last_log_time = now
+                if seg.text.strip():
+                    text_parts.append(seg.text.strip())
+
+                now = time.time()
+                # 정기 진척도 로그 (10초 간격 + 최소 1세그먼트 경과)
+                if i > 0 and (now - last_log_time) >= LOG_INTERVAL:
+                    elapsed_so_far = now - transcribe_start
+                    self._on_log(
+                        f"  처리 중... {i+1} 세그먼트 ({elapsed_so_far:.0f}초 경과)"
+                    )
+                    last_log_time = now
+
+        except Exception as e:
+            # CUDA 런타임 라이브러리 누락 (cublas64_12.dll 등) — 모델 로드는 성공했지만
+            # 실제 연산 시점에 실패하는 케이스 (시스템 CUDA 13에 cublas 12 없음 등)
+            if self._is_cuda_runtime_error(e):
+                self._on_log(self._format_cuda_error(e))
+                self._on_log("[faster-whisper] CPU 모드로 재시도합니다...")
+                try:
+                    from faster_whisper import WhisperModel
+                    self.model = WhisperModel(
+                        self._model_name,
+                        device="cpu", compute_type="int8",
+                    )
+                    segments, info = self.model.transcribe(
+                        audio_path,
+                        language=self._language,
+                        initial_prompt=self._initial_prompt,
+                        vad_filter=self._vad_filter,
+                        beam_size=1,
+                    )
+                    text_parts = []
+                    for seg in segments:
+                        if seg.text.strip():
+                            text_parts.append(seg.text.strip())
+                except Exception as cpu_err:
+                    raise RuntimeError(
+                        f"CPU fallback도 실패: {cpu_err}"
+                    ) from e
+            else:
+                raise
 
         text = " ".join(text_parts)
         with open(txt_path, "w", encoding="utf-8") as f:
@@ -337,14 +418,19 @@ class OpenAIWhisperTranscriber(Transcriber):
 class OpenAICompatibleSTTTranscriber(Transcriber):
     """OpenAI 호환 STT 엔드포인트 (AI Orchestrator, Speaches 등)
 
-    OpenAI SDK를 사용하여 /audio/transcriptions 엔드포인트로 STT를 수행합니다.
+    OpenAI SDK를 사용하여 STT API로 음성을 텍스트로 변환합니다.
     AI Orchestrator, Speaches, faster-whisper-server, 또는 임의의 OpenAI API
     호환 서버에 연결 가능합니다.
 
-    base_url은 서비스의 루트까지만 지정합니다.
-    예: http://localhost:8765/aio/v1 (SDK가 /audio/transcriptions를 자동으로 붙임)
+    base_url 형식:
+    - AI Orchestrator: http://localhost:8765/aio/v1/stt
+      (SDK가 /audio/transcriptions를 자동으로 붙임 → /aio/v1/stt/audio/transcriptions)
+    - 일반 OpenAI 호환: http://localhost:8765/v1
+      (SDK가 /audio/transcriptions를 자동으로 붙임 → /v1/audio/transcriptions)
 
-    AI Orchestrator 사용 시 STT 서비스가 꺼져 있으면 자동으로 시작을 시도합니다.
+    AI Orchestrator 사용 시:
+    - STT 서비스가 꺼져 있으면 자동으로 시작을 시도합니다.
+    - 지정한 모델이 로드되지 않았으면 자동으로 설치를 시도합니다.
     """
 
     def __init__(self, base_url: str = None, api_key: str = None,
@@ -358,8 +444,20 @@ class OpenAICompatibleSTTTranscriber(Transcriber):
         # 후행 슬래시 제거 (SDK가 자동으로 /audio/transcriptions를 붙임)
         self._base_url = base_url.rstrip("/")
 
-        # AI Orchestrator 패턴 감지: base_url에 /aio/v1이 포함되면 오케스트레이터로 판단
+        # AI Orchestrator 구버전 호환: /aio/v1 → /aio/v1/stt 자동 보정
+        # 구버전에서는 base_url을 http://localhost:8765/aio/v1 로 저장했으나,
+        # 신규 API에서는 /aio/v1/stt 여야 함 (/aio/v1/stt/audio/transcriptions)
+        if self._base_url.endswith("/aio/v1") and not self._base_url.endswith("/stt"):
+            self._base_url = self._base_url + "/stt"
+
+        # AI Orchestrator 패턴 감지: base_url에 /aio/가 포함되면 오케스트레이터로 판단
         self._is_orchestrator = "/aio/" in self._base_url
+
+        # 오케스트레이터 루트 URL (http://host:port) — 운영 API 호출용
+        if self._is_orchestrator:
+            from urllib.parse import urlparse
+            parsed = urlparse(self._base_url)
+            self._orchestrator_root = f"{parsed.scheme}://{parsed.netloc}"
 
         resolved_model = model_name or "Systran/faster-whisper-small"
 
@@ -371,7 +469,7 @@ class OpenAICompatibleSTTTranscriber(Transcriber):
         self._on_log(f"[openai-compatible-stt] 엔드포인트: {self._base_url}")
         self._on_log(f"[openai-compatible-stt] 모델: {self.model_name}")
         if self._is_orchestrator:
-            self._on_log("[openai-compatible-stt] AI Orchestrator 감지 — 서비스 자동 시작 지원")
+            self._on_log("[openai-compatible-stt] AI Orchestrator 감지 — 서비스 자동 시작 및 모델 설치 지원")
         self._on_log("[openai-compatible-stt] STT 엔진 초기화 완료")
 
     def _ensure_service_running(self):
@@ -379,15 +477,10 @@ class OpenAICompatibleSTTTranscriber(Transcriber):
         if not self._is_orchestrator:
             return
 
-        # 오케스트레이터 루트 URL 추출: http://host:port (경로 제외)
-        from urllib.parse import urlparse
-        parsed = urlparse(self._base_url)
-        orchestrator_root = f"{parsed.scheme}://{parsed.netloc}"
-
         try:
             # STT 서비스 상태 확인
             status_resp = requests.get(
-                f"{orchestrator_root}/stt/status",
+                f"{self._orchestrator_root}/stt/status",
                 timeout=5,
             )
             if status_resp.status_code == 200:
@@ -396,7 +489,7 @@ class OpenAICompatibleSTTTranscriber(Transcriber):
                     self._on_log("[openai-compatible-stt] STT 서비스 실행 중 확인")
                     return
         except (requests.ConnectionError, requests.Timeout):
-            self._on_log(f"[openai-compatible-stt] ⚠️ 오케스트레이터 연결 실패: {orchestrator_root}")
+            self._on_log(f"[openai-compatible-stt] ⚠️ 오케스트레이터 연결 실패: {self._orchestrator_root}")
             self._on_log("[openai-compatible-stt] 오케스트레이터가 실행 중인지 확인하세요.")
             return
         except Exception:
@@ -406,7 +499,7 @@ class OpenAICompatibleSTTTranscriber(Transcriber):
         self._on_log("[openai-compatible-stt] STT 서비스 시작 요청 중...")
         try:
             start_resp = requests.post(
-                f"{orchestrator_root}/start/stt",
+                f"{self._orchestrator_root}/start/stt",
                 timeout=30,
             )
             if start_resp.status_code == 200:
@@ -416,16 +509,65 @@ class OpenAICompatibleSTTTranscriber(Transcriber):
                     f"[openai-compatible-stt] ⚠️ 서비스 시작 응답: {start_resp.status_code}"
                 )
         except requests.ConnectionError:
-            self._on_log(f"[openai-compatible-stt] ⚠️ 오케스트레이터 연결 실패: {orchestrator_root}")
+            self._on_log(f"[openai-compatible-stt] ⚠️ 오케스트레이터 연결 실패: {self._orchestrator_root}")
         except requests.Timeout:
             self._on_log("[openai-compatible-stt] ⚠️ 서비스 시작 타임아웃 (30초)")
+
+    def _ensure_model_loaded(self):
+        """AI Orchestrator에서 지정한 모델이 로드되어 있는지 확인하고, 없으면 설치.
+
+        모델 설치는 POST /aio/v1/stt/models/{model_id} 로 요청합니다.
+        """
+        if not self._is_orchestrator:
+            return
+
+        try:
+            # 현재 로드된 모델 목록 확인
+            models_resp = requests.get(
+                f"{self._base_url}/models",
+                timeout=10,
+            )
+            if models_resp.status_code == 200:
+                models_data = models_resp.json()
+                loaded_models = models_data if isinstance(models_data, list) else models_data.get("models", [])
+                # 모델 ID가 이미 로드되어 있으면 스킵
+                model_ids = []
+                for m in loaded_models:
+                    if isinstance(m, dict):
+                        model_ids.append(m.get("id", m.get("model_id", "")))
+                    elif isinstance(m, str):
+                        model_ids.append(m)
+                if self.model_name in model_ids:
+                    return
+        except Exception:
+            pass
+
+        # 모델 설치 요청
+        self._on_log(f"[openai-compatible-stt] 모델 설치 요청: {self.model_name}...")
+        try:
+            # URL 인코딩 (슬래시 포함 모델 ID: Systran/faster-whisper-large-v3)
+            install_resp = requests.post(
+                f"{self._base_url}/models/{self.model_name}",
+                timeout=120,
+            )
+            if install_resp.status_code == 200:
+                self._on_log(f"[openai-compatible-stt] ✅ 모델 설치 완료: {self.model_name}")
+            else:
+                self._on_log(
+                    f"[openai-compatible-stt] ⚠️ 모델 설치 응답: {install_resp.status_code} — {install_resp.text[:200]}"
+                )
+        except requests.ConnectionError:
+            self._on_log(f"[openai-compatible-stt] ⚠️ 모델 설치 연결 실패")
+        except requests.Timeout:
+            self._on_log("[openai-compatible-stt] ⚠️ 모델 설치 타임아웃 (120초)")
 
     def transcribe(self, audio_path: str, txt_path: str):
         self._on_log(f"[openai-compatible-stt] STT 시작: {os.path.basename(audio_path)}")
         transcribe_start = time.time()
 
-        # 오케스트레이터 STT 서비스 자동 시작
+        # 오케스트레이터 STT 서비스 자동 시작 + 모델 설치
         self._ensure_service_running()
+        self._ensure_model_loaded()
 
         try:
             with open(audio_path, "rb") as audio_file:
