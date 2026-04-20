@@ -22,9 +22,10 @@ if sys.platform == "win32":
         )
         if os.path.isdir(_nvidia_base):
             for _subdir in os.listdir(_nvidia_base):
-                _lib_dir = os.path.join(_nvidia_base, _subdir, "lib")
-                if os.path.isdir(_lib_dir):
-                    os.add_dll_directory(_lib_dir)
+                for _lib_name in ("bin", "lib"):
+                    _lib_dir = os.path.join(_nvidia_base, _subdir, _lib_name)
+                    if os.path.isdir(_lib_dir):
+                        os.add_dll_directory(_lib_dir)
     except (importlib.metadata.PackageNotFoundError, OSError, FileNotFoundError):
         pass
     try:
