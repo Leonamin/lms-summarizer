@@ -11,24 +11,24 @@ from src.user_setting import UserSetting
 
 # Windows: nvidia-cublas-cu12 등 pip 패키지의 DLL을 시스템 검색 경로에 등록
 # ctranslate2(faster-whisper)는 cublas64_12.dll 등을 로드하는데,
-# pip로 설치한 nvidia 패키지의 DLL은 site-packages/ 에 있어서 기본적으로 검색되지 않음.
-# os.add_dll_directory()로 등록해야 ctranslate2가 찾을 수 있음.
+# pip로 설치한 nvidia 패키지의 DLL은 site-packages/nvidia/*/lib/ 에 있어서
+# 기본적으로 검색되지 않음. os.add_dll_directory()로 등록해야 찾을 수 있음.
 if sys.platform == "win32":
-    _CUDA_DLL_PACKAGES = ["nvidia.cublas.lib", "nvidia.cudnn.lib", "nvidia.cufft.lib",
-                          "nvidia.curand.lib", "nvidia.cusolver.lib", "nvidia.cusparse.lib"]
-    for _pkg in _CUDA_DLL_PACKAGES:
-        try:
-            _mod = __import__(_pkg)
-            # 중첩 모듈 경로 탐색: nvidia.cublas.lib → nvidia/cublas/lib/
-            for _part in _pkg.split(".")[1:]:
-                _mod = getattr(_mod, _part)
-            _dll_dir = os.path.dirname(_mod.__file__)
-            if os.path.isdir(_dll_dir):
-                os.add_dll_directory(_dll_dir)
-        except (ImportError, AttributeError, OSError):
-            pass
     try:
-        del _CUDA_DLL_PACKAGES, _pkg, _mod, _part, _dll_dir
+        import importlib.metadata
+        _nvidia_base = os.path.join(
+            os.path.dirname(importlib.metadata.distribution("nvidia-cublas-cu12").locate_file("")),
+            "nvidia",
+        )
+        if os.path.isdir(_nvidia_base):
+            for _subdir in os.listdir(_nvidia_base):
+                _lib_dir = os.path.join(_nvidia_base, _subdir, "lib")
+                if os.path.isdir(_lib_dir):
+                    os.add_dll_directory(_lib_dir)
+    except (importlib.metadata.PackageNotFoundError, OSError, FileNotFoundError):
+        pass
+    try:
+        del _nvidia_base, _subdir, _lib_dir
     except NameError:
         pass
 
