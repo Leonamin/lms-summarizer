@@ -226,22 +226,28 @@ class MainView:
     # ── 파일 선택 ─────────────────────────────────────────
 
     def _handle_pick_files(self, e=None):
-        def result_handler(files: list[ft.FilePickerResultFile]):
-            if not files:
-                return
-            self._picked_files = [f.path for f in files if f.path]
-            names = [Path(p).name for p in self._picked_files]
-            self._file_list_text.value = f"{len(names)}개 파일: " + ", ".join(names[:5]) + ("..." if len(names) > 5 else "")
-            self._file_list_text.visible = True
-            hint = self.source_selector.get_stage_hint(self._picked_files)
-            self._stage_hint_text.value = hint
-            self._stage_hint_text.visible = bool(hint)
+        # FilePicker는 page당 한 번만 overlay에 등록
+        if not hasattr(self.page, "_fp_files"):
+            self.page._fp_files = ft.FilePicker(on_result=self._on_files_picked)
+            self.page.overlay.append(self.page._fp_files)
             self.page.update()
+        picker = self.page._fp_files
+        # pick_files는 코루틴 → run_task로 실행
+        self.page.run_task(picker.pick_files, dialog_title="처리할 파일 선택",
+                           allow_multiple=True)
 
-        picker = ft.FilePicker(on_result=result_handler)
-        self.page.overlay.append(picker)
+    def _on_files_picked(self, files: list):
+        if not files:
+            return
+        self._picked_files = [f.path for f in files if f.path]
+        names = [Path(p).name for p in self._picked_files]
+        self._file_list_text.value = (
+            f"{len(names)}개 파일: " + ", ".join(names[:5]) + ("..." if len(names) > 5 else ""))
+        self._file_list_text.visible = True
+        hint = self.source_selector.get_stage_hint(self._picked_files)
+        self._stage_hint_text.value = hint
+        self._stage_hint_text.visible = bool(hint)
         self.page.update()
-        picker.pick_files(allow_multiple=True)
 
     # ── 강의 목록 ─────────────────────────────────────────
 
