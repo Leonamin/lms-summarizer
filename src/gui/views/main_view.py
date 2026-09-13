@@ -318,10 +318,15 @@ class MainView:
                 self._show_snackbar("처리할 파일을 선택해주세요.", Colors.WARNING)
                 return
 
-        # 검증
+        # 검증 (로컬 파일 소스는 URL/계정/Chrome 검증 불필요)
+        is_file = (source != "lms")
         skip_key = engine in ("clipboard", "custom")
         valid, error_message = InputValidator.validate_all_inputs(
-            {**inputs, 'urls': '\n'.join(urls)}, skip_api_key=skip_key,
+            {**inputs, 'urls': '\n'.join(urls)},
+            skip_api_key=skip_key,
+            skip_urls=is_file,
+            require_credentials=not is_file,
+            require_chrome=not is_file,
         )
         if not valid:
             self._show_snackbar(error_message, Colors.ERROR)
