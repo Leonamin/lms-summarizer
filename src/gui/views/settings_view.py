@@ -1,7 +1,8 @@
 """
-설정 다이얼로그 (Flet AlertDialog)
-- 요약 프롬프트 모드/분야 설정 + 프리뷰, Chrome 경로 (기본)
-- 고급 설정 접힘/펼침: STT 엔진, 디버그 모드, 폴더 자동 열기
+설정 다이얼로그 — 카테고리 내비게이션 구조 (macOS 시스템 설정 스타일)
+
+좌측: 카테고리 목록 (요약 프롬프트 / 브라우저 / 동작)
+우측: 선택된 카테고리의 설정 항목
 """
 
 import os
@@ -9,9 +10,7 @@ import flet as ft
 
 from src.gui.theme import Colors, Typography, Spacing, Radius, divider
 from src.gui.core.file_manager import (
-    get_summary_mode, set_summary_mode,
-    get_subject_category, set_subject_category,
-    get_subject_custom, set_subject_custom,
+    set_summary_mode, set_subject_category, set_subject_custom,
     get_chrome_path, set_chrome_path, detect_chrome_paths,
     get_debug_mode, set_debug_mode,
     get_auto_open_folder, set_auto_open_folder,
@@ -21,314 +20,452 @@ from src.summarize_pipeline.prompts import (
     build_prompt,
 )
 
+# 카테고리 정의: (key, 라벨, 아이콘)
+_CATEGORIES = [
+    ("summary", "요약 프롬프트", ft.Icons.SUMMARIZE),
+    ("browser", "브라우저", ft.Icons.WEB),
+    ("behavior", "동작", ft.Icons.TUNE),
+]
 
 
-def open_settings_dialog(page: ft.Page):
-    """설정 다이얼로그를 열고 닫기까지 관리"""
+class SettingsDialog:
+    """카테고리 내비게이션형 설정 다이얼로그"""
 
-    # ── 요약 프롬프트 모드/분야 설정 ──────────────────────
-    mode_dropdown = ft.Dropdown(
-        options=[
-            ft.dropdown.Option(key=k, text=v)
-            for k, v in SUMMARY_MODE_LABELS.items()
-        ],
-        value=get_summary_mode(),
-        label="요약 모드",
-        border_radius=Radius.MD,
-        border_color=Colors.BORDER,
-        focused_border_color=Colors.PRIMARY,
-        text_size=Typography.BODY,
-        label_style=ft.TextStyle(size=Typography.CAPTION, color=Colors.TEXT_SECONDARY),
-        dense=True,
-        on_select=lambda e: _update_preview(),
-        tooltip="요약 스타일을 선택하세요 (일반 요약, 시험 대비, 핵심 정리 등)",
-    )
+    def __init__(self, page: ft.Page):
+        self._page = page
+        self._current = "summary"
+        self._cat_buttons: dict[str, ft.Container] = {}
+        self._cat_contents: dict[str, ft.Container] = {}
 
-    subject_dropdown = ft.Dropdown(
-        options=[
-            ft.dropdown.Option(key=k, text=k)
-            for k in SUBJECT_CATEGORIES.keys()
-        ],
-        value=get_subject_category(),
-        label="강의 분야",
-        border_radius=Radius.MD,
-        border_color=Colors.BORDER,
-        focused_border_color=Colors.PRIMARY,
-        text_size=Typography.BODY,
-        label_style=ft.TextStyle(size=Typography.CAPTION, color=Colors.TEXT_SECONDARY),
-        dense=True,
-        on_select=lambda e: _update_preview(),
-        tooltip="강의 분야에 맞는 전문 용어로 요약됩니다",
-    )
+        self._build_summary_tab()
+        self._build_browser_tab()
+        self._build_behavior_tab()
 
-    subject_custom_field = ft.TextField(
-        value=get_subject_custom(),
-        hint_text="과목명 직접 입력 (선택사항, 드롭다운보다 우선)",
-        border_radius=Radius.MD,
-        border_color=Colors.BORDER,
-        focused_border_color=Colors.PRIMARY,
-        text_size=Typography.BODY,
-        label="직접 입력",
-        label_style=ft.TextStyle(size=Typography.CAPTION, color=Colors.TEXT_SECONDARY),
-        dense=True,
-        on_change=lambda e: _update_preview(),
-        tooltip="과목명을 직접 입력하면 드롭다운 선택보다 우선 적용됩니다",
-    )
-
-    # 프롬프트 프리뷰 (읽기 전용)
-    prompt_preview = ft.TextField(
-        value=build_prompt(
-            mode=get_summary_mode(),
-            subject_category=get_subject_category(),
-            subject_custom=get_subject_custom(),
-        ),
-        multiline=True,
-        min_lines=3,
-        max_lines=6,
-        border_radius=Radius.MD,
-        border_color=Colors.BORDER,
-        text_size=Typography.SMALL,
-        label="생성된 프롬프트 (미리보기)",
-        label_style=ft.TextStyle(size=Typography.CAPTION, color=Colors.TEXT_SECONDARY),
-        read_only=True,
-        tooltip="AI에 전달될 요약 프롬프트 미리보기 (자동 생성, 직접 수정 불가)",
-    )
-
-    def _update_preview():
-        mode = mode_dropdown.value or SummaryMode.NORMAL
-        category = subject_dropdown.value or "자동 감지"
-        custom = (subject_custom_field.value or "").strip()
-        prompt_preview.value = build_prompt(
-            mode=mode,
-            subject_category=category,
-            subject_custom=custom,
-        )
-        if prompt_preview.page:
-            prompt_preview.update()
-
-    def _reset_prompt(e):
-        mode_dropdown.value = SummaryMode.NORMAL
-        subject_dropdown.value = "자동 감지"
-        subject_custom_field.value = ""
-        _update_preview()
-        if mode_dropdown.page:
-            mode_dropdown.update()
-            subject_dropdown.update()
-            subject_custom_field.update()
-
-    # ── Chrome 경로 ──────────────────────────────────────
-    chrome_field = ft.TextField(
-        value=get_chrome_path(),
-        hint_text="Chrome 실행 파일 경로",
-        border_radius=Radius.MD,
-        border_color=Colors.BORDER,
-        focused_border_color=Colors.PRIMARY,
-        text_size=Typography.BODY,
-        label="Chrome 경로",
-        label_style=ft.TextStyle(size=Typography.CAPTION, color=Colors.TEXT_SECONDARY),
-        prefix_icon=ft.Icons.WEB,
-        tooltip="LMS 영상 재생에 사용할 Google Chrome 실행 파일 경로",
-    )
-
-    detected_paths = detect_chrome_paths()
-    detected_controls = []
-    if detected_paths:
-        for p in detected_paths:
-            detected_controls.append(
-                ft.TextButton(
-                    content=ft.Text(f"자동 감지된 경로 사용: {p}", size=Typography.SMALL),
-                    style=ft.ButtonStyle(
-                        color=Colors.PRIMARY,
-                        padding=ft.padding.symmetric(horizontal=4, vertical=2),
+        self.dialog = ft.AlertDialog(
+            modal=True,
+            shape=ft.RoundedRectangleBorder(radius=Radius.LG),
+            bgcolor=Colors.BG,
+            title=ft.Row(
+                controls=[
+                    ft.Icon(ft.Icons.SETTINGS, size=20, color=Colors.PRIMARY),
+                    ft.Text("설정", size=Typography.HEADING,
+                            weight=Typography.SEMI_BOLD, expand=True),
+                    ft.IconButton(
+                        icon=ft.Icons.CLOSE, icon_size=18,
+                        icon_color=Colors.TEXT_MUTED,
+                        on_click=self._close, tooltip="닫기",
                     ),
-                    on_click=lambda e, path=p: _set_chrome_path(path),
-                )
-            )
-    else:
-        detected_controls.append(
-            ft.Container(
-                content=ft.Column(
+                ],
+                spacing=Spacing.SM,
+            ),
+            content=ft.Container(
+                width=640,
+                height=460,
+                content=ft.Row(
                     controls=[
-                        ft.Row(
-                            controls=[
-                                ft.Icon(ft.Icons.WARNING_AMBER_ROUNDED, size=16, color="#B45309"),
-                                ft.Text(
-                                    "Chrome이 감지되지 않았습니다.",
-                                    size=Typography.BODY,
-                                    weight=Typography.SEMI_BOLD,
-                                    color="#B45309",
-                                ),
-                            ],
-                            spacing=Spacing.XS,
-                        ),
-                        ft.Text(
-                            "LMS 영상 재생을 위해 Google Chrome이 필요합니다.\n"
-                            "아래 버튼으로 Chrome을 다운로드하거나, 이미 설치된 경우 '찾아보기'로 직접 경로를 지정하세요.",
-                            size=Typography.SMALL,
-                            color="#92400E",
-                        ),
-                        ft.TextButton(
-                            content=ft.Text("Chrome 다운로드 페이지 열기", size=Typography.SMALL),
-                            icon=ft.Icons.OPEN_IN_NEW,
-                            style=ft.ButtonStyle(
-                                color=Colors.PRIMARY,
-                                padding=ft.padding.symmetric(horizontal=4, vertical=2),
+                        # 좌측 카테고리 목록
+                        ft.Container(
+                            content=ft.Column(
+                                controls=[self._build_category_list()],
+                                spacing=0,
                             ),
-                            url="https://www.google.com/chrome/",
+                            width=180,
+                            bgcolor="#F8FAFC",
+                            border=ft.border.only(
+                                right=ft.BorderSide(1, Colors.BORDER)),
+                            border_radius=ft.border_radius.only(
+                                top_left=Radius.LG, bottom_left=Radius.LG),
+                            padding=ft.padding.all(Spacing.SM),
+                        ),
+                        # 우측 상세
+                        ft.Container(
+                            content=ft.Column(
+                                controls=list(self._cat_contents.values()),
+                                spacing=0,
+                            ),
+                            expand=True,
+                            padding=ft.padding.all(Spacing.LG),
                         ),
                     ],
-                    spacing=4,
+                    spacing=0,
                 ),
-                bgcolor="#FFFBEB",
-                border=ft.border.all(1, "#FDE68A"),
-                border_radius=Radius.MD,
-                padding=ft.padding.all(Spacing.SM),
-            )
+            ),
+            actions=[
+                ft.TextButton(content=ft.Text("취소"), on_click=self._close),
+                ft.ElevatedButton(
+                    content=ft.Text("저장"),
+                    icon=ft.Icons.SAVE,
+                    on_click=self._save,
+                    style=ft.ButtonStyle(
+                        color=ft.Colors.WHITE,
+                        bgcolor=Colors.PRIMARY,
+                        shape=ft.RoundedRectangleBorder(radius=Radius.LG),
+                    ),
+                ),
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
         )
 
-    def _set_chrome_path(path):
-        chrome_field.value = path
-        chrome_field.update()
+    # ── 카테고리 목록 ─────────────────────────────────────
 
-    # FilePicker는 page당 한 번만 overlay에 등록해야 함
-    # 재호출 시 기존 인스턴스를 재사용
-    if not hasattr(page, "_fp_chrome"):
-        page._fp_chrome = ft.FilePicker()
-        page.services.append(page._fp_chrome)
-        page.update()
-    file_picker = page._fp_chrome
+    def _build_category_list(self) -> ft.Column:
+        buttons = []
+        for key, label, icon in _CATEGORIES:
+            btn = ft.Container(
+                content=ft.Row(
+                    controls=[
+                        ft.Icon(icon, size=16, color=Colors.TEXT_MUTED),
+                        ft.Text(label, size=Typography.BODY,
+                                color=Colors.TEXT_MUTED, expand=True),
+                    ],
+                    spacing=Spacing.SM,
+                ),
+                padding=ft.padding.symmetric(horizontal=Spacing.SM, vertical=8),
+                border_radius=Radius.SM,
+                ink=True,
+                on_click=lambda e, k=key: self.switch_category(k),
+            )
+            self._cat_buttons[key] = btn
+            buttons.append(btn)
+        self._refresh_category_styles()
+        return ft.Column(controls=buttons, spacing=2)
 
-    async def _browse_chrome(e):
+    def _refresh_category_styles(self):
+        for key, btn in self._cat_buttons.items():
+            active = (key == self._current)
+            btn.bgcolor = "#EFF6FF" if active else None
+            icon = btn.content.controls[0]
+            label = btn.content.controls[1]
+            icon.color = Colors.PRIMARY if active else Colors.TEXT_MUTED
+            label.color = Colors.PRIMARY if active else Colors.TEXT_MUTED
+            label.weight = Typography.SEMI_BOLD if active else Typography.REGULAR
+
+    def switch_category(self, key: str):
+        if key == self._current:
+            return
+        self._current = key
+        for k, ctrl in self._cat_contents.items():
+            ctrl.visible = (k == key)
+        self._refresh_category_styles()
+        try:
+            self.dialog.content.update()
+        except Exception:
+            self._page.update()
+
+    # ── 요약 프롬프트 탭 ──────────────────────────────────
+
+    def _build_summary_tab(self):
+        self.mode_dropdown = ft.Dropdown(
+            options=[
+                ft.dropdown.Option(key=k, text=v)
+                for k, v in SUMMARY_MODE_LABELS.items()
+            ],
+            value=get_summary_mode(),
+            label="요약 모드",
+            border_radius=Radius.MD,
+            border_color=Colors.BORDER,
+            focused_border_color=Colors.PRIMARY,
+            text_size=Typography.BODY,
+            label_style=ft.TextStyle(size=Typography.CAPTION, color=Colors.TEXT_SECONDARY),
+            dense=True,
+            on_select=lambda e: self._update_preview(),
+        )
+
+        self.subject_dropdown = ft.Dropdown(
+            options=[
+                ft.dropdown.Option(key=k, text=k)
+                for k in SUBJECT_CATEGORIES.keys()
+            ],
+            value=get_subject_category(),
+            label="강의 분야",
+            border_radius=Radius.MD,
+            border_color=Colors.BORDER,
+            focused_border_color=Colors.PRIMARY,
+            text_size=Typography.BODY,
+            label_style=ft.TextStyle(size=Typography.CAPTION, color=Colors.TEXT_SECONDARY),
+            dense=True,
+            on_select=lambda e: self._update_preview(),
+        )
+
+        self.subject_custom_field = ft.TextField(
+            value=get_subject_custom(),
+            hint_text="과목명 직접 입력 (선택사항, 드롭다운보다 우선)",
+            border_radius=Radius.MD,
+            border_color=Colors.BORDER,
+            focused_border_color=Colors.PRIMARY,
+            text_size=Typography.BODY,
+            label="직접 입력",
+            label_style=ft.TextStyle(size=Typography.CAPTION, color=Colors.TEXT_SECONDARY),
+            dense=True,
+            on_change=lambda e: self._update_preview(),
+        )
+
+        self.prompt_preview = ft.TextField(
+            value=build_prompt(
+                mode=get_summary_mode(),
+                subject_category=get_subject_category(),
+                subject_custom=get_subject_custom(),
+            ),
+            multiline=True,
+            min_lines=4,
+            max_lines=8,
+            border_radius=Radius.MD,
+            border_color=Colors.BORDER,
+            text_size=Typography.SMALL,
+            label="생성된 프롬프트 (미리보기)",
+            label_style=ft.TextStyle(size=Typography.CAPTION, color=Colors.TEXT_SECONDARY),
+            read_only=True,
+        )
+
+        content = ft.Column(
+            controls=[
+                ft.Text(
+                    "요약 모드와 강의 분야를 선택하면 프롬프트가 자동 생성됩니다.",
+                    size=Typography.SMALL, color=Colors.TEXT_MUTED,
+                ),
+                self.mode_dropdown,
+                self.subject_dropdown,
+                self.subject_custom_field,
+                self.prompt_preview,
+                ft.TextButton(
+                    content=ft.Text("기본값 복원"),
+                    icon=ft.Icons.RESTORE,
+                    style=ft.ButtonStyle(
+                        color=Colors.ACCENT,
+                        text_style=ft.TextStyle(size=Typography.CAPTION),
+                    ),
+                    on_click=self._reset_prompt,
+                ),
+            ],
+            spacing=Spacing.MD,
+            scroll=ft.ScrollMode.AUTO,
+            expand=True,
+            horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
+        )
+        self._cat_contents["summary"] = ft.Container(content=content)
+
+    def _update_preview(self):
+        self.prompt_preview.value = build_prompt(
+            mode=self.mode_dropdown.value or SummaryMode.NORMAL,
+            subject_category=self.subject_dropdown.value or "자동 감지",
+            subject_custom=(self.subject_custom_field.value or "").strip(),
+        )
+        if self.prompt_preview.page:
+            self.prompt_preview.update()
+
+    def _reset_prompt(self, e):
+        self.mode_dropdown.value = SummaryMode.NORMAL
+        self.subject_dropdown.value = "자동 감지"
+        self.subject_custom_field.value = ""
+        self._update_preview()
+        if self.mode_dropdown.page:
+            self.mode_dropdown.update()
+            self.subject_dropdown.update()
+            self.subject_custom_field.update()
+
+    # ── 브라우저 탭 ───────────────────────────────────────
+
+    def _build_browser_tab(self):
+        self.chrome_field = ft.TextField(
+            value=get_chrome_path(),
+            hint_text="Chrome 실행 파일 경로",
+            border_radius=Radius.MD,
+            border_color=Colors.BORDER,
+            focused_border_color=Colors.PRIMARY,
+            text_size=Typography.BODY,
+            label="Chrome 경로",
+            label_style=ft.TextStyle(size=Typography.CAPTION, color=Colors.TEXT_SECONDARY),
+            prefix_icon=ft.Icons.WEB,
+            tooltip="LMS 영상 재생에 사용할 Google Chrome 실행 파일 경로",
+        )
+
+        detected_controls = self._build_detected_chrome_controls()
+
+        content = ft.Column(
+            controls=[
+                ft.Text(
+                    "LMS 영상 재생에 사용할 Google Chrome 경로를 설정합니다.",
+                    size=Typography.SMALL, color=Colors.TEXT_MUTED,
+                ),
+                ft.Row(
+                    controls=[
+                        ft.Container(content=self.chrome_field, expand=True),
+                        ft.OutlinedButton(
+                            content=ft.Text("찾아보기"),
+                            icon=ft.Icons.FOLDER_OPEN,
+                            on_click=self._browse_chrome,
+                            style=ft.ButtonStyle(
+                                color=Colors.PRIMARY,
+                                shape=ft.RoundedRectangleBorder(radius=Radius.MD),
+                            ),
+                        ),
+                    ],
+                    spacing=Spacing.SM,
+                ),
+                *detected_controls,
+            ],
+            spacing=Spacing.MD,
+            scroll=ft.ScrollMode.AUTO,
+            expand=True,
+            horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
+        )
+        self._cat_contents["browser"] = ft.Container(content=content)
+
+    def _build_detected_chrome_controls(self) -> list:
+        detected_paths = detect_chrome_paths()
+        controls = []
+        if detected_paths:
+            for p in detected_paths:
+                controls.append(
+                    ft.TextButton(
+                        content=ft.Text(f"자동 감지된 경로 사용: {p}", size=Typography.SMALL),
+                        style=ft.ButtonStyle(
+                            color=Colors.PRIMARY,
+                            padding=ft.padding.symmetric(horizontal=4, vertical=2),
+                        ),
+                        on_click=lambda e, path=p: self._set_chrome_path(path),
+                    )
+                )
+        else:
+            controls.append(
+                ft.Container(
+                    content=ft.Column(
+                        controls=[
+                            ft.Row(
+                                controls=[
+                                    ft.Icon(ft.Icons.WARNING_AMBER_ROUNDED, size=16, color="#B45309"),
+                                    ft.Text(
+                                        "Chrome이 감지되지 않았습니다.",
+                                        size=Typography.BODY,
+                                        weight=Typography.SEMI_BOLD,
+                                        color="#B45309",
+                                    ),
+                                ],
+                                spacing=Spacing.XS,
+                            ),
+                            ft.Text(
+                                "LMS 영상 재생을 위해 Google Chrome이 필요합니다.\n"
+                                "아래 버튼으로 Chrome을 다운로드하거나, 이미 설치된 경우 '찾아보기'로 직접 경로를 지정하세요.",
+                                size=Typography.SMALL,
+                                color="#92400E",
+                            ),
+                            ft.TextButton(
+                                content=ft.Text("Chrome 다운로드 페이지 열기", size=Typography.SMALL),
+                                icon=ft.Icons.OPEN_IN_NEW,
+                                style=ft.ButtonStyle(
+                                    color=Colors.PRIMARY,
+                                    padding=ft.padding.symmetric(horizontal=4, vertical=2),
+                                ),
+                                url="https://www.google.com/chrome/",
+                            ),
+                        ],
+                        spacing=4,
+                    ),
+                    bgcolor="#FFFBEB",
+                    border=ft.border.all(1, "#FDE68A"),
+                    border_radius=Radius.MD,
+                    padding=ft.padding.all(Spacing.SM),
+                )
+            )
+        return controls
+
+    def _set_chrome_path(self, path):
+        self.chrome_field.value = path
+        self.chrome_field.update()
+
+    async def _browse_chrome(self, e):
+        # FilePicker는 page당 한 번만 overlay에 등록
+        if not hasattr(self._page, "_fp_chrome"):
+            self._page._fp_chrome = ft.FilePicker()
+            self._page.services.append(self._page._fp_chrome)
+            self._page.update()
+        file_picker = self._page._fp_chrome
         files = await file_picker.pick_files(
             dialog_title="Chrome 실행 파일 선택",
             allowed_extensions=["app", "exe", ""],
         )
         if files:
-            _set_chrome_path(files[0].path)
+            self._set_chrome_path(files[0].path)
 
-    # ── 고급 설정: 토글 스위치들 ─────────────────────────
-    debug_switch = ft.Switch(
-        value=get_debug_mode(),
-        active_color=Colors.PRIMARY,
-        tooltip="활성화하면 브라우저 창이 표시되어 LMS 동작을 직접 확인할 수 있습니다",
-    )
+    # ── 동작 탭 ───────────────────────────────────────────
 
-    auto_open_switch = ft.Switch(
-        value=get_auto_open_folder(),
-        active_color=Colors.PRIMARY,
-        tooltip="작업 완료 시 결과물이 저장된 폴더를 자동으로 엽니다",
-    )
+    def _build_behavior_tab(self):
+        self.debug_switch = ft.Switch(
+            value=get_debug_mode(),
+            active_color=Colors.PRIMARY,
+            tooltip="활성화하면 브라우저 창이 표시되어 LMS 동작을 직접 확인할 수 있습니다",
+        )
+        self.auto_open_switch = ft.Switch(
+            value=get_auto_open_folder(),
+            active_color=Colors.PRIMARY,
+            tooltip="작업 완료 시 결과물이 저장된 폴더를 자동으로 엽니다",
+        )
 
-    # ── 고급 설정 접힘/펼침 ──────────────────────────────
-    advanced_expanded = False
-
-    advanced_content = ft.Column(
-        controls=[
-            # 디버그 모드
-            ft.Row(
-                controls=[
-                    ft.Column(
-                        controls=[
-                            ft.Row(
-                                controls=[
-                                    ft.Icon(ft.Icons.BUG_REPORT, size=16, color=Colors.TEXT_SECONDARY),
-                                    ft.Text("디버그 모드", size=Typography.BODY, weight=Typography.SEMI_BOLD, color=Colors.TEXT),
-                                ],
-                                spacing=Spacing.XS,
-                            ),
-                            ft.Text(
-                                "브라우저 창을 표시하여 동작을 확인합니다.",
-                                size=Typography.SMALL,
-                                color=Colors.TEXT_MUTED,
-                            ),
-                        ],
-                        spacing=2,
-                        expand=True,
-                    ),
-                    debug_switch,
-                ],
-                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                vertical_alignment=ft.CrossAxisAlignment.CENTER,
-            ),
-            divider(),
-            # 완료 후 폴더 자동 열기
-            ft.Row(
-                controls=[
-                    ft.Column(
-                        controls=[
-                            ft.Row(
-                                controls=[
-                                    ft.Icon(ft.Icons.FOLDER_OPEN, size=16, color=Colors.TEXT_SECONDARY),
-                                    ft.Text("완료 후 폴더 자동 열기", size=Typography.BODY, weight=Typography.SEMI_BOLD, color=Colors.TEXT),
-                                ],
-                                spacing=Spacing.XS,
-                            ),
-                            ft.Text(
-                                "작업 완료 시 결과 폴더를 자동으로 엽니다.",
-                                size=Typography.SMALL,
-                                color=Colors.TEXT_MUTED,
-                            ),
-                        ],
-                        spacing=2,
-                        expand=True,
-                    ),
-                    auto_open_switch,
-                ],
-                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                vertical_alignment=ft.CrossAxisAlignment.CENTER,
-            ),
-        ],
-        spacing=Spacing.MD,
-        visible=False,
-    )
-
-    advanced_chevron = ft.Icon(ft.Icons.EXPAND_MORE, size=18, color=Colors.TEXT_SECONDARY)
-
-    def _toggle_advanced(e):
-        nonlocal advanced_expanded
-        advanced_expanded = not advanced_expanded
-        advanced_content.visible = advanced_expanded
-        advanced_chevron.icon = ft.Icons.EXPAND_LESS if advanced_expanded else ft.Icons.EXPAND_MORE
-        page.update()
-
-    advanced_header = ft.Container(
-        content=ft.Row(
-            controls=[
-                ft.Icon(ft.Icons.TUNE, size=18, color=Colors.TEXT_SECONDARY),
-                ft.Text(
-                    "고급 설정",
-                    size=Typography.BODY,
-                    weight=Typography.SEMI_BOLD,
-                    color=Colors.TEXT_SECONDARY,
-                    expand=True,
+        def _toggle_row(icon, title, desc, switch) -> ft.Container:
+            return ft.Container(
+                content=ft.Row(
+                    controls=[
+                        ft.Column(
+                            controls=[
+                                ft.Row(
+                                    controls=[
+                                        ft.Icon(icon, size=16, color=Colors.TEXT_SECONDARY),
+                                        ft.Text(title, size=Typography.BODY,
+                                                weight=Typography.SEMI_BOLD,
+                                                color=Colors.TEXT),
+                                    ],
+                                    spacing=Spacing.XS,
+                                ),
+                                ft.Text(desc, size=Typography.SMALL,
+                                        color=Colors.TEXT_MUTED),
+                            ],
+                            spacing=2,
+                            expand=True,
+                        ),
+                        switch,
+                    ],
+                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
                 ),
-                advanced_chevron,
+                padding=ft.padding.symmetric(vertical=Spacing.SM),
+            )
+
+        content = ft.Column(
+            controls=[
+                _toggle_row(
+                    ft.Icons.BUG_REPORT, "디버그 모드",
+                    "브라우저 창을 표시하여 동작을 확인합니다.",
+                    self.debug_switch,
+                ),
+                divider(),
+                _toggle_row(
+                    ft.Icons.FOLDER_OPEN, "완료 후 폴더 자동 열기",
+                    "작업 완료 시 결과 폴더를 자동으로 엽니다.",
+                    self.auto_open_switch,
+                ),
             ],
             spacing=Spacing.SM,
-            vertical_alignment=ft.CrossAxisAlignment.CENTER,
-        ),
-        on_click=_toggle_advanced,
-        border_radius=Radius.MD,
-        border=ft.border.all(1, Colors.BORDER),
-        padding=ft.padding.symmetric(horizontal=Spacing.MD, vertical=Spacing.SM),
-        ink=True,
-    )
+            scroll=ft.ScrollMode.AUTO,
+            expand=True,
+            horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
+        )
+        self._cat_contents["behavior"] = ft.Container(content=content)
 
-    # ── 저장/닫기 ────────────────────────────────────────
-    def _close(e):
-        dialog.open = False
-        page.update()
+    # ── 저장/닫기 ─────────────────────────────────────────
 
-    def _save(e):
-        chrome_path = (chrome_field.value or "").strip()
+    def _close(self, e=None):
+        self.dialog.open = False
+        self._page.update()
 
-        # 요약 모드/분야 저장
-        set_summary_mode(mode_dropdown.value or SummaryMode.NORMAL)
-        set_subject_category(subject_dropdown.value or "자동 감지")
-        set_subject_custom((subject_custom_field.value or "").strip())
+    def _save(self, e):
+        chrome_path = (self.chrome_field.value or "").strip()
 
-        set_debug_mode(debug_switch.value)
-        set_auto_open_folder(auto_open_switch.value)
+        set_summary_mode(self.mode_dropdown.value or SummaryMode.NORMAL)
+        set_subject_category(self.subject_dropdown.value or "자동 감지")
+        set_subject_custom((self.subject_custom_field.value or "").strip())
+
+        set_debug_mode(self.debug_switch.value)
+        set_auto_open_folder(self.auto_open_switch.value)
 
         if chrome_path:
             if not os.path.exists(chrome_path):
@@ -337,116 +474,15 @@ def open_settings_dialog(page: ft.Page):
                     bgcolor=Colors.ERROR,
                     open=True,
                 )
-                page.overlay.append(snackbar)
-                page.update()
+                self._page.overlay.append(snackbar)
+                self._page.update()
                 return
             set_chrome_path(chrome_path)
 
-        dialog.open = False
-        page.update()
+        self._close()
 
-    # ── 다이얼로그 조립 ──────────────────────────────────
-    dialog = ft.AlertDialog(
-        modal=True,
-        shape=ft.RoundedRectangleBorder(radius=Radius.LG),
-        bgcolor=Colors.BG,
-        title=ft.Row(
-            controls=[
-                ft.Icon(ft.Icons.SETTINGS, size=20, color=Colors.PRIMARY),
-                ft.Text("설정", size=Typography.HEADING, weight=Typography.SEMI_BOLD, expand=True),
-                ft.IconButton(
-                    icon=ft.Icons.CLOSE,
-                    icon_size=18,
-                    icon_color=Colors.TEXT_MUTED,
-                    on_click=_close,
-                    tooltip="닫기",
-                ),
-            ],
-            spacing=Spacing.SM,
-        ),
-        content=ft.Container(
-            width=500,
-            content=ft.Column(
-                controls=[
-                    # 요약 프롬프트 섹션
-                    ft.Text(
-                        "요약 프롬프트",
-                        size=Typography.BODY,
-                        weight=Typography.SEMI_BOLD,
-                        color=Colors.TEXT,
-                    ),
-                    ft.Text(
-                        "요약 모드와 강의 분야를 선택하면 프롬프트가 자동 생성됩니다.",
-                        size=Typography.SMALL,
-                        color=Colors.TEXT_MUTED,
-                    ),
-                    mode_dropdown,
-                    subject_dropdown,
-                    subject_custom_field,
-                    prompt_preview,
-                    ft.TextButton(
-                        content=ft.Text("기본값 복원"),
-                        icon=ft.Icons.RESTORE,
-                        style=ft.ButtonStyle(
-                            color=Colors.ACCENT,
-                            text_style=ft.TextStyle(size=Typography.CAPTION),
-                        ),
-                        on_click=_reset_prompt,
-                    ),
-                    divider(),
-                    # Chrome 경로 섹션
-                    ft.Text(
-                        "Chrome 경로",
-                        size=Typography.BODY,
-                        weight=Typography.SEMI_BOLD,
-                        color=Colors.TEXT,
-                    ),
-                    ft.Text(
-                        "LMS 영상 재생에 사용할 Chrome 경로입니다.",
-                        size=Typography.SMALL,
-                        color=Colors.TEXT_MUTED,
-                    ),
-                    ft.Row(
-                        controls=[
-                            ft.Container(content=chrome_field, expand=True),
-                            ft.OutlinedButton(
-                                content=ft.Text("찾아보기"),
-                                icon=ft.Icons.FOLDER_OPEN,
-                                on_click=_browse_chrome,
-                                style=ft.ButtonStyle(
-                                    color=Colors.PRIMARY,
-                                    shape=ft.RoundedRectangleBorder(radius=Radius.MD),
-                                ),
-                            ),
-                        ],
-                        spacing=Spacing.SM,
-                    ),
-                    *detected_controls,
-                    divider(),
-                    # 고급 설정 (접힘/펼침)
-                    advanced_header,
-                    advanced_content,
-                ],
-                spacing=Spacing.MD,
-                tight=True,
-                scroll=ft.ScrollMode.AUTO,
-                horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
-            ),
-        ),
-        actions=[
-            ft.TextButton(content=ft.Text("취소"), on_click=_close),
-            ft.ElevatedButton(
-                content=ft.Text("저장"),
-                icon=ft.Icons.SAVE,
-                on_click=_save,
-                style=ft.ButtonStyle(
-                    color=ft.Colors.WHITE,
-                    bgcolor=Colors.PRIMARY,
-                    shape=ft.RoundedRectangleBorder(radius=Radius.LG),
-                ),
-            ),
-        ],
-        actions_alignment=ft.MainAxisAlignment.END,
-    )
 
-    page.show_dialog(dialog)
+def open_settings_dialog(page: ft.Page):
+    """설정 다이얼로그를 열고 닫기까지 관리"""
+    dialog = SettingsDialog(page)
+    page.show_dialog(dialog.dialog)

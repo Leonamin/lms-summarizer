@@ -132,11 +132,11 @@ def extract_urls_from_input(url_input: str) -> List[str]:
     return urls
 
 
-_PERSISTABLE_FIELDS = ['student_id', 'api_key', 'ai_model', 'ai_engine', 'base_url']
+_PERSISTABLE_FIELDS = ['student_id', 'password', 'api_key', 'ai_model', 'ai_engine', 'base_url']
 
 
 def save_user_inputs(inputs: Dict[str, str]) -> None:
-    """사용자 입력값을 설정 파일에 저장 (비밀번호 제외)
+    """사용자 입력값을 설정 파일에 저장 (학번·비밀번호 포함, 평문)
 
     API 키는 엔진별로 분리하여 저장합니다.
     예: api_keys = {"gemini": "...", "openai": "...", ...}
