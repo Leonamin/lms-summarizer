@@ -140,34 +140,36 @@ class QueueManager:
         self._log(f"큐에 {len(tasks)}개 작업 추가됨 (대기: {self.pending_count()})")
         return tasks
 
-    def submit_files(self, files: List[str], settings: Dict,
-                     start_stage: str) -> List[TaskItem]:
+    def submit_files(self, items: List[tuple], settings: Dict) -> List[TaskItem]:
         """로컬 파일 작업을 처리 큐에 직접 추가 (다운로드 불필요).
 
-        start_stage: "변환" | "STT" | "요약" (ItemProcessor.process_full에 전달)
+        items: (파일 경로, 시작 단계) 튜플 목록.
+               시작 단계는 "변환" | "STT" | "요약" (ItemProcessor.process_full에 전달)
         """
-        if not files:
+        if not items:
             return []
 
         with self._lock:
             if self._settings is None:
                 self._settings = {k: settings.get(k) for k in _SESSION_SETTING_KEYS}
             tasks: List[TaskItem] = []
-            for f in files:
+            payloads: List[tuple] = []
+            for file_path, start_stage in items:
                 task = TaskItem(
                     id=self._next_task_id, url="",
-                    title=Path(f).name,
+                    title=Path(file_path).name,
                 )
                 self._next_task_id += 1
                 self._tasks[task.id] = task
                 tasks.append(task)
+                payloads.append((task, (file_path, start_stage)))
             self._idle_notified = False
 
         self._ensure_process_thread(settings)
 
-        for task in tasks:
-            self._proc_q.put((task, (f, start_stage)))
-        self._log(f"큐에 {len(tasks)}개 파일 작업 추가됨 ({start_stage}부터)")
+        for payload in payloads:
+            self._proc_q.put(payload)
+        self._log(f"큐에 {len(tasks)}개 파일 작업 추가됨 (파일별 자동 단계)")
         return tasks
 
     def _ensure_process_thread(self, settings: Dict):

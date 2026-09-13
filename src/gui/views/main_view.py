@@ -29,7 +29,6 @@ from src.gui.components.log_drawer import LogDrawer
 from src.gui.views.settings_view import open_settings_dialog
 from src.gui.views.course_list_view import CourseListView
 from src.gui.workers.queue_manager import QueueManager
-from src.pipeline_stage import PipelineStage
 
 
 class MainView:
@@ -90,17 +89,38 @@ class MainView:
                 side=ft.BorderSide(width=2, color=ft.Colors.with_opacity(0.3, Colors.PRIMARY)),
             ),
         )
-        self._file_list_text = ft.Text(
+        self._file_count_text = ft.Text(
             "", size=Typography.SMALL, color=Colors.TEXT_SECONDARY, visible=False,
         )
+        self._file_clear_btn = ft.TextButton(
+            content=ft.Text("모두 제거"),
+            icon=ft.Icons.DELETE_SWEEP,
+            on_click=self._clear_files,
+            visible=False,
+            style=ft.ButtonStyle(
+                color=Colors.ERROR,
+                padding=ft.padding.symmetric(horizontal=8, vertical=4),
+                text_style=ft.TextStyle(size=Typography.SMALL),
+            ),
+        )
+        self._file_list = ft.Column(spacing=4, visible=False)
         self._stage_hint_text = ft.Text(
             "", size=Typography.SMALL, color=Colors.PRIMARY, visible=False,
         )
 
         self._file_input_area = ft.Column(
             controls=[
-                self._file_pick_btn,
-                self._file_list_text,
+                ft.Row(
+                    controls=[
+                        self._file_pick_btn,
+                        self._file_count_text,
+                        ft.Container(expand=True),
+                        self._file_clear_btn,
+                    ],
+                    spacing=Spacing.SM,
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                ),
+                self._file_list,
             ],
             spacing=Spacing.SM,
             visible=False,
@@ -217,7 +237,7 @@ class MainView:
         self._course_list_btn.visible = is_lms
         self._url_field.visible = is_lms
         self._file_input_area.visible = not is_lms
-        self._stage_hint_text.visible = False
+        self._update_stage_hint()
         self.page.update()
 
     def _on_path_changed(self, path: str):
@@ -246,15 +266,83 @@ class MainView:
     def _on_files_picked(self, paths: list):
         if not paths:
             return
-        self._picked_files = [p for p in paths if p]
-        names = [Path(p).name for p in self._picked_files]
-        self._file_list_text.value = (
-            f"{len(names)}개 파일: " + ", ".join(names[:5]) + ("..." if len(names) > 5 else ""))
-        self._file_list_text.visible = True
-        hint = self.source_selector.get_stage_hint(self._picked_files)
-        self._stage_hint_text.value = hint
-        self._stage_hint_text.visible = bool(hint)
+        existing = set(self._picked_files)
+        added = [p for p in paths if p and p not in existing]
+        self._picked_files.extend(added)
+        self._rebuild_file_list()
         self.page.update()
+
+    def _remove_file(self, path: str):
+        if path in self._picked_files:
+            self._picked_files.remove(path)
+        self._rebuild_file_list()
+        self.page.update()
+
+    def _clear_files(self, e=None):
+        self._picked_files.clear()
+        self._rebuild_file_list()
+        self.page.update()
+
+    def _rebuild_file_list(self):
+        """선택된 파일 목록 + 파일별 자동 시작 단계 표시"""
+        self._file_list.controls.clear()
+        for path in self._picked_files:
+            stage = self.source_selector.get_stage_label_for_file(path)
+
+            def _make_remove(p=path):
+                def _remove(e):
+                    self._remove_file(p)
+                return _remove
+
+            self._file_list.controls.append(
+                ft.Row(
+                    controls=[
+                        ft.Icon(ft.Icons.INSERT_DRIVE_FILE, size=14,
+                                color=Colors.TEXT_MUTED),
+                        ft.Text(
+                            Path(path).name, size=Typography.SMALL,
+                            color=Colors.TEXT, expand=True, max_lines=1,
+                            overflow=ft.TextOverflow.ELLIPSIS, tooltip=path,
+                        ),
+                        ft.Container(
+                            content=ft.Text(f"{stage}부터", size=Typography.CAPTION,
+                                            color=Colors.PRIMARY),
+                            bgcolor="#EFF6FF",
+                            border_radius=Radius.SM,
+                            padding=ft.padding.symmetric(horizontal=6, vertical=2),
+                        ),
+                        ft.IconButton(
+                            icon=ft.Icons.CLOSE, icon_size=14,
+                            icon_color=Colors.TEXT_MUTED,
+                            on_click=_make_remove(), tooltip="제거",
+                            style=ft.ButtonStyle(padding=ft.padding.all(2)),
+                        ),
+                    ],
+                    spacing=Spacing.SM,
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                )
+            )
+
+        has_files = len(self._picked_files) > 0
+        self._file_list.visible = has_files
+        self._file_count_text.value = f"{len(self._picked_files)}개 선택됨" if has_files else ""
+        self._file_count_text.visible = has_files
+        self._file_clear_btn.visible = has_files
+        self._update_stage_hint()
+
+    def _update_stage_hint(self):
+        """파일별 시작 단계 요약 표시"""
+        counts: dict[str, int] = {}
+        for path in self._picked_files:
+            stage = self.source_selector.get_stage_label_for_file(path)
+            counts[stage] = counts.get(stage, 0) + 1
+        if counts:
+            parts = [f"{label} {n}개" for label, n in counts.items()]
+            self._stage_hint_text.value = "파일별 자동 단계: " + ", ".join(parts)
+            self._stage_hint_text.visible = True
+        else:
+            self._stage_hint_text.value = ""
+            self._stage_hint_text.visible = False
 
     # ── 강의 목록 ─────────────────────────────────────────
 
@@ -343,7 +431,6 @@ class MainView:
         """소스에 따라 큐에 작업 추가"""
         engine = self.sidebar.ai_settings.get_engine()
         model_name = self.sidebar.ai_settings.get_model()
-        start_stage = self.source_selector.get_start_stage(files)
         save_user_inputs({**inputs, 'ai_model': model_name, 'ai_engine': engine})
         set_summary_mode(self.sidebar.get_summary_mode())
         set_subject_category(self.sidebar.get_subject_category())
@@ -359,7 +446,7 @@ class MainView:
 
         settings = self._build_queue_settings(inputs, engine, model_name)
         self.log_drawer.append_message(
-            f"작업 추가: URL {len(urls)}개, 파일 {len(files)}개 (시작 단계: {start_stage.value}단계)")
+            f"작업 추가: URL {len(urls)}개, 파일 {len(files)}개")
 
         if urls:
             tasks = self.queue_manager.submit(urls, settings)
@@ -369,26 +456,24 @@ class MainView:
             self._url_field.value = ""
 
         if files:
-            self._enqueue_files(files, settings, start_stage)
+            self._enqueue_files(files, settings)
 
         self._stop_btn.visible = True
         self.page.update()
 
-    def _enqueue_files(self, files: List[str], settings: Dict, start_stage: PipelineStage):
-        """파일 소스 처리 — 시작 단계에 따라 처리 큐에 직접 투입"""
-        stage_name = {
-            PipelineStage.CONVERT_AUDIO: "변환",
-            PipelineStage.STT: "STT",
-            PipelineStage.SUMMARIZE: "요약",
-        }.get(start_stage, "변환")
+    def _enqueue_files(self, files: List[str], settings: Dict):
+        """파일 소스 처리 — 각 파일의 확장자로 시작 단계를 정해 처리 큐에 직접 투입"""
+        items = [
+            (path, self.source_selector.get_stage_label_for_file(path))
+            for path in files
+        ]
 
-        tasks = self.queue_manager.submit_files(files, settings, stage_name)
+        tasks = self.queue_manager.submit_files(items, settings)
         for task in tasks:
             self.pipeline_monitor.update_task(task)
         # 선택 파일 초기화
         self._picked_files = []
-        self._file_list_text.value = ""
-        self._file_list_text.visible = False
+        self._rebuild_file_list()
 
     def _build_queue_settings(self, inputs: Dict, engine: str, model_name: str) -> Dict:
         return {

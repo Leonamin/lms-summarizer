@@ -19,10 +19,11 @@ _EXTENSION_STAGE = {
     ".txt": PipelineStage.SUMMARIZE,
 }
 
-_STAGE_HINT = {
-    PipelineStage.CONVERT_AUDIO: "영상 → 오디오 변환부터 진행됩니다",
-    PipelineStage.STT: "음성 인식(STT)부터 진행됩니다",
-    PipelineStage.SUMMARIZE: "AI 요약만 진행됩니다",
+# 시작 단계 → 표시 라벨
+_STAGE_LABEL = {
+    PipelineStage.CONVERT_AUDIO: "변환",
+    PipelineStage.STT: "STT",
+    PipelineStage.SUMMARIZE: "요약",
 }
 
 
@@ -120,13 +121,12 @@ class SourceSelector:
     def current(self) -> str | None:
         return self._current
 
-    def get_start_stage(self, files: list[str]) -> PipelineStage:
-        """파일 확장자로 시작 단계 유추 (LMS 소스면 DOWNLOAD)"""
-        if self._current == "lms" or not files:
-            return PipelineStage.DOWNLOAD
-        ext = Path(files[0]).suffix.lower()
+    def get_stage_for_file(self, path: str) -> PipelineStage:
+        """파일 확장자로 해당 파일의 시작 단계를 반환"""
+        ext = Path(path).suffix.lower()
         return _EXTENSION_STAGE.get(ext, PipelineStage.CONVERT_AUDIO)
 
-    def get_stage_hint(self, files: list[str]) -> str:
-        stage = self.get_start_stage(files)
-        return _STAGE_HINT.get(stage, "")
+    def get_stage_label_for_file(self, path: str) -> str:
+        """파일 확장자로 해당 파일의 시작 단계 라벨(한글)을 반환"""
+        return _STAGE_LABEL.get(
+            self.get_stage_for_file(path), "변환")
