@@ -7,6 +7,7 @@ from typing import Callable, Optional, Tuple
 from src.video_pipeline.login import perform_login_if_needed, LoginFailedError
 from src.video_pipeline.video_parser import extract_video_url
 from src.video_pipeline.download_video import download_video
+from src.video_pipeline.browser_utils import DEFAULT_CHROME_PATH, default_user_agent
 from src.user_setting import UserSetting
 
 
@@ -16,9 +17,6 @@ def sanitize_dirname(name: str) -> str:
     sanitized = sanitized.strip(' .')
     sanitized = re.sub(r'\s+', ' ', sanitized)
     return sanitized or 'untitled'
-
-
-_DEFAULT_CHROME_PATH = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 
 
 _LOGIN_URL = "https://canvas.ssu.ac.kr/"
@@ -36,7 +34,7 @@ class VideoPipeline:
         self.downloads_dir = None  # 다운로드 경로는 나중에 설정됨
         self.extraction_timeout = extraction_timeout
         self.progress_callback = progress_callback
-        self.chrome_path = chrome_path or _DEFAULT_CHROME_PATH
+        self.chrome_path = chrome_path or DEFAULT_CHROME_PATH
         self._log = log_callback or (lambda msg: print(msg))
         self.headless = headless
 
@@ -55,7 +53,7 @@ class VideoPipeline:
         )
 
         context = await browser.new_context(
-            user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+            user_agent=default_user_agent(),
             permissions=["camera", "microphone", "geolocation"],
         )
 

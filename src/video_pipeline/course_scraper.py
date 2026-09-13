@@ -12,6 +12,7 @@ from typing import List, Optional, Callable
 from playwright.async_api import async_playwright, Playwright, Page, Frame
 
 from src.video_pipeline.login import perform_login_if_needed, LoginFailedError
+from src.video_pipeline.browser_utils import DEFAULT_CHROME_PATH, default_user_agent
 from src.gui.config.course_models import (
     Course, LectureItem, Week, CourseDetail,
     LectureType, VIDEO_LECTURE_TYPES,
@@ -20,8 +21,6 @@ from src.gui.config.course_models import (
 _BASE_URL = "https://canvas.ssu.ac.kr"
 _DASHBOARD_URL = f"{_BASE_URL}/"
 _LECTURES_URL_TEMPLATE = _BASE_URL + "/courses/{course_id}/external_tools/71"
-
-_DEFAULT_CHROME_PATH = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 
 # xnmb-module_item-icon 클래스 → LectureType 매핑
 _TYPE_CLASS_MAP = {
@@ -49,7 +48,7 @@ class CourseScraper:
                  log_callback: Optional[Callable[[str], None]] = None):
         self.username = username
         self.password = password
-        self.chrome_path = chrome_path or _DEFAULT_CHROME_PATH
+        self.chrome_path = chrome_path or DEFAULT_CHROME_PATH
         self.headless = headless
         self._log = log_callback or (lambda msg: None)
         self._pw = None
@@ -70,11 +69,7 @@ class CourseScraper:
         )
 
         context = await browser.new_context(
-            user_agent=(
-                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/122.0.0.0 Safari/537.36"
-            ),
+            user_agent=default_user_agent(),
             permissions=["camera", "microphone", "geolocation"],
         )
 
