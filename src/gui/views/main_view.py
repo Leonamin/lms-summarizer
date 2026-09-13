@@ -156,7 +156,10 @@ class MainView:
                     header,
                     ft.Row(
                         controls=[
-                            self.sidebar.control,
+                            ft.Container(
+                                content=self.sidebar.control,
+                                padding=ft.padding.only(left=20, top=8, bottom=8),
+                            ),
                             ft.VerticalDivider(width=1, color=Colors.BORDER),
                             ft.Container(
                                 content=ft.Column(
@@ -182,7 +185,8 @@ class MainView:
                                     horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
                                 ),
                                 expand=True,
-                                padding=ft.padding.all(Spacing.LG),
+                                padding=ft.padding.symmetric(
+                                    horizontal=20, vertical=16),
                             ),
                         ],
                         expand=True,
@@ -194,7 +198,7 @@ class MainView:
                 expand=True,
                 horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
             ),
-            padding=ft.padding.symmetric(horizontal=20, vertical=16),
+            padding=ft.padding.only(top=16, bottom=8),  # 좌우 패딩은 각 영역이 자체 처리
             expand=True,
         )
 
@@ -210,7 +214,6 @@ class MainView:
                 horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
             )
         )
-
     # ── 소스 전환 ─────────────────────────────────────────
 
     def _on_source_changed(self, source: str):

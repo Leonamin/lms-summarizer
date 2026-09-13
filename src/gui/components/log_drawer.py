@@ -63,13 +63,14 @@ class LogDrawer:
             ink=True,
         )
 
-        # 전체 컨트롤: 테두리 없음, 라운딩 없음, 하단 밀착
+        # 전체 컨트롤: 테두리 없음, 라운딩 없음, 하단 밀착, 전체 너비
         self.control = ft.Container(
             content=ft.Column(
                 controls=[self._header, self._log_container],
                 spacing=0,
             ),
             border=ft.border.only(top=ft.BorderSide(1, _HEADER_BORDER)),
+            expand=True,
         )
 
     def toggle(self, e=None):
