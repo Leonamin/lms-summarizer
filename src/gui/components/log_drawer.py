@@ -63,14 +63,14 @@ class LogDrawer:
             ink=True,
         )
 
-        # 전체 컨트롤: 테두리 없음, 라운딩 없음, 하단 밀착, 전체 너비
+        # 전체 컨트롤: 하단 밀착, 전체 너비, 고정 높이 (본문 영역 침범 방지)
         self.control = ft.Container(
             content=ft.Column(
                 controls=[self._header, self._log_container],
                 spacing=0,
+                horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
             ),
             border=ft.border.only(top=ft.BorderSide(1, _HEADER_BORDER)),
-            expand=True,
         )
 
     def toggle(self, e=None):

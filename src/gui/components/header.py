@@ -104,4 +104,5 @@ def build_header(page: ft.Page, on_settings_click=None) -> ft.Container:
             alignment=ft.MainAxisAlignment.START,
             vertical_alignment=ft.CrossAxisAlignment.CENTER,
         ),
+        padding=ft.padding.symmetric(horizontal=20, vertical=8),
     )

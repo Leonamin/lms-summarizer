@@ -38,6 +38,7 @@ class AutoScrollLog:
             border=ft.border.all(1, "#374151"),  # slate-700
             padding=ft.padding.all(Spacing.LG),
             height=None if expand else height,
+            expand=expand,
         )
 
     def _handle_scroll(self, e):

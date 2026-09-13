@@ -156,10 +156,7 @@ class MainView:
                     header,
                     ft.Row(
                         controls=[
-                            ft.Container(
-                                content=self.sidebar.control,
-                                padding=ft.padding.only(left=20, top=8, bottom=8),
-                            ),
+                            self.sidebar.control,
                             ft.VerticalDivider(width=1, color=Colors.BORDER),
                             ft.Container(
                                 content=ft.Column(
@@ -194,11 +191,10 @@ class MainView:
                         spacing=0,
                     ),
                 ],
-                spacing=Spacing.SM,
+                spacing=0,
                 expand=True,
                 horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
             ),
-            padding=ft.padding.only(top=16, bottom=8),  # 좌우 패딩은 각 영역이 자체 처리
             expand=True,
         )
 

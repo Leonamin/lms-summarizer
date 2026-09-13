@@ -46,8 +46,9 @@ class Sidebar:
                 spacing=0,
                 horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
             ),
-            width=270,
+            width=290,
             bgcolor=Colors.LEFT_PANEL_BG,
+            padding=ft.padding.only(left=20, right=16),
         )
 
     # ── 탭 바 ─────────────────────────────────────────────
@@ -76,7 +77,7 @@ class Sidebar:
 
         return ft.Container(
             content=ft.Row(controls=buttons, spacing=2),
-            padding=ft.padding.all(Spacing.SM),
+            padding=ft.padding.symmetric(vertical=Spacing.SM),
             border=ft.border.only(bottom=ft.BorderSide(1, Colors.BORDER)),
         )
 
@@ -84,7 +85,7 @@ class Sidebar:
         contents = {
             "account": ft.Container(
                 content=self.account.control,
-                padding=ft.padding.all(Spacing.LG),
+                padding=ft.padding.symmetric(vertical=Spacing.SM),
             ),
             "ai": ft.Container(
                 content=ft.Column(
@@ -92,7 +93,7 @@ class Sidebar:
                     scroll=ft.ScrollMode.AUTO,
                     expand=True,
                 ),
-                padding=ft.padding.all(Spacing.LG),
+                padding=ft.padding.symmetric(vertical=Spacing.SM),
             ),
             "stt": ft.Container(
                 content=ft.Column(
@@ -100,7 +101,7 @@ class Sidebar:
                     scroll=ft.ScrollMode.AUTO,
                     expand=True,
                 ),
-                padding=ft.padding.all(Spacing.LG),
+                padding=ft.padding.symmetric(vertical=Spacing.SM),
             ),
             "general": self._general_tab,
         }
@@ -213,7 +214,7 @@ class Sidebar:
                 expand=True,
                 horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
             ),
-            padding=ft.padding.all(Spacing.LG),
+            padding=ft.padding.symmetric(vertical=Spacing.SM),
         )
 
     # ── 탭 전환 ───────────────────────────────────────────
