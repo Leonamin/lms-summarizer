@@ -140,6 +140,51 @@ class QueueManager:
         self._log(f"큐에 {len(tasks)}개 작업 추가됨 (대기: {self.pending_count()})")
         return tasks
 
+    def submit_files(self, files: List[str], settings: Dict,
+                     start_stage: str) -> List[TaskItem]:
+        """로컬 파일 작업을 처리 큐에 직접 추가 (다운로드 불필요).
+
+        start_stage: "변환" | "STT" | "요약" (ItemProcessor.process_full에 전달)
+        """
+        if not files:
+            return []
+
+        with self._lock:
+            if self._settings is None:
+                self._settings = {k: settings.get(k) for k in _SESSION_SETTING_KEYS}
+            tasks: List[TaskItem] = []
+            for f in files:
+                task = TaskItem(
+                    id=self._next_task_id, url="",
+                    title=Path(f).name,
+                )
+                self._next_task_id += 1
+                self._tasks[task.id] = task
+                tasks.append(task)
+            self._idle_notified = False
+
+        self._ensure_process_thread(settings)
+
+        for task in tasks:
+            self._proc_q.put((task, (f, start_stage)))
+        self._log(f"큐에 {len(tasks)}개 파일 작업 추가됨 ({start_stage}부터)")
+        return tasks
+
+    def _ensure_process_thread(self, settings: Dict):
+        """처리 스레드만 기동 (파일 소스 전용 — 브라우저 세션 불필요)"""
+        with self._lock:
+            if self._proc_q is None:
+                self._proc_q = queue.Queue()
+                self._run_cancel = threading.Event()
+            pr = self._process_thread
+        if pr is None or not pr.is_alive():
+            self._process_thread = threading.Thread(
+                target=self._process_loop,
+                args=(settings, self._run_cancel, self._proc_q),
+                daemon=True, name="queue-process",
+            )
+            self._process_thread.start()
+
     def is_running(self) -> bool:
         """스레드 생존 또는 활성 작업 존재 여부 (UI 상태용)"""
         if self._run_active():
@@ -379,18 +424,24 @@ class QueueManager:
             if item is _STOP:
                 break
 
-            task, video_path = item
+            task, payload = item
+            if isinstance(payload, tuple):
+                video_path, start_stage = payload
+            else:
+                video_path, start_stage = payload, "변환"
             start_time = time.monotonic()
             try:
                 summary_path = processor.process_full(
                     video_path,
                     on_stage=lambda stage: self._update_task(
                         task, _STAGE_STATUS[stage]),
+                    start_stage=start_stage,
                 )
                 task.summary_path = summary_path
                 self._update_task(task, TaskStatus.DONE)
                 processor.finalize(video_path, task.url, summary_path,
-                                   time.monotonic() - start_time)
+                                   time.monotonic() - start_time,
+                                   delete_source=(start_stage == "변환"))
             except CancelledException:
                 self._update_task(task, TaskStatus.CANCELLED)
                 break

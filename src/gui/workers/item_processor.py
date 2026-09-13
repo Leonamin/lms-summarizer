@@ -142,21 +142,33 @@ class ItemProcessor:
         return summary_path
 
     def process_full(self, video_path: str,
-                     on_stage: Callable[[str], None]) -> str:
-        """항목 전체 처리: 변환 → STT → 요약
+                     on_stage: Callable[[str], None],
+                     start_stage: str = "변환") -> str:
+        """항목 처리: start_stage 이후 단계만 실행 (변환 → STT → 요약)
 
         on_stage에는 표시용 상태 문자열("변환", "STT", "요약")이 전달된다.
+        start_stage: "변환" | "STT" | "요약"
         """
-        self._log(f"📋 WAV 변환 시작: {Path(video_path).name}")
-        on_stage("변환")
-        wav_path = self.convert(video_path)
-        self._log(f"✅ WAV 변환 완료: {Path(wav_path).name}")
+        stages = ["변환", "STT", "요약"]
+        idx = stages.index(start_stage) if start_stage in stages else 0
+
+        wav_path = text_path = None
+        if idx <= 0:
+            self._log(f"📋 WAV 변환 시작: {Path(video_path).name}")
+            on_stage("변환")
+            wav_path = self.convert(video_path)
+            self._log(f"✅ WAV 변환 완료: {Path(wav_path).name}")
+        else:
+            wav_path = video_path  # 시작 파일이 이미 WAV/MP3
 
         self._check_cancelled()
-        self._log(f"🎙 텍스트 변환 시작: {Path(wav_path).name}")
-        on_stage("STT")
-        text_path = self.transcribe(wav_path)
-        self._log(f"✅ 텍스트 변환 완료: {Path(text_path).name}")
+        if idx <= 1:
+            self._log(f"🎙 텍스트 변환 시작: {Path(wav_path).name}")
+            on_stage("STT")
+            text_path = self.transcribe(wav_path)
+            self._log(f"✅ 텍스트 변환 완료: {Path(text_path).name}")
+        else:
+            text_path = video_path  # 시작 파일이 이미 TXT
 
         self._check_cancelled()
         self._log(f"🤖 요약 생성 시작: {Path(text_path).name}")
@@ -169,8 +181,11 @@ class ItemProcessor:
     # ── 후처리 ───────────────────────────────────────────
 
     def finalize(self, video_path: str, url: str, summary_path: str,
-                 duration_sec: float):
-        """히스토리 저장 + 원본 영상 삭제 (옵션에 따라)"""
+                 duration_sec: float, delete_source: bool = True):
+        """히스토리 저장 + 원본 영상 삭제 (옵션에 따라)
+
+        delete_source가 False면 사용자가 직접 선택한 파일이므로 삭제하지 않는다.
+        """
         from src.gui.core.file_manager import add_history_entry
         from datetime import datetime
 
@@ -187,7 +202,7 @@ class ItemProcessor:
         except Exception as e:
             self._log(f"⚠️ 히스토리 저장 실패: {e}")
 
-        if not self.save_video_dir:
+        if delete_source and not self.save_video_dir:
             try:
                 if os.path.exists(video_path):
                     os.remove(video_path)

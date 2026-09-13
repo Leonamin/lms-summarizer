@@ -1,8 +1,12 @@
 """
-메인 뷰 (Flet) - 컴포넌트 조합 + 콜백 배선 + 워커 관리
+메인 뷰 (Flet) — 백그라운드 큐 중심 레이아웃
+
+구조: 사이드바(탭) | 메인 콘텐츠(소스 카드 + 작업 시작) | 로그 드로어
+파이프라인 모니터와 큐 패널은 메인 화면 상주 (모달 없음, 닫아도 작업 유지)
 """
 
 from typing import Dict, List
+from pathlib import Path
 
 import flet as ft
 
@@ -18,71 +22,172 @@ from src.gui.core.file_manager import (
     get_stt_engine, get_stt_model, get_stt_params,
 )
 from src.gui.components.header import build_header
-from src.gui.components.left_panel import LeftPanel
-from src.gui.components.right_panel import RightPanel
+from src.gui.components.sidebar import Sidebar
+from src.gui.components.source_selector import SourceSelector
+from src.gui.components.pipeline_monitor import PipelineMonitor
 from src.gui.components.log_drawer import LogDrawer
-from src.gui.components.queue_panel import QueuePanel
-from src.gui.views.progress_view import ProgressModal
 from src.gui.views.settings_view import open_settings_dialog
 from src.gui.views.course_list_view import CourseListView
-from src.gui.workers.processing_worker import ProcessingWorker
 from src.gui.workers.queue_manager import QueueManager
 from src.pipeline_stage import PipelineStage
 
 
 class MainView:
-    """메인 뷰 - 컴포넌트 조합 및 비즈니스 로직"""
+    """메인 뷰 — 큐 중심 재구성"""
 
     def __init__(self, page: ft.Page, modules: Dict, module_errors: List[str]):
         self.page = page
         self.modules = modules
         self.module_errors = module_errors
-        self.worker: ProcessingWorker = None
-        self.modal: ProgressModal = None
-        self._is_processing = False
         self.queue_manager: QueueManager = None
-        self.queue_panel = QueuePanel(on_stop_all=self._handle_queue_stop)
+        self._urls_from_course_list: List[str] = []
 
-        # SnackBar
         self._snackbar = ft.SnackBar(content=ft.Text(""), duration=3000)
 
-        # 컴포넌트 생성
-        self.left_panel = LeftPanel(
-            page=self.page,
-            on_path_changed=lambda p: self.log_drawer.append_message(f"저장 경로 변경: {p}"),
-        )
-        self.right_panel = RightPanel(
-            on_start=self._handle_start,
-            on_clear=self._handle_clear,
-            on_open_course_list=self._open_course_list,
-        )
+        self.sidebar = Sidebar(page=page, on_path_changed=self._on_path_changed)
+        self.source_selector = SourceSelector(on_source_changed=self._on_source_changed)
+        self.pipeline_monitor = PipelineMonitor()
         self.log_drawer = LogDrawer(page=page)
 
-        # UI 빌드
         self._build_ui()
         self._load_saved_inputs()
         self._check_module_status()
 
+    # ── UI 빌드 ───────────────────────────────────────────
+
     def _build_ui(self):
-        """전체 UI 레이아웃 구성"""
         header = build_header(
             self.page,
             on_settings_click=lambda e: open_settings_dialog(self.page),
         )
 
-        # 메인 콘텐츠 (헤더 + 2-panel) — 패딩 적용
+        # ── 메인 콘텐츠 ──────────────────────────────────
+        # URL 입력 영역
+        self._url_field = ft.TextField(
+            label="강의 URL (한 줄에 하나씩)",
+            hint_text="https://canvas.ssu.ac.kr/courses/.../modules/items/...",
+            multiline=True,
+            min_lines=3,
+            max_lines=6,
+            border_radius=Radius.MD,
+            border_color=Colors.BORDER,
+            focused_border_color=Colors.PRIMARY,
+            text_size=Typography.BODY,
+        )
+
+        # 파일 선택 영역 (파일 소스 선택 시 표시)
+        self._picked_files: list[str] = []
+        self._file_pick_btn = ft.OutlinedButton(
+            content=ft.Text("파일 선택"),
+            icon=ft.Icons.UPLOAD_FILE,
+            on_click=self._handle_pick_files,
+            visible=False,
+            style=ft.ButtonStyle(
+                color=Colors.PRIMARY,
+                shape=ft.RoundedRectangleBorder(radius=Radius.MD),
+                padding=ft.padding.symmetric(horizontal=16, vertical=10),
+                text_style=ft.TextStyle(size=Typography.BODY, weight=Typography.SEMI_BOLD),
+                side=ft.BorderSide(width=2, color=ft.Colors.with_opacity(0.3, Colors.PRIMARY)),
+            ),
+        )
+        self._file_list_text = ft.Text(
+            "", size=Typography.SMALL, color=Colors.TEXT_SECONDARY, visible=False,
+        )
+        self._stage_hint_text = ft.Text(
+            "", size=Typography.SMALL, color=Colors.PRIMARY, visible=False,
+        )
+
+        self._file_input_area = ft.Column(
+            controls=[
+                self._file_pick_btn,
+                self._file_list_text,
+            ],
+            spacing=Spacing.SM,
+            visible=False,
+        )
+
+        # 강의 목록에서 선택 버튼 (LMS 소스 선택 시 표시)
+        self._course_list_btn = ft.OutlinedButton(
+            content=ft.Text("강의 목록에서 선택"),
+            icon=ft.Icons.LIST,
+            on_click=self._open_course_list,
+            visible=False,
+            style=ft.ButtonStyle(
+                color=Colors.PRIMARY,
+                shape=ft.RoundedRectangleBorder(radius=Radius.MD),
+                padding=ft.padding.symmetric(horizontal=16, vertical=10),
+                text_style=ft.TextStyle(size=Typography.BODY, weight=Typography.SEMI_BOLD),
+                side=ft.BorderSide(width=2, color=ft.Colors.with_opacity(0.3, Colors.PRIMARY)),
+            ),
+        )
+
+        # 시작 버튼
+        self._start_btn = ft.ElevatedButton(
+            content=ft.Text("작업 시작"),
+            icon=ft.Icons.PLAY_ARROW,
+            on_click=self._handle_start,
+            expand=True,
+            style=ft.ButtonStyle(
+                color=ft.Colors.WHITE,
+                bgcolor=Colors.PRIMARY,
+                shape=ft.RoundedRectangleBorder(radius=Radius.LG),
+                padding=ft.padding.symmetric(vertical=14),
+                text_style=ft.TextStyle(weight=Typography.SEMI_BOLD, size=14),
+                overlay_color=ft.Colors.with_opacity(0.1, ft.Colors.WHITE),
+            ),
+        )
+        self._stop_btn = ft.OutlinedButton(
+            content=ft.Text("전체 중지"),
+            icon=ft.Icons.STOP_CIRCLE,
+            on_click=self._handle_queue_stop,
+            visible=False,
+            style=ft.ButtonStyle(
+                color=Colors.ERROR,
+                shape=ft.RoundedRectangleBorder(radius=Radius.LG),
+                padding=ft.padding.symmetric(vertical=14, horizontal=20),
+                text_style=ft.TextStyle(weight=Typography.SEMI_BOLD, size=14),
+                side=ft.BorderSide(width=2, color=Colors.ERROR),
+            ),
+        )
+
         main_content = ft.Container(
             content=ft.Column(
                 controls=[
                     header,
                     ft.Row(
                         controls=[
-                            self.left_panel.control,
+                            self.sidebar.control,
                             ft.VerticalDivider(width=1, color=Colors.BORDER),
-                            self.right_panel.control,
+                            ft.Container(
+                                content=ft.Column(
+                                    controls=[
+                                        # 소스 선택 카드
+                                        self.source_selector.control,
+                                        # 소스별 입력 영역
+                                        self._course_list_btn,
+                                        self._url_field,
+                                        self._file_input_area,
+                                        self._stage_hint_text,
+                                        ft.Container(expand=True),
+                                        # 액션 바
+                                        ft.Row(
+                                            controls=[
+                                                self._start_btn,
+                                                self._stop_btn,
+                                            ],
+                                            spacing=Spacing.SM,
+                                        ),
+                                    ],
+                                    spacing=Spacing.MD,
+                                    horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
+                                ),
+                                expand=True,
+                                padding=ft.padding.all(Spacing.LG),
+                            ),
                         ],
                         expand=True,
                         vertical_alignment=ft.CrossAxisAlignment.STRETCH,
+                        spacing=0,
                     ),
                 ],
                 spacing=Spacing.SM,
@@ -93,25 +198,62 @@ class MainView:
             expand=True,
         )
 
-        # 로그 드로어는 하단 밀착 (패딩 바깥), 큐 패널은 그 위
         self.page.add(
             ft.Column(
-                controls=[main_content, self.queue_panel.control, self.log_drawer.control],
+                controls=[
+                    main_content,
+                    self.pipeline_monitor.control,
+                    self.log_drawer.control,
+                ],
                 spacing=0,
                 expand=True,
                 horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
             )
         )
 
-    # ── 이벤트 핸들러 ──────────────────────────────────────
+    # ── 소스 전환 ─────────────────────────────────────────
+
+    def _on_source_changed(self, source: str):
+        is_lms = (source == "lms")
+        self._course_list_btn.visible = is_lms
+        self._url_field.visible = is_lms
+        self._file_input_area.visible = not is_lms
+        self._stage_hint_text.visible = False
+        self.page.update()
+
+    def _on_path_changed(self, path: str):
+        self.log_drawer.append_message(f"저장 경로 변경: {path}")
+
+    # ── 파일 선택 ─────────────────────────────────────────
+
+    def _handle_pick_files(self, e=None):
+        def result_handler(files: list[ft.FilePickerResultFile]):
+            if not files:
+                return
+            self._picked_files = [f.path for f in files if f.path]
+            names = [Path(p).name for p in self._picked_files]
+            self._file_list_text.value = f"{len(names)}개 파일: " + ", ".join(names[:5]) + ("..." if len(names) > 5 else "")
+            self._file_list_text.visible = True
+            hint = self.source_selector.get_stage_hint(self._picked_files)
+            self._stage_hint_text.value = hint
+            self._stage_hint_text.visible = bool(hint)
+            self.page.update()
+
+        picker = ft.FilePicker(on_result=result_handler)
+        self.page.overlay.append(picker)
+        self.page.update()
+        picker.pick_files(allow_multiple=True)
+
+    # ── 강의 목록 ─────────────────────────────────────────
 
     def _open_course_list(self):
-        values = self.left_panel.account.get_values()
+        values = self.sidebar.account.get_values()
         student_id = values.get('student_id', '').strip()
         password = values.get('password', '').strip()
 
         if not student_id or not password:
-            self._show_snackbar("학번과 비밀번호를 먼저 입력해주세요.", Colors.WARNING)
+            self._show_snackbar("계정 탭에서 학번과 비밀번호를 먼저 입력해주세요.", Colors.WARNING)
+            self.sidebar.switch_tab("account")
             return
 
         course_view = CourseListView(
@@ -123,84 +265,118 @@ class MainView:
         course_view.show()
 
     def _on_urls_selected(self, urls: List[str]):
-        current = self.right_panel.get_urls().strip()
-        existing = set(line.strip() for line in current.split('\n') if line.strip()) if current else set()
-
+        existing = set(
+            line.strip() for line in (self._url_field.value or "").split('\n')
+            if line.strip())
         new_urls = [u for u in urls if u not in existing]
-        skipped = len(urls) - len(new_urls)
-
         if new_urls:
+            current = (self._url_field.value or "").strip()
             combined = current + '\n' + '\n'.join(new_urls) if current else '\n'.join(new_urls)
-            self.right_panel.set_urls(combined)
-
+            self._url_field.value = combined
         msg = f"강의 목록에서 {len(new_urls)}개 URL이 추가되었습니다."
-        if skipped:
-            msg += f" (중복 {skipped}개 제외)"
+        if len(urls) - len(new_urls):
+            msg += f" (중복 {len(urls) - len(new_urls)}개 제외)"
         self.log_drawer.append_message(msg)
-        self.right_panel.lecture.update_selected_count(
-            len(existing) + len(new_urls)
-        )
         self.page.update()
 
+    # ── 작업 시작 (큐) ────────────────────────────────────
+
     def _handle_start(self):
-        # 파일 모드 원샷 워커 실행 중이면 중지
-        if self._is_processing:
-            self._handle_stop()
+        self.sidebar.clear_errors()
+
+        engine = self.sidebar.ai_settings.get_engine()
+        inputs = self.sidebar.get_all_inputs()
+
+        source = self.source_selector.current
+        if source is None:
+            self._show_snackbar("입력 소스를 선택해주세요.", Colors.WARNING)
             return
 
-        # 큐 실행 중이면 URL 추가로 동작
-        if self.queue_manager and self.queue_manager.is_running():
-            self._handle_queue_add()
-            return
-
-        self.left_panel.clear_errors()
-
-        engine = self.left_panel.ai_settings.get_engine()
-        start_stage = self.right_panel.get_stage()
-        inputs = self.left_panel.get_all_inputs()
-        inputs['urls'] = self.right_panel.get_urls()
-
-        # 검증
-        if start_stage == PipelineStage.DOWNLOAD:
-            # clipboard, custom은 API 키 불필요
-            skip_key = engine in ("clipboard", "custom")
-            valid, error_message = InputValidator.validate_all_inputs(
-                inputs, skip_api_key=skip_key,
-            )
-            if not valid:
-                self._show_snackbar(error_message, Colors.ERROR)
+        # 입력 수집
+        if source == "lms":
+            urls = [u.strip() for u in (self._url_field.value or "").split('\n') if u.strip()]
+            files = []
+            if not urls:
+                self._show_snackbar("강의 URL을 입력하거나 목록에서 선택해주세요.", Colors.WARNING)
                 return
         else:
-            if start_stage <= PipelineStage.SUMMARIZE and engine not in ("clipboard", "custom"):
-                valid, error = InputValidator.validate_api_key(inputs.get('api_key', ''))
-                if not valid:
-                    self._show_snackbar(error, Colors.ERROR)
-                    return
-            input_files = self.right_panel.get_files()
-            if not input_files:
-                self._show_snackbar("시작 단계에 사용할 파일을 선택해주세요.", Colors.ERROR)
+            urls = []
+            files = self._picked_files
+            if not files:
+                self._show_snackbar("처리할 파일을 선택해주세요.", Colors.WARNING)
                 return
+
+        # 검증
+        skip_key = engine in ("clipboard", "custom")
+        valid, error_message = InputValidator.validate_all_inputs(
+            {**inputs, 'urls': '\n'.join(urls)}, skip_api_key=skip_key,
+        )
+        if not valid:
+            self._show_snackbar(error_message, Colors.ERROR)
+            return
 
         all_loaded, missing = check_required_modules(self.modules)
         if not all_loaded:
             self._show_snackbar(f"{Messages.MODULE_LOAD_ERROR}: {', '.join(missing)}", Colors.ERROR)
             return
 
-        if start_stage == PipelineStage.DOWNLOAD:
-            self._start_queue(inputs)
-        else:
-            self._start_processing(inputs)
+        self._enqueue(urls, files, inputs)
 
-    # ── 큐 모드 (URL 다운로드 파이프라인) ──────────────────
+    def _enqueue(self, urls: List[str], files: List[str], inputs: Dict[str, str]):
+        """소스에 따라 큐에 작업 추가"""
+        engine = self.sidebar.ai_settings.get_engine()
+        model_name = self.sidebar.ai_settings.get_model()
+        start_stage = self.source_selector.get_start_stage(files)
+        save_user_inputs({**inputs, 'ai_model': model_name, 'ai_engine': engine})
+        set_summary_mode(self.sidebar.get_summary_mode())
+        set_subject_category(self.sidebar.get_subject_category())
+        set_subject_custom(self.sidebar.get_subject_custom())
 
-    def _build_queue_settings(self) -> Dict:
-        """현재 UI 상태에서 큐 세션 설정 스냅샷 생성"""
-        engine = self.left_panel.ai_settings.get_engine()
-        model_name = self.left_panel.ai_settings.get_model()
-        inputs = self.left_panel.get_all_inputs()
+        if self.queue_manager is None:
+            self.queue_manager = QueueManager(
+                self.modules,
+                on_log=invoke_on_ui(self.page, lambda m: self.log_drawer.append_message(m)),
+                on_task_updated=invoke_on_ui(self.page, self._on_task_updated),
+                on_idle_changed=invoke_on_ui(self.page, self._on_queue_idle),
+            )
+
+        settings = self._build_queue_settings(inputs, engine, model_name)
+        self.log_drawer.append_message(
+            f"작업 추가: URL {len(urls)}개, 파일 {len(files)}개 (시작 단계: {start_stage.value}단계)")
+
+        if urls:
+            tasks = self.queue_manager.submit(urls, settings)
+            for task in tasks:
+                self.pipeline_monitor.update_task(task)
+            # 제출된 URL 입력란 비움
+            self._url_field.value = ""
+
+        if files:
+            self._enqueue_files(files, settings, start_stage)
+
+        self._stop_btn.visible = True
+        self.page.update()
+
+    def _enqueue_files(self, files: List[str], settings: Dict, start_stage: PipelineStage):
+        """파일 소스 처리 — 시작 단계에 따라 처리 큐에 직접 투입"""
+        stage_name = {
+            PipelineStage.CONVERT_AUDIO: "변환",
+            PipelineStage.STT: "STT",
+            PipelineStage.SUMMARIZE: "요약",
+        }.get(start_stage, "변환")
+
+        tasks = self.queue_manager.submit_files(files, settings, stage_name)
+        for task in tasks:
+            self.pipeline_monitor.update_task(task)
+        # 선택 파일 초기화
+        self._picked_files = []
+        self._file_list_text.value = ""
+        self._file_list_text.visible = False
+
+    def _build_queue_settings(self, inputs: Dict, engine: str, model_name: str) -> Dict:
         return {
             'user_inputs': inputs,
-            'save_video_dir': self.right_panel.get_save_video_dir(),
+            'save_video_dir': ensure_downloads_directory() if self.sidebar.get_save_video() else None,
             'model_name': model_name,
             'engine': engine,
             'base_url': inputs.get('base_url', ''),
@@ -212,59 +388,14 @@ class MainView:
             'stt_params': get_stt_params(),
         }
 
-    def _start_queue(self, inputs: Dict[str, str]):
-        """큐 매니저 시작 및 URL 제출"""
-        from src.gui.core.file_manager import create_config_files
-        create_config_files(inputs)
-
-        urls = [u.strip() for u in inputs.get('urls', '').split('\n') if u.strip()]
-        if not urls:
-            self._show_snackbar("처리할 URL이 없습니다.", Colors.ERROR)
-            return
-
-        if self.queue_manager is None:
-            self.queue_manager = QueueManager(
-                self.modules,
-                on_log=invoke_on_ui(self.page, lambda m: self.log_drawer.append_message(m)),
-                on_task_updated=invoke_on_ui(self.page, self._on_task_updated),
-                on_idle_changed=invoke_on_ui(self.page, self._on_queue_idle),
-            )
-
-        tasks = self.queue_manager.submit(urls, self._build_queue_settings())
-        for task in tasks:
-            self.queue_panel.update_task(task)
-        self.queue_panel.set_running(True)
-        self.right_panel.set_queue_mode(True)
-        self.right_panel.set_urls("")  # 제출된 URL 입력란 비움
-
-        self.log_drawer.append_message(f"작업 대기열 시작: {len(tasks)}개 URL")
-        self.page.update()
-
-    def _handle_queue_add(self):
-        """큐 실행 중 URL 추가"""
-        urls_text = self.right_panel.get_urls()
-        urls = [u.strip() for u in urls_text.split('\n') if u.strip()]
-        if not urls:
-            self._show_snackbar("추가할 URL을 입력해주세요.", Colors.WARNING)
-            return
-
-        tasks = self.queue_manager.submit(urls, self._build_queue_settings())
-        for task in tasks:
-            self.queue_panel.update_task(task)
-        self.right_panel.set_urls("")
-        self.page.update()
-
     def _on_task_updated(self, task):
-        """큐 작업 상태 변경 콜백 (UI 스레드)"""
-        self.queue_panel.update_task(task)
+        self.pipeline_monitor.update_task(task)
         self.page.update()
 
     def _on_queue_idle(self, running: bool):
-        """큐 종료 콜백 (UI 스레드)"""
-        self.queue_panel.set_running(running)
-        self.right_panel.set_queue_mode(running)
+        self._stop_btn.visible = bool(self.queue_manager and self.queue_manager.is_running())
         if not running:
-            self._show_snackbar("작업 대기열이 종료되었습니다.", Colors.PRIMARY)
+            self._show_snackbar("모든 작업이 완료되었습니다.", Colors.PRIMARY)
         self.page.update()
 
     def _handle_queue_stop(self):
@@ -294,153 +425,7 @@ class MainView:
         )
         self.page.show_dialog(confirm_dialog)
 
-    def _start_processing(self, inputs: Dict[str, str]):
-        engine = self.left_panel.ai_settings.get_engine()
-        model_name = self.left_panel.ai_settings.get_model()
-        start_stage = self.right_panel.get_stage()
-        input_files = self.right_panel.get_files()
-        save_user_inputs({**inputs, 'ai_model': model_name, 'ai_engine': engine})
-
-        # 요약 모드/과목 설정 저장
-        set_summary_mode(self.right_panel.get_summary_mode())
-        set_subject_category(self.right_panel.get_subject_category())
-        set_subject_custom(self.right_panel.get_subject_custom())
-
-        self._is_processing = True
-        self.right_panel.set_processing(True)
-        self._set_fields_enabled(False)
-        self.log_drawer.clear()
-
-        save_video_dir = self.right_panel.get_save_video_dir()
-        self.modal = ProgressModal(self.page, on_stop=self._on_modal_stop, start_stage=start_stage)
-
-        def on_log(msg):
-            self.log_drawer.append_message(msg)
-            if self.modal:
-                self.modal.append_log(msg)
-
-        def on_finished(success, message):
-            async def _update_ui():
-                try:
-                    self._is_processing = False
-                    self.right_panel.set_processing(False)
-                    self._set_fields_enabled(True)
-
-                    if self.modal:
-                        if success:
-                            self.modal.mark_complete()
-                        else:
-                            self.modal.mark_cancelled()
-
-                    if success:
-                        self._show_snackbar("작업이 완료되었습니다!", Colors.SUCCESS)
-                    elif message and message.startswith("login_failed:"):
-                        parts = message.split(":", 2)
-                        reason = parts[1] if len(parts) > 1 else "unknown"
-                        display_msg = parts[2] if len(parts) > 2 else message
-                        self._show_snackbar(display_msg, Colors.ERROR)
-                        if reason == "invalid_credentials":
-                            self.left_panel.account.set_error('student_id', "학번을 확인하세요")
-                            self.left_panel.account.set_error('password', "비밀번호를 확인하세요")
-                        elif reason in ("navigation_timeout", "sso_page_failed"):
-                            self.left_panel.account.set_error('student_id', "로그인 서버 연결 실패")
-                    elif "취소" not in message:
-                        self._show_snackbar(f"오류: {message}", Colors.ERROR)
-
-                    self.page.update()
-                except Exception:
-                    pass
-                self.worker = None
-            self.page.run_task(_update_ui)
-
-        def on_step(step_num, step_name):
-            if self.modal:
-                self.modal.update_step(step_num, step_name)
-
-        def on_progress(current, total):
-            if self.modal:
-                self.modal.update_progress(current, total)
-
-        self.worker = ProcessingWorker(
-            inputs, self.modules,
-            save_video_dir=save_video_dir,
-            model_name=model_name,
-            engine=engine,
-            base_url=inputs.get('base_url', ''),
-            on_log=invoke_on_ui(self.page, on_log),
-            on_finished=on_finished,
-            on_step_changed=invoke_on_ui(self.page, on_step),
-            on_progress=invoke_on_ui(self.page, on_progress),
-            start_stage=start_stage,
-            input_files=input_files,
-        )
-
-        self.modal.show()
-        self.page.update()
-        self.worker.start()
-
-    def _handle_stop(self):
-        def do_stop(e):
-            if self.worker:
-                self.worker.request_cancel()
-                self.log_drawer.append_message("작업 중지를 요청했습니다...")
-            confirm_dialog.open = False
-            self.page.update()
-
-        def cancel(e):
-            confirm_dialog.open = False
-            self.page.update()
-
-        confirm_dialog = ft.AlertDialog(
-            modal=True,
-            title=ft.Text("확인"),
-            content=ft.Text("진행 중인 작업을 중지하시겠습니까?"),
-            shape=ft.RoundedRectangleBorder(radius=Radius.LG),
-            bgcolor=Colors.BG,
-            actions=[
-                ft.TextButton(content=ft.Text("아니오"), on_click=cancel),
-                ft.ElevatedButton(content=ft.Text("예"), on_click=do_stop,
-                    style=ft.ButtonStyle(color=ft.Colors.WHITE, bgcolor=Colors.ERROR,
-                        shape=ft.RoundedRectangleBorder(radius=Radius.MD))),
-            ],
-            actions_alignment=ft.MainAxisAlignment.END,
-        )
-        self.page.show_dialog(confirm_dialog)
-
-    def _on_modal_stop(self):
-        if self.worker:
-            self.worker.request_cancel()
-            self.log_drawer.append_message("작업 중지를 요청했습니다...")
-
-    def _handle_clear(self):
-        def do_clear(e):
-            self.left_panel.clear()
-            self.right_panel.lecture.clear()
-            self.log_drawer.clear()
-            confirm_dialog.open = False
-            self.page.update()
-
-        def cancel(e):
-            confirm_dialog.open = False
-            self.page.update()
-
-        confirm_dialog = ft.AlertDialog(
-            modal=True,
-            title=ft.Text("확인"),
-            content=ft.Text("모든 입력 필드를 초기화하시겠습니까?"),
-            shape=ft.RoundedRectangleBorder(radius=Radius.LG),
-            bgcolor=Colors.BG,
-            actions=[
-                ft.TextButton(content=ft.Text("아니오"), on_click=cancel),
-                ft.ElevatedButton(content=ft.Text("예"), on_click=do_clear,
-                    style=ft.ButtonStyle(color=ft.Colors.WHITE, bgcolor=Colors.ERROR,
-                        shape=ft.RoundedRectangleBorder(radius=Radius.MD))),
-            ],
-            actions_alignment=ft.MainAxisAlignment.END,
-        )
-        self.page.show_dialog(confirm_dialog)
-
-    # ── 유틸리티 ─────────────────────────────────────────────
+    # ── 유틸리티 ─────────────────────────────────────────
 
     def _show_snackbar(self, message: str, bgcolor: str = Colors.PRIMARY):
         try:
@@ -453,10 +438,6 @@ class MainView:
         except Exception:
             pass
 
-    def _set_fields_enabled(self, enabled: bool):
-        self.left_panel.set_enabled(enabled)
-        self.right_panel.set_enabled(enabled)
-
     def _check_module_status(self):
         if self.module_errors:
             self.log_drawer.append_message("일부 모듈 로드 실패:")
@@ -467,5 +448,5 @@ class MainView:
 
     def _load_saved_inputs(self):
         saved = load_user_inputs()
-        self.left_panel.load_saved(saved)
+        self.sidebar.load_saved(saved)
         self.page.update()
