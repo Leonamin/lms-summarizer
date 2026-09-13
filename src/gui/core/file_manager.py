@@ -152,7 +152,7 @@ def save_user_inputs(inputs: Dict[str, str]) -> None:
         api_keys[engine] = api_key
     saved['api_keys'] = api_keys
 
-    # 엔진별 base_url 저장 (ollama, custom만 해당)
+    # 엔진별 base_url 저장 (custom만 해당)
     base_url = inputs.get('base_url', '')
     base_urls = settings.get('base_urls', {})
     if base_url:

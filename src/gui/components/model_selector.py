@@ -13,8 +13,7 @@ _ENGINE_OPTIONS = [
     ("openai", "OpenAI"),
     ("claude", "Anthropic Claude"),
     ("grok", "xAI Grok"),
-    ("ollama", "Ollama (로컬 LLM, 무료)"),
-    ("custom", "OpenAI 호환 (커스텀 엔드포인트)"),
+    ("custom", "OpenAI 호환 (OpenRouter 등)"),
     ("clipboard", "API 키 없이 사용"),
 ]
 

@@ -150,8 +150,8 @@ class MainView:
 
         # 검증
         if start_stage == PipelineStage.DOWNLOAD:
-            # clipboard, ollama, custom은 API 키 불필요
-            skip_key = engine in ("clipboard", "ollama", "custom")
+            # clipboard, custom은 API 키 불필요
+            skip_key = engine in ("clipboard", "custom")
             valid, error_message = InputValidator.validate_all_inputs(
                 inputs, skip_api_key=skip_key,
             )
@@ -159,7 +159,7 @@ class MainView:
                 self._show_snackbar(error_message, Colors.ERROR)
                 return
         else:
-            if start_stage <= PipelineStage.SUMMARIZE and engine not in ("clipboard", "ollama", "custom"):
+            if start_stage <= PipelineStage.SUMMARIZE and engine not in ("clipboard", "custom"):
                 valid, error = InputValidator.validate_api_key(inputs.get('api_key', ''))
                 if not valid:
                     self._show_snackbar(error, Colors.ERROR)

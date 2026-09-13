@@ -16,13 +16,12 @@ _ENGINE_LABELS = {
     "openai": "OpenAI API 키",
     "claude": "Anthropic API 키",
     "grok": "xAI API 키",
-    "ollama": "API 키 (불필요)",
     "custom": "API 키 (선택사항)",
     "clipboard": "API 키 (불필요)",
 }
 
 # base_url 입력이 필요한 엔진
-_URL_ENGINES = {"ollama", "custom"}
+_URL_ENGINES = {"custom"}
 
 
 class AISettingsSection:
@@ -36,10 +35,10 @@ class AISettingsSection:
             on_engine_change=self._handle_engine_change,
         )
 
-        # 엔드포인트 URL 입력 (Ollama / Custom 전용)
+        # 엔드포인트 URL 입력 (Custom 전용 — OpenRouter, OpenCode GO 등)
         self._base_url_field = ft.TextField(
             label="엔드포인트 URL",
-            hint_text="http://localhost:11434/v1",
+            hint_text="https://openrouter.ai/api/v1",
             prefix_icon=ft.Icons.LINK,
             border_radius=Radius.SM,
             border_color=Colors.BORDER,
@@ -65,11 +64,11 @@ class AISettingsSection:
             padding=ft.padding.symmetric(horizontal=12, vertical=8),
         )
 
-        # Ollama 모드 안내
-        self._ollama_notice = ft.Container(
+        # OpenAI 호환 엔드포인트 안내
+        self._custom_notice = ft.Container(
             content=ft.Text(
-                "로컬 LLM (Ollama)을 사용합니다. Ollama가 실행 중이어야 합니다.\n"
-                "설치: ollama.com → 모델 다운로드 후 서버 실행",
+                "OpenAI API 호환 서버를 사용합니다 (/v1/responses → /v1/chat/completions 자동 폴백).\n"
+                "예: OpenRouter (https://openrouter.ai/api/v1), OpenCode GO, OpenAI 공식 API",
                 size=Typography.SMALL,
                 color="#1D4ED8",
             ),
@@ -116,7 +115,7 @@ class AISettingsSection:
                 self._api_field.container,
                 self._base_url_field,
                 self._clipboard_notice,
-                self._ollama_notice,
+                self._custom_notice,
             ],
             spacing=Spacing.SM,
             horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
@@ -134,7 +133,7 @@ class AISettingsSection:
         model = self._model_selector.get_model()
         engine_label = {
             "gemini": "Gemini", "openai": "OpenAI", "claude": "Claude",
-            "grok": "Grok", "ollama": "Ollama", "custom": "Custom",
+            "grok": "Grok", "custom": "OpenAI 호환",
             "clipboard": "클립보드",
         }.get(engine, engine)
         if engine == "clipboard":
@@ -161,20 +160,16 @@ class AISettingsSection:
         new_label = _ENGINE_LABELS.get(engine, "AI API 키")
         self._api_field.control.label = new_label
         is_clipboard = engine == "clipboard"
-        is_no_key = engine in ("clipboard", "ollama")
+        is_no_key = is_clipboard
         self._api_field.set_enabled(not is_no_key)
         self._clipboard_notice.visible = is_clipboard
-        self._ollama_notice.visible = (engine == "ollama")
+        self._custom_notice.visible = (engine == "custom")
 
         # 엔드포인트 URL 필드 표시/숨김
         show_url = engine in _URL_ENGINES
         self._base_url_field.visible = show_url
         if show_url:
-            # 엔진별 기본 URL 힌트 설정
-            if engine == "ollama":
-                self._base_url_field.hint_text = "http://localhost:11434/v1"
-            else:
-                self._base_url_field.hint_text = "http://localhost:8080/v1"
+            self._base_url_field.hint_text = "https://openrouter.ai/api/v1"
             # 저장된 URL 복원
             saved_url = get_base_url_for_engine(engine)
             self._base_url_field.value = saved_url
@@ -188,8 +183,8 @@ class AISettingsSection:
             self._api_field.control.update()
         if self._clipboard_notice.page:
             self._clipboard_notice.update()
-        if self._ollama_notice.page:
-            self._ollama_notice.update()
+        if self._custom_notice.page:
+            self._custom_notice.update()
         if self._base_url_field.page:
             self._base_url_field.update()
 
@@ -236,7 +231,7 @@ class AISettingsSection:
 
     def set_enabled(self, enabled: bool):
         self._model_selector.set_enabled(enabled)
-        if self.get_engine() not in ("clipboard", "ollama"):
+        if self.get_engine() not in ("clipboard",):
             self._api_field.set_enabled(enabled)
         if self.get_engine() in _URL_ENGINES:
             self._base_url_field.disabled = not enabled
