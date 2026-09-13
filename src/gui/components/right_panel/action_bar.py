@@ -14,6 +14,7 @@ class ActionBar:
         self._on_start = on_start
         self._on_clear = on_clear
         self._is_processing = False
+        self._is_queue_mode = False
 
         self._start_btn = ft.ElevatedButton(
             content=ft.Text("요약 시작"),
@@ -60,7 +61,7 @@ class ActionBar:
             self._on_clear()
 
     def set_processing(self, is_processing: bool):
-        """처리 중 상태 전환"""
+        """처리 중 상태 전환 (파일 모드 원샷 워커용)"""
         self._is_processing = is_processing
         if is_processing:
             self._start_btn.content.value = "중지"
@@ -74,8 +75,15 @@ class ActionBar:
             )
             self._clear_btn.disabled = True
         else:
-            self._start_btn.content.value = "요약 시작"
-            self._start_btn.icon = ft.Icons.PLAY_ARROW
+            self._set_start_default()
+            self._clear_btn.disabled = False
+
+    def set_queue_mode(self, is_queue_mode: bool):
+        """큐 실행 중 상태 전환 — 시작 버튼이 '큐에 추가'로 동작"""
+        self._is_queue_mode = is_queue_mode
+        if is_queue_mode:
+            self._start_btn.content.value = "큐에 추가"
+            self._start_btn.icon = ft.Icons.PLAYLIST_ADD
             self._start_btn.style = ft.ButtonStyle(
                 color=ft.Colors.WHITE,
                 bgcolor=Colors.PRIMARY,
@@ -85,6 +93,20 @@ class ActionBar:
                 overlay_color=ft.Colors.with_opacity(0.1, ft.Colors.WHITE),
             )
             self._clear_btn.disabled = False
+        else:
+            self._set_start_default()
+
+    def _set_start_default(self):
+        self._start_btn.content.value = "요약 시작"
+        self._start_btn.icon = ft.Icons.PLAY_ARROW
+        self._start_btn.style = ft.ButtonStyle(
+            color=ft.Colors.WHITE,
+            bgcolor=Colors.PRIMARY,
+            shape=ft.RoundedRectangleBorder(radius=Radius.LG),
+            padding=ft.padding.symmetric(vertical=14),
+            text_style=ft.TextStyle(weight=Typography.SEMI_BOLD, size=14),
+            overlay_color=ft.Colors.with_opacity(0.1, ft.Colors.WHITE),
+        )
 
     def set_enabled(self, enabled: bool):
         self._start_btn.disabled = not enabled

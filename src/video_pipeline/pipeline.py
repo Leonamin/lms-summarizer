@@ -37,6 +37,9 @@ class VideoPipeline:
         self.chrome_path = chrome_path or DEFAULT_CHROME_PATH
         self._log = log_callback or (lambda msg: print(msg))
         self.headless = headless
+        self._pw = None
+        self._browser = None
+        self._session_page = None
 
     async def _setup_browser(self, playwright: Playwright) -> Tuple[Page, any]:
         """브라우저 설정 및 페이지 생성"""
@@ -109,31 +112,55 @@ class VideoPipeline:
             self._log("[WARN] 동영상 링크를 찾지 못했습니다.")
             return None
 
+    async def open_session(self):
+        """브라우저 세션 열기 (로그인까지 수행, 이후 process_single_url로 재사용)"""
+        self._pw = await async_playwright().start()
+        self._log(f"Playwright 시작, Chrome: {self.chrome_path}")
+        page, browser = await self._setup_browser(self._pw)
+        self._browser = browser
+        self._session_page = page
+        self._log("브라우저 시작 완료")
+        await self._ensure_logged_in(page)
+
+    async def close_session(self):
+        """브라우저 세션 닫기"""
+        try:
+            if self._browser:
+                await self._browser.close()
+        finally:
+            self._browser = None
+            self._session_page = None
+            if self._pw:
+                try:
+                    await self._pw.stop()
+                except Exception:
+                    pass
+                self._pw = None
+
+    async def process_single_url(self, url: str) -> Optional[str]:
+        """열린 세션에서 단일 URL 처리 (다운로드 완료 파일 경로 또는 None)"""
+        if not self._session_page:
+            raise RuntimeError("브라우저 세션이 없습니다. open_session()을 먼저 호출하세요.")
+        return await self._process_single_url(self._session_page, url)
+
     async def process(self, urls: list[str]) -> list[str]:
         """비디오 다운로드 파이프라인 실행"""
         downloaded_videos_path = []
         failed_urls = []
 
-        async with async_playwright() as p:
-            self._log(f"Playwright 시작, Chrome: {self.chrome_path}")
-            page, browser = await self._setup_browser(p)
-            self._log("브라우저 시작 완료")
-
-            try:
-                # 로그인 선행: 대시보드에서 먼저 인증 후 영상 URL 접근
-                await self._ensure_logged_in(page)
-
-                for i, url in enumerate(urls, 1):
-                    try:
-                        filepath = await self._process_single_url(page, url)
-                        if filepath:
-                            downloaded_videos_path.append(filepath)
-                    except Exception as e:
-                        self._log(f"[ERROR] ({i}/{len(urls)}) 다운로드 실패, 다음 영상으로 진행: {url}")
-                        self._log(f"[ERROR] 원인: {type(e).__name__}: {e}")
-                        failed_urls.append((url, str(e)))
-            finally:
-                await browser.close()
+        await self.open_session()
+        try:
+            for i, url in enumerate(urls, 1):
+                try:
+                    filepath = await self.process_single_url(url)
+                    if filepath:
+                        downloaded_videos_path.append(filepath)
+                except Exception as e:
+                    self._log(f"[ERROR] ({i}/{len(urls)}) 다운로드 실패, 다음 영상으로 진행: {url}")
+                    self._log(f"[ERROR] 원인: {type(e).__name__}: {e}")
+                    failed_urls.append((url, str(e)))
+        finally:
+            await self.close_session()
 
         if failed_urls:
             self._log(f"[WARN] {len(failed_urls)}개 영상 다운로드 실패:")

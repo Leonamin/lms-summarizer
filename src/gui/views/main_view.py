@@ -14,15 +14,19 @@ from src.gui.core.thread_safe import invoke_on_ui
 from src.gui.core.file_manager import (
     ensure_downloads_directory, save_user_inputs, load_user_inputs,
     set_summary_mode, set_subject_category, set_subject_custom,
+    get_summary_prompt, get_chrome_path, get_debug_mode,
+    get_stt_engine, get_stt_model, get_stt_params,
 )
 from src.gui.components.header import build_header
 from src.gui.components.left_panel import LeftPanel
 from src.gui.components.right_panel import RightPanel
 from src.gui.components.log_drawer import LogDrawer
+from src.gui.components.queue_panel import QueuePanel
 from src.gui.views.progress_view import ProgressModal
 from src.gui.views.settings_view import open_settings_dialog
 from src.gui.views.course_list_view import CourseListView
 from src.gui.workers.processing_worker import ProcessingWorker
+from src.gui.workers.queue_manager import QueueManager
 from src.pipeline_stage import PipelineStage
 
 
@@ -36,6 +40,8 @@ class MainView:
         self.worker: ProcessingWorker = None
         self.modal: ProgressModal = None
         self._is_processing = False
+        self.queue_manager: QueueManager = None
+        self.queue_panel = QueuePanel(on_stop_all=self._handle_queue_stop)
 
         # SnackBar
         self._snackbar = ft.SnackBar(content=ft.Text(""), duration=3000)
@@ -87,10 +93,10 @@ class MainView:
             expand=True,
         )
 
-        # 로그 드로어는 하단 밀착 (패딩 바깥)
+        # 로그 드로어는 하단 밀착 (패딩 바깥), 큐 패널은 그 위
         self.page.add(
             ft.Column(
-                controls=[main_content, self.log_drawer.control],
+                controls=[main_content, self.queue_panel.control, self.log_drawer.control],
                 spacing=0,
                 expand=True,
                 horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
@@ -137,8 +143,14 @@ class MainView:
         self.page.update()
 
     def _handle_start(self):
+        # 파일 모드 원샷 워커 실행 중이면 중지
         if self._is_processing:
             self._handle_stop()
+            return
+
+        # 큐 실행 중이면 URL 추가로 동작
+        if self.queue_manager and self.queue_manager.is_running():
+            self._handle_queue_add()
             return
 
         self.left_panel.clear_errors()
@@ -174,7 +186,113 @@ class MainView:
             self._show_snackbar(f"{Messages.MODULE_LOAD_ERROR}: {', '.join(missing)}", Colors.ERROR)
             return
 
-        self._start_processing(inputs)
+        if start_stage == PipelineStage.DOWNLOAD:
+            self._start_queue(inputs)
+        else:
+            self._start_processing(inputs)
+
+    # ── 큐 모드 (URL 다운로드 파이프라인) ──────────────────
+
+    def _build_queue_settings(self) -> Dict:
+        """현재 UI 상태에서 큐 세션 설정 스냅샷 생성"""
+        engine = self.left_panel.ai_settings.get_engine()
+        model_name = self.left_panel.ai_settings.get_model()
+        inputs = self.left_panel.get_all_inputs()
+        return {
+            'user_inputs': inputs,
+            'save_video_dir': self.right_panel.get_save_video_dir(),
+            'model_name': model_name,
+            'engine': engine,
+            'base_url': inputs.get('base_url', ''),
+            'summary_prompt': get_summary_prompt(),
+            'chrome_path': get_chrome_path(),
+            'headless': not get_debug_mode(),
+            'stt_engine': get_stt_engine(),
+            'stt_model': get_stt_model(),
+            'stt_params': get_stt_params(),
+        }
+
+    def _start_queue(self, inputs: Dict[str, str]):
+        """큐 매니저 시작 및 URL 제출"""
+        from src.gui.core.file_manager import create_config_files
+        create_config_files(inputs)
+
+        urls = [u.strip() for u in inputs.get('urls', '').split('\n') if u.strip()]
+        if not urls:
+            self._show_snackbar("처리할 URL이 없습니다.", Colors.ERROR)
+            return
+
+        if self.queue_manager is None:
+            self.queue_manager = QueueManager(
+                self.modules,
+                on_log=invoke_on_ui(self.page, lambda m: self.log_drawer.append_message(m)),
+                on_task_updated=invoke_on_ui(self.page, self._on_task_updated),
+                on_idle_changed=invoke_on_ui(self.page, self._on_queue_idle),
+            )
+
+        tasks = self.queue_manager.submit(urls, self._build_queue_settings())
+        for task in tasks:
+            self.queue_panel.update_task(task)
+        self.queue_panel.set_running(True)
+        self.right_panel.set_queue_mode(True)
+        self.right_panel.set_urls("")  # 제출된 URL 입력란 비움
+
+        self.log_drawer.append_message(f"작업 대기열 시작: {len(tasks)}개 URL")
+        self.page.update()
+
+    def _handle_queue_add(self):
+        """큐 실행 중 URL 추가"""
+        urls_text = self.right_panel.get_urls()
+        urls = [u.strip() for u in urls_text.split('\n') if u.strip()]
+        if not urls:
+            self._show_snackbar("추가할 URL을 입력해주세요.", Colors.WARNING)
+            return
+
+        tasks = self.queue_manager.submit(urls, self._build_queue_settings())
+        for task in tasks:
+            self.queue_panel.update_task(task)
+        self.right_panel.set_urls("")
+        self.page.update()
+
+    def _on_task_updated(self, task):
+        """큐 작업 상태 변경 콜백 (UI 스레드)"""
+        self.queue_panel.update_task(task)
+        self.page.update()
+
+    def _on_queue_idle(self, running: bool):
+        """큐 종료 콜백 (UI 스레드)"""
+        self.queue_panel.set_running(running)
+        self.right_panel.set_queue_mode(running)
+        if not running:
+            self._show_snackbar("작업 대기열이 종료되었습니다.", Colors.PRIMARY)
+        self.page.update()
+
+    def _handle_queue_stop(self):
+        def do_stop(e):
+            if self.queue_manager:
+                self.queue_manager.request_stop()
+            confirm_dialog.open = False
+            self.page.update()
+
+        def cancel(e):
+            confirm_dialog.open = False
+            self.page.update()
+
+        confirm_dialog = ft.AlertDialog(
+            modal=True,
+            title=ft.Text("확인"),
+            content=ft.Text("대기열의 모든 작업을 중지하시겠습니까?"),
+            shape=ft.RoundedRectangleBorder(radius=Radius.LG),
+            bgcolor=Colors.BG,
+            actions=[
+                ft.TextButton(content=ft.Text("아니오"), on_click=cancel),
+                ft.ElevatedButton(content=ft.Text("예"), on_click=do_stop,
+                    style=ft.ButtonStyle(color=ft.Colors.WHITE, bgcolor=Colors.ERROR,
+                        shape=ft.RoundedRectangleBorder(radius=Radius.MD))),
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+        self.page.show_dialog(confirm_dialog)
 
     def _start_processing(self, inputs: Dict[str, str]):
         engine = self.left_panel.ai_settings.get_engine()

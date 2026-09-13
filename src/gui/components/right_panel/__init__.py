@@ -66,6 +66,9 @@ class RightPanel:
     def set_processing(self, is_processing: bool):
         self.action_bar.set_processing(is_processing)
 
+    def set_queue_mode(self, is_queue_mode: bool):
+        self.action_bar.set_queue_mode(is_queue_mode)
+
     def get_summary_mode(self) -> str:
         return self.options.get_summary_mode()
 
