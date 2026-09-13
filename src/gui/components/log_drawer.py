@@ -3,14 +3,10 @@
 HTML 디자인: 회색 바 헤더(slate-100) + 펼치면 다크 콘솔 영역
 """
 
-from datetime import datetime
-
 import flet as ft
 
-from src.gui.theme import Colors, Typography, Radius, Spacing, LogDarkColors
-
-# 로그 콘솔 다크 색상 (펼쳤을 때 내부 콘솔만 사용)
-LogColors = LogDarkColors
+from src.gui.theme import Colors, Typography, Radius, Spacing
+from src.gui.components.auto_scroll_log import AutoScrollLog
 
 # 헤더 바 색상 (회색 계열, HTML: bg-gray-200 / slate-100)
 _HEADER_BG = "#E5E7EB"        # gray-200
@@ -22,22 +18,11 @@ class LogDrawer:
     """하단 로그 드로어 — 회색 헤더 바 + 다크 콘솔 (접기/펼치기)"""
 
     def __init__(self):
-        self._messages: list[str] = []
         self._expanded = False
 
-        self._text_field = ft.TextField(
-            value="",
-            read_only=True,
-            multiline=True,
-            min_lines=1,
-            max_lines=None,
-            text_size=Typography.SMALL,
-            color=LogColors.TEXT,
-            border=ft.InputBorder.NONE,
-            content_padding=0,
-            expand=True,
-            text_style=ft.TextStyle(font_family="Courier New, monospace"),
-        )
+        # 자동 스크롤 로그 콘솔 (끝에 있을 때만 새 로그에 맞춰 스크롤)
+        self._log = AutoScrollLog(height=140)
+        self._messages = self._log._messages  # 하위 호환 (get_all_text 등)
 
         self._toggle_icon = ft.Icon(
             ft.Icons.EXPAND_MORE, size=16, color=_HEADER_TEXT,
@@ -49,11 +34,7 @@ class LogDrawer:
 
         # 다크 콘솔 영역 (펼쳤을 때만 보임, HTML: bg-[#1e1e1e] rounded-lg)
         self._log_container = ft.Container(
-            content=self._text_field,
-            bgcolor=LogColors.BG,
-            border_radius=Radius.MD,
-            padding=Spacing.SM,
-            height=140,
+            content=self._log.control,
             visible=False,
             margin=ft.margin.only(left=Spacing.SM, right=Spacing.SM, bottom=Spacing.SM),
         )
@@ -103,14 +84,7 @@ class LogDrawer:
             pass
 
     def append_message(self, message: str):
-        ts = datetime.now().strftime("%H:%M:%S")
-        formatted = f"[{ts}] {message}"
-        self._messages.append(formatted)
-
-        if self._text_field.value:
-            self._text_field.value += "\n" + formatted
-        else:
-            self._text_field.value = formatted
+        self._log.append_message(message)
         self._count_badge.value = f"({len(self._messages)})"
 
         # 첫 메시지 시 자동 펼치기
@@ -120,12 +94,11 @@ class LogDrawer:
             self._toggle_icon.icon = ft.Icons.EXPAND_LESS
 
     def clear(self):
-        self._messages.clear()
-        self._text_field.value = ""
+        self._log.clear()
         self._count_badge.value = ""
         self._expanded = False
         self._log_container.visible = False
         self._toggle_icon.icon = ft.Icons.EXPAND_MORE
 
     def get_all_text(self) -> str:
-        return "\n".join(self._messages)
+        return self._log.get_all_text()

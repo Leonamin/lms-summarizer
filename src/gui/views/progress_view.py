@@ -11,10 +11,11 @@ from datetime import datetime
 
 import flet as ft
 
-from src.gui.theme import Colors, LogDarkColors, Typography, Spacing, Radius, divider
+from src.gui.theme import Colors, Typography, Spacing, Radius, divider
 from src.gui.core.file_manager import (
     open_in_file_explorer, ensure_downloads_directory, get_auto_open_folder,
 )
+from src.gui.components.auto_scroll_log import AutoScrollLog
 from src.pipeline_stage import PipelineStage, STAGE_LABELS
 
 # 처리 단계 정의 (PipelineStage 기반)
@@ -29,7 +30,6 @@ class ProgressModal:
         self._on_stop = on_stop
         self._start_stage = start_stage
         self._is_finished = False
-        self._log_messages: list[str] = []
         self._last_progress_update: float = 0.0
         self._start_time = time.monotonic()
         self._current_step = start_stage.value
@@ -110,28 +110,9 @@ class ProgressModal:
             padding=ft.padding.all(Spacing.LG),
         )
 
-        # ── 다크 콘솔 로그 (항상 표시) ───────────────────
-        self._log_field = ft.TextField(
-            value="",
-            read_only=True,
-            multiline=True,
-            min_lines=1,
-            max_lines=None,
-            text_size=Typography.SMALL,
-            color=LogDarkColors.TEXT,
-            border=ft.InputBorder.NONE,
-            content_padding=0,
-            expand=True,
-            text_style=ft.TextStyle(font_family="Courier New, monospace"),
-        )
-        self._log_container = ft.Container(
-            content=self._log_field,
-            bgcolor="#1E1E1E",  # HTML dark console
-            border_radius=Radius.MD,
-            border=ft.border.all(1, "#374151"),  # slate-700
-            padding=ft.padding.all(Spacing.LG),
-            height=128,
-        )
+        # ── 다크 콘솔 로그 (항상 표시, 자동 스크롤) ────────
+        self._log = AutoScrollLog(height=128)
+        self._log_container = self._log.control
 
         # ── 중지 버튼 (HTML: border-2 border-danger text-danger)
         self._stop_btn = ft.OutlinedButton(
@@ -517,13 +498,7 @@ class ProgressModal:
                 self._safe_update()
 
     def append_log(self, message: str):
-        ts = datetime.now().strftime("%H:%M:%S")
-        formatted = f"[{ts}] {message}"
-        self._log_messages.append(formatted)
-        if self._log_field.value:
-            self._log_field.value += "\n" + formatted
-        else:
-            self._log_field.value = formatted
+        self._log.append_message(message)
         self._safe_update()
 
     def mark_complete(self):
