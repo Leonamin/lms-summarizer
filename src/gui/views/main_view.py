@@ -238,6 +238,8 @@ class MainView:
         self._url_field.visible = is_lms
         self._file_input_area.visible = not is_lms
         self._update_stage_hint()
+        self.log_drawer.append_message(
+            "입력 소스: " + ("LMS 강의" if is_lms else "로컬 파일"))
         self.page.update()
 
     def _on_path_changed(self, path: str):
