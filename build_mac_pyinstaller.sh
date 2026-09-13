@@ -6,8 +6,12 @@
 
 set -e
 
-APP_VERSION="1.1.0"
 APP_NAME="LMS-Summarizer"
+APP_VERSION=$(sed -n 's/^version = "\(.*\)"/\1/p' pyproject.toml | head -n1)
+if [ -z "$APP_VERSION" ]; then
+    echo "❌ pyproject.toml에서 버전을 읽을 수 없습니다."
+    exit 1
+fi
 
 echo "🚀 LMS Summarizer v${APP_VERSION} Mac 빌드 시작..."
 
@@ -22,10 +26,6 @@ if ! command -v uv &> /dev/null; then
     echo "❌ uv가 없습니다: https://docs.astral.sh/uv/"
     exit 1
 fi
-
-# Whisper 모델 사전 다운로드 (base 모델 ~142MB)
-echo "📥 Whisper base 모델 확인 중..."
-uv run python -c "from pywhispercpp.model import Model; Model('base'); print('✅ 모델 준비 완료')"
 
 # 의존성 설치
 echo "📦 의존성 설치 중..."

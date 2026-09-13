@@ -2,13 +2,18 @@
 # 사용법: powershell -ExecutionPolicy Bypass -File scripts/build_windows.ps1
 #
 # 사전 요구사항:
-#   - Python 3.9-3.12 설치 (python.org)
+#   - Python 3.11-3.12 설치 (python.org)
 #   - uv 설치: winget install astral-sh.uv
 
 $ErrorActionPreference = "Stop"
 
-$APP_VERSION = "0.1.0-beta"
 $APP_NAME = "LMS-Summarizer"
+$APP_VERSION = (Select-String -Path "pyproject.toml" -Pattern '^version = "(.*)"' |
+    Select-Object -First 1).Matches[0].Groups[1].Value
+if (-not $APP_VERSION) {
+    Write-Host "❌ pyproject.toml에서 버전을 읽을 수 없습니다." -ForegroundColor Red
+    exit 1
+}
 
 Write-Host "🚀 LMS Summarizer v$APP_VERSION Windows 빌드 시작..." -ForegroundColor Cyan
 
@@ -25,16 +30,9 @@ if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
     exit 1
 }
 
-# Whisper 모델 사전 다운로드
-Write-Host "📥 Whisper base 모델 확인 중..."
-uv run python -c "from pywhispercpp.model import Model; Model('base'); print('✅ 모델 준비 완료')"
-
 # 의존성 설치
 Write-Host "📦 의존성 설치 중..."
 uv sync
-# Windows에서 torch CPU-only 설치로 용량 절감 (~300MB 절약)
-# GPU 사용이 필요하면 아래 줄을 제거하세요
-uv pip install torch --index-url https://download.pytorch.org/whl/cpu
 uv pip install pyinstaller
 
 # 이전 빌드 정리
