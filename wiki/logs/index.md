@@ -12,6 +12,7 @@ okf_version: "0.1"
 
 ## 로그
 
+- [2026-09-14-log-autoscroll-cuda-fix.md](2026-09-14-log-autoscroll-cuda-fix.md) — 로그 자동 스크롤 + CUDA 12 런타임(cublas64_12) 수정
 - [2026-09-14-queue-pipeline-overlap.md](2026-09-14-queue-pipeline-overlap.md) — 다운로드↔처리 오버랩 파이프라인 + 백그라운드 작업 큐
 - [2026-09-14-wiki-and-task-migration.md](2026-09-14-wiki-and-task-migration.md) — 위키 초기화 및 .tasks 마이그레이션
 - [2026-09-13-remove-ollama-openai-compat-layer.md](2026-09-13-remove-ollama-openai-compat-layer.md) — Ollama 제거 및 OpenAI 호환 레이어 자동 폴백
