@@ -111,7 +111,7 @@ class ProgressModal:
         )
 
         # ── 다크 콘솔 로그 (항상 표시, 자동 스크롤) ────────
-        self._log = AutoScrollLog(height=128)
+        self._log = AutoScrollLog(height=128, page=page)
         self._log_container = self._log.control
 
         # ── 중지 버튼 (HTML: border-2 border-danger text-danger)

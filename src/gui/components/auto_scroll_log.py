@@ -18,9 +18,10 @@ _BOTTOM_TOLERANCE_PX = 32
 class AutoScrollLog:
     """다크 콘솔 스타일의 자동 스크롤 로그"""
 
-    def __init__(self, height: int = 140, expand: bool = False):
+    def __init__(self, height: int = 140, expand: bool = False, page=None):
         self._messages: list[str] = []
         self._at_bottom = True  # 마지막 on_scroll 기준 끝 부착 여부
+        self._page = page  # scroll_to가 코루틴이라 run_task 실행용
 
         self._column = ft.Column(
             controls=[],
@@ -62,10 +63,16 @@ class AutoScrollLog:
             )
         )
         if self._at_bottom:
-            try:
-                self._column.scroll_to(offset=-1, duration=150)
-            except Exception:
-                pass
+            self._scroll_to_bottom()
+
+    def _scroll_to_bottom(self):
+        """끝으로 스크롤 (scroll_to는 코루틴 → page.run_task로 실행)"""
+        try:
+            coro = self._column.scroll_to(offset=-1, duration=150)
+            if self._page is not None:
+                self._page.run_task(coro)
+        except Exception:
+            pass
 
     def clear(self):
         self._messages.clear()

@@ -17,11 +17,11 @@ _HEADER_BORDER = "#E2E8F0"   # slate-200
 class LogDrawer:
     """하단 로그 드로어 — 회색 헤더 바 + 다크 콘솔 (접기/펼치기)"""
 
-    def __init__(self):
+    def __init__(self, page=None):
         self._expanded = False
 
         # 자동 스크롤 로그 콘솔 (끝에 있을 때만 새 로그에 맞춰 스크롤)
-        self._log = AutoScrollLog(height=140)
+        self._log = AutoScrollLog(height=140, page=page)
         self._messages = self._log._messages  # 하위 호환 (get_all_text 등)
 
         self._toggle_icon = ft.Icon(

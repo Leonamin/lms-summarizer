@@ -56,7 +56,7 @@ class MainView:
             on_clear=self._handle_clear,
             on_open_course_list=self._open_course_list,
         )
-        self.log_drawer = LogDrawer()
+        self.log_drawer = LogDrawer(page=page)
 
         # UI 빌드
         self._build_ui()
