@@ -10,7 +10,9 @@ import flet as ft
 
 from src.gui.theme import Colors, Typography, Spacing, Radius, divider
 from src.gui.core.file_manager import (
-    set_summary_mode, set_subject_category, set_subject_custom,
+    get_summary_mode, set_summary_mode,
+    get_subject_category, set_subject_category,
+    get_subject_custom, set_subject_custom,
     get_chrome_path, set_chrome_path, detect_chrome_paths,
     get_debug_mode, set_debug_mode,
     get_auto_open_folder, set_auto_open_folder,
