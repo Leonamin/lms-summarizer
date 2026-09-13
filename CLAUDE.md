@@ -29,26 +29,7 @@
 - `playwright install` 필요 (단, 시스템 Chrome 사용).
 - ffmpeg 불필요 — PyAV가 MP4→WAV 처리.
 
-<!-- PLANK:START -->
-# Plank Integration
+## 작업 관리
 
-This project uses [Plank](https://github.com/Leonamin/plank) for task management. Tasks are stored as markdown files in `.tasks/`.
+- `.tasks`(Plank)는 제거됨. 작업 관리와 지식 기록은 프로젝트 위키(`./wiki`, OKF 형식)로 수행한다. 구조는 `.agents/wiki-structure.md` 참조.
 
-## Before Starting Work
-- Read `.tasks/` to understand current progress. Check `in-progress/` and `todo/` for related tasks.
-- If a related task exists, follow its checklist and dependencies.
-- If none exists, create a task with a checklist (`- [ ]`) before starting.
-
-## During / After Work
-- Update checklist items (`- [ ]` → `- [x]`) without asking. Add a brief result summary.
-- When all items are done, ask the user to move the task to `done`.
-- Suggest new tasks for any TODOs discovered during work.
-
-## Task File Rules
-- Path: `.tasks/{column}/{id}.md` — move files between directories to change columns.
-- Moving to `done`: create a weekly subfolder (e.g., `.tasks/done/2026-W12/`).
-- Frontmatter: `id`, `title`, `labels`, `priority`, `created`, `depends_on`.
-- New task IDs are slugified from the title.
-- Deletion is always soft-delete (move to `.tasks/.trash/`).
-
-<!-- PLANK:END -->
