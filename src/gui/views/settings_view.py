@@ -378,7 +378,7 @@ class SettingsDialog:
         self.chrome_field.update()
 
     async def _browse_chrome(self, e):
-        # FilePicker는 page당 한 번만 overlay에 등록
+        # FilePicker는 Service로 page.services에 등록 (page당 한 번)
         if not hasattr(self._page, "_fp_chrome"):
             self._page._fp_chrome = ft.FilePicker()
             self._page.services.append(self._page._fp_chrome)

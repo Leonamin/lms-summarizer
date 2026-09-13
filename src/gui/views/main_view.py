@@ -226,20 +226,27 @@ class MainView:
     # ── 파일 선택 ─────────────────────────────────────────
 
     def _handle_pick_files(self, e=None):
-        # FilePicker는 page당 한 번만 overlay에 등록
+        # FilePicker는 Service로 page.services에 등록 (page당 한 번)
         if not hasattr(self.page, "_fp_files"):
-            self.page._fp_files = ft.FilePicker(on_result=self._on_files_picked)
-            self.page.overlay.append(self.page._fp_files)
+            self.page._fp_files = ft.FilePicker()
+            self.page.services.append(self.page._fp_files)
             self.page.update()
-        picker = self.page._fp_files
-        # pick_files는 코루틴 → run_task로 실행
-        self.page.run_task(picker.pick_files, dialog_title="처리할 파일 선택",
-                           allow_multiple=True)
 
-    def _on_files_picked(self, files: list):
-        if not files:
+        async def _pick():
+            # Flet 0.81: pick_files가 결과를 직접 반환 (on_result 콜백 없음)
+            files = await self.page._fp_files.pick_files(
+                dialog_title="처리할 파일 선택",
+                allow_multiple=True,
+            )
+            if files:
+                self._on_files_picked([f.path for f in files])
+
+        self.page.run_task(_pick)
+
+    def _on_files_picked(self, paths: list):
+        if not paths:
             return
-        self._picked_files = [f.path for f in files if f.path]
+        self._picked_files = [p for p in paths if p]
         names = [Path(p).name for p in self._picked_files]
         self._file_list_text.value = (
             f"{len(names)}개 파일: " + ", ".join(names[:5]) + ("..." if len(names) > 5 else ""))
