@@ -12,4 +12,4 @@ ADR 형식의 기술·제품 의사결정 기록입니다. 문서는 번호가 �
 
 ## 문서
 
-(아직 등록된 문서가 없습니다. 새 문서는 이 index에 등록합니다.)
+- [001-ui-redesign-background-queue.md](001-ui-redesign-background-queue.md) — UI 전면 개편: 백그라운드 큐 중심 IA로 재설계 (2026-09-14)
