@@ -42,6 +42,8 @@ class SettingsDialog:
         self._build_summary_tab()
         self._build_browser_tab()
         self._build_behavior_tab()
+        for k, ctrl in self._cat_contents.items():
+            ctrl.visible = (k == self._current)
 
         self.dialog = ft.AlertDialog(
             modal=True,
@@ -84,6 +86,7 @@ class SettingsDialog:
                             content=ft.Column(
                                 controls=list(self._cat_contents.values()),
                                 spacing=0,
+                                expand=True,
                             ),
                             expand=True,
                             padding=ft.padding.symmetric(
@@ -246,7 +249,7 @@ class SettingsDialog:
             expand=True,
             horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
         )
-        self._cat_contents["summary"] = ft.Container(content=content)
+        self._cat_contents["summary"] = ft.Container(content=content, expand=True)
 
     def _update_preview(self):
         self.prompt_preview.value = build_prompt(
@@ -313,7 +316,7 @@ class SettingsDialog:
             expand=True,
             horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
         )
-        self._cat_contents["browser"] = ft.Container(content=content)
+        self._cat_contents["browser"] = ft.Container(content=content, expand=True)
 
     def _build_detected_chrome_controls(self) -> list:
         detected_paths = detect_chrome_paths()
@@ -453,7 +456,7 @@ class SettingsDialog:
             expand=True,
             horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
         )
-        self._cat_contents["behavior"] = ft.Container(content=content)
+        self._cat_contents["behavior"] = ft.Container(content=content, expand=True)
 
     # ── 저장/닫기 ─────────────────────────────────────────
 
