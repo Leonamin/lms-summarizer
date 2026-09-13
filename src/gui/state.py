@@ -23,7 +23,7 @@ class AppState:
     password: str = ""
     api_key: str = ""
     urls: str = ""
-    ai_model: str = "gemini-2.5-flash"
+    ai_model: str = "gemini-3.8-flash"
     save_video: bool = True
 
     # 경로

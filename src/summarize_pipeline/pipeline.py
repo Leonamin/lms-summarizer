@@ -13,7 +13,7 @@ except ImportError:
 class SummarizePipeline:
     def __init__(
         self,
-        model_name: str = "gemini-2.5-flash",
+        model_name: str = "gemini-3.8-flash",
         prompt: str = None,
         engine: str = "gemini",
         api_key: str = None,

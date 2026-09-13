@@ -23,12 +23,12 @@ class GeminiProvider(AIProvider):
 
     @staticmethod
     def default_model() -> str:
-        return "gemini-2.5-flash"
+        return "gemini-3.8-flash"
 
     @staticmethod
     def available_models() -> list[tuple[str, str]]:
         return [
-            ("gemini-2.5-flash", "Gemini 2.5 Flash (추천)"),
-            ("gemini-2.5-pro", "Gemini 2.5 Pro"),
-            ("gemini-2.5-flash-lite", "Gemini 2.5 Flash Lite"),
+            ("gemini-3.8-flash", "Gemini 3.8 Flash (추천)"),
+            ("gemini-3.6-flash", "Gemini 3.6 Flash"),
+            ("gemini-3.1-pro-preview", "Gemini 3.1 Pro"),
         ]

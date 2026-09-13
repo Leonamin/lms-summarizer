@@ -49,7 +49,7 @@ class ProcessingWorker:
         user_inputs: Dict[str, str],
         modules: Dict,
         save_video_dir: str = None,
-        model_name: str = "gemini-2.5-flash",
+        model_name: str = "gemini-3.8-flash",
         engine: str = "gemini",
         base_url: str = "",
         on_log: Optional[Callable[[str], None]] = None,
