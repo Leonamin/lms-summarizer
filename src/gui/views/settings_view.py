@@ -79,19 +79,21 @@ class SettingsDialog:
                                 top_left=Radius.LG, bottom_left=Radius.LG),
                             padding=ft.padding.all(Spacing.SM),
                         ),
-                        # 우측 상세
+                        # 우측 상세 (다이얼로그 자체 inset 24px가 있으므로 내부 패딩은 최소화)
                         ft.Container(
                             content=ft.Column(
                                 controls=list(self._cat_contents.values()),
                                 spacing=0,
                             ),
                             expand=True,
-                            padding=ft.padding.all(Spacing.LG),
+                            padding=ft.padding.symmetric(
+                                horizontal=Spacing.SM, vertical=Spacing.SM),
                         ),
                     ],
                     spacing=0,
                 ),
             ),
+            inset_padding=ft.padding.symmetric(horizontal=40, vertical=24),
             actions=[
                 ft.TextButton(content=ft.Text("취소"), on_click=self._close),
                 ft.ElevatedButton(
