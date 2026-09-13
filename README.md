@@ -22,17 +22,20 @@
 
 | 엔진 | 방식 | 비용 | 특징 |
 | --- | --- | --- | --- |
-| **whisper.cpp** | 로컬 실행 | 무료 | 기본 엔진, API 키 불필요 |
+| **faster-whisper** | 로컬 실행 | 무료 | 기본 엔진, API 키 불필요, GPU(CUDA) 지원 |
+| **OpenAI 호환 엔드포인트** | 로컬/원격 서버 | 무료~ | Speaches, faster-whisper-server, LM Studio 등 연결 |
+| **OpenAI Whisper API** | 클라우드 API | 유료 ($0.006/분) | 로컬 모델 다운로드 불필요 |
 | **ReturnZero** | 클라우드 API | 유료 | 높은 정확도 |
 
 ### AI 요약 엔진
 
 | 엔진 | 지원 모델 | 비용 |
 | --- | --- | --- |
-| **Gemini** (Google) | 2.5 Flash (권장), 2.5 Pro, 2.5 Flash Lite | 무료 티어 제공 |
-| **OpenAI** | GPT-5.4 (권장), GPT-5 Mini, GPT-4o, GPT-4o Mini | 유료 |
-| **Claude** (Anthropic) | Claude Sonnet 4.6 (권장), Claude Haiku 4.5 | 유료 |
-| **Grok** (xAI) | Grok 4.1 Fast (권장), Grok 4.1 Fast Reasoning, Grok 3 | 유료 |
+| **Gemini** (Google) | 3.8 Flash (권장), 3.6 Flash, 3.1 Pro | 무료 티어 제공 |
+| **OpenAI** | GPT-5.6 Luna (권장), GPT-5.6 Terra, GPT-5.6 Sol | 유료 |
+| **Claude** (Anthropic) | Claude Sonnet 5 (권장), Claude Opus 5, Claude Haiku 4.5 | 유료 |
+| **Grok** (xAI) | Grok 4.6 (권장), Grok 4.5, Grok 4.1 Fast | 유료 |
+| **OpenAI 호환** | OpenAI 공식 API, OpenRouter, OpenCode GO 등 임의 호환 엔드포인트 | 엔드포인트 정책에 따름 |
 | **클립보드 모드** | Gemini / ChatGPT / Claude / Grok 웹 | 무료 (API 키 불필요, 브라우저에서 수동 붙여넣기) |
 
 > ⚠️ **모델 목록은 각 AI 공급자의 최신 상황에 따라 달라질 수 있습니다.** 사용 가능한 모델이 변경되었거나 오류가 발생하는 경우, 각 공급자의 공식 문서를 확인하세요.
@@ -160,7 +163,7 @@ Google 계정으로 로그인하세요.
 
 | 모델             | 무료 한도                    |
 | ---------------- | ---------------------------- |
-| Gemini 2.5 Flash | 분당 10회 요청, 하루 500회   |
+| Gemini 3.8 Flash | 분당 10회 요청, 하루 500회   |
 | Gemini 2.0 Flash | 분당 15회 요청, 하루 1,500회 |
 
 강의 요약 용도라면 무료 한도로 충분합니다.
@@ -182,7 +185,7 @@ Google 계정으로 로그인하세요.
 │  📚 학번: [          ]                   │
 │  🔒 비밀번호: [       ] 👁               │
 │  🔑 Gemini API 키: [              ]      │
-│  🤖 AI 모델: [Gemini 2.5 Flash ▼]        │
+│  🤖 AI 모델: [Gemini 3.8 Flash ▼]        │
 │  🎬 강의 URL 목록:                       │
 │  [                              ]        │
 │                                          │
@@ -199,7 +202,7 @@ Google 계정으로 로그인하세요.
 | **학번**          | 숭실대 LMS 학번                   |
 | **비밀번호**      | LMS 비밀번호 (영문 자판으로 입력) |
 | **Gemini API 키** | 위에서 발급받은 API 키            |
-| **AI 모델**       | Gemini 2.5 Flash 권장 (다른 엔진도 지원) |
+| **AI 모델**       | Gemini 3.8 Flash 권장 (다른 엔진도 지원) |
 | **강의 URL**      | LMS 강의 페이지 URL (아래 참고)   |
 
 > 💡 **학번과 API 키는 자동으로 저장됩니다.** 다음 실행 시 다시 입력하지 않아도 됩니다.
@@ -243,7 +246,7 @@ https://canvas.ssu.ac.kr/courses/12345/modules/items/222222
 
 ### Q. 처음 실행할 때 오래 걸려요
 
-첫 실행 시 Whisper AI 모델(약 142MB)을 다운로드합니다. 한 번만 다운로드되며 이후에는 빠릅니다.
+첫 실행 시 faster-whisper AI 모델(기본 모드 기준 약 800MB)을 다운로드합니다. 한 번만 다운로드되며 이후에는 빠릅니다.
 
 ### Q. 비밀번호가 입력이 안 돼요
 
@@ -270,7 +273,7 @@ xattr -rd com.apple.quarantine ~/Downloads/LMS-Summarizer.app
 
 ### Q. 요약 결과가 마음에 안 들어요
 
-- **Gemini 2.5 Pro** 등 상위 모델을 선택하면 더 상세한 요약이 가능합니다
+- **Gemini 3.1 Pro** 등 상위 모델을 선택하면 더 상세한 요약이 가능합니다
 - OpenAI, Claude, Grok 등 다른 AI 엔진도 지원합니다 (유료 API 키 필요)
 - 강의 음질이 좋지 않으면 텍스트 변환 정확도가 낮아질 수 있습니다
 
@@ -287,7 +290,7 @@ xattr -rd com.apple.quarantine ~/Downloads/LMS-Summarizer.app
 | --------------- | ------------------------------------------ |
 | GUI             | Flet 0.81.0                                |
 | 콘텐츠 처리     | Playwright (headless=False, 시스템 Chrome) |
-| 음성 변환 (STT) | whisper.cpp (pywhispercpp, 로컬 실행)      |
+| 음성 변환 (STT) | faster-whisper (CTranslate2, 로컬 실행)    |
 | 미디어 변환     | PyAV (ffmpeg 불필요)                       |
 | AI 요약         | Gemini / OpenAI / Claude / Grok API        |
 | 패키지 관리     | uv                                         |
@@ -307,7 +310,7 @@ src/
 ├── video_pipeline/         # 콘텐츠 다운로드 파이프라인
 ├── audio_pipeline/         # 음성 → 텍스트 파이프라인
 └── summarize_pipeline/     # AI 요약 파이프라인
-    └── providers/          # AI 엔진별 구현 (Gemini, OpenAI, Claude, Grok, 클립보드)
+    └── providers/          # AI 엔진별 구현 (Gemini, OpenAI, Claude, Grok, OpenAI 호환, 클립보드)
 ```
 
 ### 빌드

@@ -2,50 +2,32 @@
 
 ## 절대 건드리면 안 되는 것들
 
-- **headless=False 유지**: 내장 Chromium에서는 LMS 영상 재생이 실패한다. 반드시 시스템 Chrome + headless=False 조합을 유지할 것.
-- **로그인 플로우 순서 고정**: `login.py`의 SSO 버튼 클릭 → 폼 입력 → 로그인 버튼 클릭 순서는 LMS에 맞춰져 있다. 순서를 바꾸면 로그인이 깨진다.
-- **CDP 추출 방식 기본**: `video_parser.py`에서 CDP `Network.requestWillBeSent`로 `.mp4` 요청을 가로채 영상 URL을 추출한다. `intro.mp4`는 필터링하고 실제 강의 영상을 캡처한다. DOM 기반 추출(`DomVideoExtractor`)은 fallback 옵션으로 유지된다.
+- **시스템 Chrome + headless=False 고정**: 내장 Chromium에서는 LMS 영상 재생이 실패한다.
+- **로그인 플로우** (`video_pipeline/login.py`): discovery 페이지(`.btn-ssu-main` 숭실대학교 선택) → gw.php(`.login_btn a` 통합 로그인) → smartid 폼(`input#userid`, `input#pwd`, `a.btn_login`). 순서를 바꾸면 로그인이 깨진다.
+- **CDP 추출 기본** (`video_parser.py`): `Network.requestWillBeSent`로 `.mp4`를 가로챈다. `intro.mp4`는 필터링. `DomVideoExtractor`는 fallback.
 
 ## 설계 의도
 
-- **GUI 중심 개발**: CLI(`src/main.py`)는 폐기 예정. 단, 각 파이프라인 모듈은 독립 실행/테스트 가능하도록 추상화를 유지한다.
-- **기본 엔진**: STT는 faster-whisper(CTranslate2 기반), 요약은 Gemini. 나머지(OpenAI, Claude, Grok, Ollama, Custom, Clipboard)는 대안 옵션이다. Ollama는 로컬 LLM으로 API 키 불필요. Custom은 임의 OpenAI 호환 엔드포인트 지원.
-- **ChatGPTSummarizer**: API 호출이 아니라 클립보드 복사 + 브라우저 열기 방식이다. 의도된 동작이다.
-- **Python >=3.11,<3.13**: `.python-version`에 `3.11`로 설정되어 있고 uv가 자동 관리한다.
-
-## 알려진 버그 (미수정)
-
-- `summarizer.py`에서 `user_setting.OPENAI_API_KEY`를 참조하지만, `UserSetting` 클래스에 해당 속성이 정의되지 않았다.
-- CLI(`src/main.py`)는 상대 import, GUI(`src/gui/`)는 `src.` prefix import를 사용한다. 경로 불일치 주의.
+- **GUI 중심**: CLI 진입점은 제거됨. 파이프라인 모듈은 독립 실행 가능하게 유지.
+- **기본 엔진**: STT는 faster-whisper, 요약은 Gemini(gemini-3.8-flash). 나머지(OpenAI, Claude, Grok, OpenAI 호환, Clipboard)는 대안. OpenAI 호환(`CustomProvider`)은 OpenRouter·OpenCode GO 등 임의 호환 엔드포인트 지원, `/v1/responses` → `/v1/chat/completions` 자동 폴백. 로컬 모델(Ollama)은 제거됨.
+- **클립보드 모드** (`ClipboardProvider`): 클립보드 복사 + 브라우저 열기 방식. 의도된 동작.
+- **Python 3.11**: `.python-version`에서 uv가 자동 관리.
+- **모델 목록은 하드코딩**되어 있으므로 몇 달마다 최신화 필요 (`src/summarize_pipeline/providers/`).
 
 ## 배포
 
-- **패키지 매니저**: uv 사용. 의존성 추가는 `uv add`, 설치는 `uv sync`.
-- PyInstaller 빌드 시 faster-whisper(CTranslate2) + PyAV 포함. 모델은 런타임 다운로드이므로 번들 크기 감소.
-- PyInstaller 빌드에서 **torch는 excludes에 명시적 제외**됨 (~275MB 절감). 따라서 CUDA 감지는 `ctranslate2` 내장 API와 `nvidia-smi` 명령에 의존.
-- PyInstaller 빌드 시 `faster_whisper/assets/silero_vad_v6.onnx`를 datas에 포함해야 VAD 필터가 동작함 (미포함 시 VAD 자동 비활성화).
-- Chrome 경로가 Mac용(`/Applications/Google Chrome.app/...`)으로 하드코딩되어 있다. Windows 배포 시 경로 분기 필요.
+- uv 사용 (`uv add` / `uv sync`).
+- PyInstaller: torch는 excludes로 제외(CUDA 감지는 ctranslate2 API + nvidia-smi 의존), `faster_whisper/assets/silero_vad_v6.onnx`를 datas에 포함해야 VAD 동작.
+- Chrome 기본 경로는 OS별 분기(`pipeline.py`, `course_scraper.py`). GUI는 `get_chrome_path()` 우선.
 
-## 커밋 메시지 컨벤션
+## 커밋 메시지
 
-`type: 설명` 형식을 사용한다.
+`type: 설명` — feat / fix / docs / style / refactor / test / chore / build / ci / perf / release
 
-- `feat`: 새로운 기능 추가
-- `fix`: 버그 수정
-- `docs`: 문서 수정
-- `style`: 코드 스타일 수정 (formatting 등)
-- `refactor`: 코드 리팩토링
-- `test`: 테스트 코드 추가
-- `chore`: 빌드 프로세스/보조 도구 변경
-- `build`: 빌드 시스템/외부 의존성 변경
-- `ci`: CI/CD 설정 변경
-- `perf`: 성능 개선
-- `release`: 릴리즈 (버전 태깅 포함)
+## 외부 의존성
 
-## 외부 의존성 (시스템 설치 필수)
-
-- `playwright install`: Playwright 브라우저 드라이버 설치가 별도로 필요하다. 단, 내장 Chromium이 아닌 시스템 Chrome을 사용한다.
-- `ffmpeg`: 불필요. PyAV(`av` 패키지)를 사용하여 MP4→WAV 변환을 처리한다. 시스템 ffmpeg 설치 없이 동작한다.
+- `playwright install` 필요 (단, 시스템 Chrome 사용).
+- ffmpeg 불필요 — PyAV가 MP4→WAV 처리.
 
 <!-- PLANK:START -->
 # Plank Integration
