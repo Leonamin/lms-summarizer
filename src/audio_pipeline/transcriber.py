@@ -23,6 +23,61 @@ def clean_transcript(text: str, repeat_threshold: int = 4) -> str:
     return re.sub(pattern, r'\1', text)
 
 
+_DLL_BOOTSTRAP_DONE = False
+
+
+def _bootstrap_cuda_dll_paths() -> list[str]:
+    """pip로 설치된 CUDA 12 라이브러리(nvidia-cublas-cu12 등)를 DLL 검색 경로에 추가.
+
+    ctranslate2는 CUDA 12의 cublas64_12.dll을 요구하지만, 시스템에 CUDA 13만
+    설치된 경우(또는 PATH에 없는 경우) 모델 로드는 성공해도 실제 연산 시점에
+    "Library cublas64_12.dll is not found" 오류가 발생한다.
+    pip 패키지(nvidia-cublas-cu12, nvidia-cuda-runtime-cu12)의 bin 디렉토리를
+    PATH 앞에 추가하여 해결한다. (add_dll_directory는 ctranslate2 검색에 반영되지 않음)
+    """
+    global _DLL_BOOTSTRAP_DONE
+    added: list[str] = []
+    if _DLL_BOOTSTRAP_DONE:
+        return added
+    _DLL_BOOTSTRAP_DONE = True
+
+    if sys.platform != "win32":
+        return added
+
+    # PyInstaller 번들 환경: DLL이 실행 파일 옆에 풀리므로 불필요
+    if getattr(sys, "frozen", False):
+        return added
+
+    site_dirs = []
+    try:
+        import site as _site
+        site_dirs = _site.getsitepackages()
+    except Exception:
+        pass
+    try:
+        from faster_whisper import __file__ as _fw_file  # noqa: F401
+        # faster-whisper가 설치된 site-packages 기준으로도 탐색
+        site_dirs.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+    except Exception:
+        pass
+
+    subdirs = [
+        ("nvidia", "cublas", "bin"),
+        ("nvidia", "cuda_runtime", "bin"),
+        ("nvidia", "cudnn", "bin"),
+        ("nvidia", "nvjitlink", "bin"),
+    ]
+    for base in site_dirs:
+        if not base or not os.path.isdir(base):
+            continue
+        for sub in subdirs:
+            d = os.path.join(base, *sub)
+            if os.path.isdir(d) and d not in added:
+                os.environ["PATH"] = d + os.pathsep + os.environ.get("PATH", "")
+                added.append(d)
+    return added
+
+
 def transcribe_audio_to_text(
     audio_path: str,
     txt_path: str,
@@ -126,6 +181,17 @@ class FasterWhisperTranscriber(Transcriber):
 
         resolved_device, resolved_compute = self._resolve_device(device, compute_type, self._on_log)
 
+        # CUDA 사용 시 pip 설치된 CUDA 12 라이브러리 경로를 PATH에 추가
+        if resolved_device == "cuda":
+            added = _bootstrap_cuda_dll_paths()
+            if added:
+                self._on_log(f"[faster-whisper] CUDA 12 라이브러리 경로 추가: {len(added)}개")
+            # 실제 로드 가능 여부 사전 검증 — 실패 시 CPU 폴백
+            # (모델 로드는 성공해도 첫 연산 시 cublas 로드 실패로 크래시하는 경우 방지)
+            if not self._check_cuda_runtime_loadable(self._on_log):
+                resolved_device, resolved_compute = "cpu", "int8"
+                self._on_log("[faster-whisper] CUDA 런타임 라이브러리 로드 실패 — CPU 모드로 전환합니다.")
+
         # GPU 메모리 진단 로그 (CUDA 사용 시)
         if resolved_device == "cuda":
             self._log_gpu_memory()
@@ -226,6 +292,46 @@ class FasterWhisperTranscriber(Transcriber):
             _log("[faster-whisper] CUDA GPU 미감지 — CPU 모드 사용")
 
         return "cpu", compute_type if compute_type != "auto" else "int8"
+
+    @staticmethod
+    def _check_cuda_runtime_loadable(on_log=None) -> bool:
+        """cublas64_12.dll 실제 로드 가능 여부 확인 (Windows 전용).
+
+        ctranslate2의 CUDA 감지는 드라이버 기반이라 런타임 라이브러리 부재를
+        감지하지 못한다. 실제로 로드해보아야 연산 시점 크래시를 막을 수 있다.
+        PATH 수정은 ctranslate2의 자체 로드에는 반영되지만 ctypes 상대 검색에는
+        반영되지 않으므로, 후보 디렉토리를 직접 순회하며 전체 경로로 로드한다.
+        """
+        _log = on_log or (lambda msg: None)
+        if sys.platform != "win32":
+            return True
+        import ctypes
+
+        candidates: list[str] = []
+        # PATH에서 cublas64_12.dll이 있는 디렉토리 탐색 (pip nvidia 패키지 포함)
+        for d in os.environ.get("PATH", "").split(os.pathsep):
+            if d and os.path.isfile(os.path.join(d, "cublas64_12.dll")):
+                candidates.append(os.path.join(d, "cublas64_12.dll"))
+        # 시스템 CUDA 설치 경로 (CUDA 12.x)
+        try:
+            import glob as _glob
+            candidates.extend(_glob.glob(
+                r"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12*\bin\cublas64_12.dll"))
+        except Exception:
+            pass
+
+        for path in candidates:
+            try:
+                ctypes.WinDLL(path)
+                return True
+            except OSError:
+                continue
+        if candidates:
+            _log("[faster-whisper] cublas64_12.dll은 존재하지만 로드 실패 (의존성 누락)")
+        else:
+            _log("[faster-whisper] cublas64_12.dll을 찾을 수 없습니다.")
+        _log("[faster-whisper] CUDA 12 런타임이 필요합니다 (nvidia-cublas-cu12).")
+        return False
 
     def _log_gpu_memory(self):
         """CUDA GPU 메모리 정보를 로그에 출력 (VRAM 부족 진단용)"""

@@ -16,6 +16,8 @@ dependencies = [
     "anthropic>=0.84.0",
     "google-genai>=1.66.0",
     "faster-whisper>=1.1.0",
+    "nvidia-cublas-cu12>=12.9.2.10",
+    "nvidia-cuda-runtime-cu12>=12.9.79",
 ]
 
 [project.scripts]
