@@ -370,7 +370,7 @@ docs: 문서      |  style: 스타일   |  test: 테스트
 
 `src.core.services.jobs.JobService`는 앱 수명 동안 한 번 생성·시작하고 종료 시 `close()`합니다.
 데이터 디렉토리에 SQLite와 관리 입력·산출물을 저장하며, 같은 디렉토리의 중복 supervisor 실행은 차단합니다.
-설치형 화면 연결은 4단계, FastAPI 수명·HTTP/SSE 연결은 5단계에서 진행합니다.
+설치형 화면은 공통 서비스를 직접 호출하고, 웹 서버는 FastAPI 수명에 연결한 공통 서비스를 HTTP/SSE로 제공합니다.
 
 - `import_file(context, path)`: 사용자 원본을 보존하고 관리 입력의 파일 ID 반환
 - `submit(context, sources, revision, idempotency_key=...)`: 고정 설정으로 작업 제출
@@ -393,5 +393,63 @@ docs: 문서      |  style: 스타일   |  test: 테스트
 다른 작업이 참조하는 입력은 보존합니다. 원문·요약·수동 프롬프트·이력은 자동 삭제하지 않습니다.
 사용하지 않은 관리 입력은 기본 24시간, 이벤트·로그는 7일·10만 행 한도로 정리합니다.
 
-검증: `uv run --extra web python -m unittest discover -s tests -v`.
+검증: `uv run --extra desktop --extra web python -m unittest discover -s tests -v`.
 실제 LMS·유료 공급자·로컬 Whisper 추론과 OS별 실행 검증은 후속 단계에서 별도로 진행합니다.
+
+
+## Docker 웹 작업실 (5단계)
+
+설치형과 별도 데이터로 실행하는 개인용 웹 화면입니다. 현재 파일 업로드, 단계별 처리, 개별·전체 취소,
+재시도, 시도 이력, STT 원문·요약·프롬프트 열람/다운로드를 지원합니다. 화면을 닫거나 새로고침해도
+작업은 서버에서 계속됩니다. LMS 목록/URL 입력 화면, 모든 공급자의 상세 설정 화면과 운영 점검은
+6–7단계에서 확장합니다. 설치형 macOS/Windows 검증은 별도 잔여 항목입니다.
+
+```bash
+docker compose up -d --build
+```
+
+브라우저에서 `http://127.0.0.1:8000`을 엽니다. 초기 요약 방식은 API 키가 필요 없는 챗봇 프롬프트 준비입니다.
+`처리 설정`에서 요약 API 방식·모델·키를 저장하면 자동 요약을 사용할 수 있습니다.
+MP4/TS는 오디오 변환부터, WAV/MP3는 음성 인식부터, UTF-8 TXT는 요약부터 처리합니다.
+TXT만 선택한 작업에서 마지막 단계를 음성 인식/변환으로 지정하면 입력 오류로 표시됩니다.
+로컬 음성 인식은 CPU faster-whisper이며 첫 실행 때 모델을 다운로드해 `/models`에 보관합니다.
+
+LAN 접속은 허용할 서버 주소를 명시해서 실행합니다. 로그인 없는 개인 모드이며 외부 공개용이 아닙니다.
+
+```bash
+LMS_BIND_ADDRESS=0.0.0.0 LMS_ALLOWED_HOSTS=localhost,127.0.0.1,192.168.0.10 docker compose up -d
+```
+
+포트는 `LMS_WEB_PORT`로 변경할 수 있습니다. 동일 origin만 허용하며 별도 프런트엔드 origin이 필요하면
+`LMS_ALLOWED_ORIGINS`에 명시합니다. 무제한 CORS는 사용하지 않습니다.
+
+- `web-data:/data`: SQLite 작업·시도·산출물, 업로드 상태, 웹 설정·비밀 버전. 설치형 설정을 자동으로 가져오지 않습니다.
+- `web-models:/models`: 음성 인식 모델 캐시.
+- 서버는 한 프로세스와 네 단계 워커를 소유합니다. Uvicorn workers/서비스 replica를 늘리지 않습니다.
+- 파일 4 GiB, TXT 16 MiB, 한 번에 50개, 활성 작업 200개가 기본 한도입니다. 열람은 2 MiB까지이며 큰 텍스트는 다운로드합니다.
+- 미사용 업로드는 24시간 후 정리합니다. 실패·취소·중단 입력은 재시도용으로 남기고 원문·요약·프롬프트는 자동 삭제하지 않습니다.
+- LAN HTTP에서 자동 복사가 불가능하면 원문을 전체 선택하므로 기기의 복사 기능을 사용할 수 있습니다.
+
+```bash
+docker compose logs -f web
+docker compose down                 # 데이터·모델 볼륨 유지
+docker compose up -d --build         # 컨테이너 교체 후 기존 작업·결과 복원
+```
+
+실행 중 작업은 서버 종료/재시작 후 `중단`으로 기록하고, 대기 작업은 자동 재개합니다. 중단 작업은
+사용자가 재시도하며 원래 설정·비밀 버전을 유지합니다. `down -v`는 데이터·모델 볼륨을 삭제하므로
+일반 중지에 사용하지 않습니다.
+
+로컬 개발:
+
+```bash
+uv sync --extra web
+npm ci --prefix frontend
+npm run build --prefix frontend
+uv run --extra web python -m src.web
+```
+
+프런트엔드 개발 서버는 `npm run dev --prefix frontend`이며 `/api`를 localhost:8000으로 전달합니다.
+개발 서버 접속에 사용할 origin은 백엔드 `LMS_ALLOWED_ORIGINS`에 명시합니다.
+기본 데이터는 `.local/web-data`, 모델은 `.local/web-models`이며 환경 변수 `LMS_DATA_DIR`,
+`LMS_MODELS_DIR`, `LMS_STATIC_DIR`, `LMS_PORT`로 변경할 수 있습니다.

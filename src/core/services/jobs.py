@@ -151,6 +151,22 @@ class JobService:
                 shutil.rmtree(target.parent, ignore_errors=True)
                 raise
 
+    def delete_input(self, context: UserContext, artifact_id: str):
+        """Remove only unused managed input; job/attempt history remains immutable."""
+        with self.lock:
+            self._ensure_open()
+            artifact = self._artifact(context, artifact_id)
+            if artifact['kind'] != 'input':
+                raise ServiceError('not_found')
+            jobs = self.db.records('SELECT payload FROM jobs WHERE owner_id=?', (context.owner_id,))
+            if any(job['source_kind'] == 'file' and job['source_reference'] == artifact_id for job in jobs):
+                raise ServiceError('input_in_use')
+            path = self.paths.file(artifact['path'])
+            path.unlink(missing_ok=True)
+            with self.db.transaction():
+                artifact['state'] = 'deleted'
+                self.db.update('artifacts', artifact, state='deleted')
+
     def _dedup(self, context, operation, key, fingerprint):
         if not key:
             raise ServiceError('idempotency_key_required')

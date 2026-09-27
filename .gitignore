@@ -204,3 +204,8 @@ user_settings.json.claude/
 
 # Local LMS verification credentials
 .local/lms-probe/
+
+# Web frontend and local server volumes
+node_modules/
+.local/web-data/
+.local/web-models/

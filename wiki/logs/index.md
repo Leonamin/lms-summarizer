@@ -12,6 +12,8 @@ okf_version: "0.1"
 
 ## 로그
 
+- [2026-09-27-core-web-stage5.md](2026-09-27-core-web-stage5.md) — React/FastAPI/SSE 웹 최소 흐름·Docker 볼륨·컨테이너 재생성 복원과 51개 테스트
+
 - [2026-09-27-core-web-stage4.md](2026-09-27-core-web-stage4.md) — 설치형 공통 서비스 전환·중복 처리기 정리·Linux 번들 검증과 OS 잔여 항목
 
 - [2026-09-27-core-web-stage3.md](2026-09-27-core-web-stage3.md) — SQLite 영속 작업·단계 프로세스·취소·재시도·복구와 30개 테스트

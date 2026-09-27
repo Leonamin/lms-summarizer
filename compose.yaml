@@ -1,0 +1,21 @@
+services:
+  web:
+    build: .
+    platform: linux/amd64
+    init: true
+    ports:
+      - "${LMS_BIND_ADDRESS:-127.0.0.1}:${LMS_WEB_PORT:-8000}:8000"
+    environment:
+      LMS_ALLOWED_HOSTS: "${LMS_ALLOWED_HOSTS:-localhost,127.0.0.1}"
+      LMS_ALLOWED_ORIGINS: "${LMS_ALLOWED_ORIGINS:-}"
+      LMS_MAX_UPLOAD_BYTES: "${LMS_MAX_UPLOAD_BYTES:-4294967296}"
+      LMS_MIN_FREE_BYTES: "${LMS_MIN_FREE_BYTES:-2147483648}"
+    volumes:
+      - web-data:/data
+      - web-models:/models
+    shm_size: "1gb"
+    stop_grace_period: 30s
+    restart: unless-stopped
+volumes:
+  web-data:
+  web-models:

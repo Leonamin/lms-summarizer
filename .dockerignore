@@ -1,0 +1,15 @@
+.git
+.venv
+.env
+.local
+node_modules
+frontend/node_modules
+frontend/dist
+build
+dist
+__pycache__
+**/__pycache__
+*.pyc
+wiki
+tests
+assets

@@ -18,7 +18,7 @@ okf_version: "0.1"
 ## 문서
 
 
-- [core-web-dashboard-todo.md](core-web-dashboard-todo.md) — 공통 코어·웹 대시보드 진행 TODO, 4단계 OS 검증 잔여 (p1)
+- [core-web-dashboard-todo.md](core-web-dashboard-todo.md) — 공통 코어·웹 대시보드 진행 TODO, 5단계 완료·4단계 OS 검증 잔여 (p1)
 - [core-web-dashboard-plan.md](core-web-dashboard-plan.md) — 기능 대응·구조·단계별 완료 기준 상세 계획 (p1)
 
 - [cdp-audio-video-split.md](cdp-audio-video-split.md) — CDP 영상 추출 오디오/비디오 분리 mp4 검증 (p1)
