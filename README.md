@@ -397,19 +397,23 @@ docs: 문서      |  style: 스타일   |  test: 테스트
 실제 LMS·유료 공급자·로컬 Whisper 추론과 OS별 실행 검증은 후속 단계에서 별도로 진행합니다.
 
 
-## Docker 웹 작업실 (5–6단계)
+## Docker 웹 작업실 (5–7단계)
 
 설치형과 별도 데이터로 실행하는 개인용 웹 화면입니다. 현재 파일 업로드, 단계별 처리, 개별·전체 취소,
 재시도, 시도 이력, STT 원문·요약·프롬프트 열람/다운로드를 지원합니다. 화면을 닫거나 새로고침해도
 작업은 서버에서 계속됩니다. LMS 과목·주차 조회와 URL 입력, 전체 공급자의 상세 설정, 프롬프트
-미리보기와 작업 로그·서버 진단을 제공합니다. 대상 LAN 기기·실제 Whisper 추론·유료 API 호출과
-운영 점검은 7단계에 남아 있습니다. 설치형 macOS/Windows 검증은 별도 잔여 항목입니다.
+미리보기와 작업 로그·서버 진단을 제공합니다. 실제 LMS 강의의 다운로드→로컬 Whisper 추론→Gemini
+요약 전체 흐름과 취소·재시작 복구·백업/복원·LAN/Tailscale 접속을 대상 환경에서 확인했습니다.
+설치형 macOS/Windows 검증은 별도 잔여 항목입니다.
+
+요약 공급자가 일시적으로 과부하(예: Gemini 503)면 단계가 실패로 기록됩니다. 첫 버전은 완료 단계를
+자동 재사용하지 않으므로 재시도 시 원래 입력 단계부터(다운로드·STT 포함) 다시 실행합니다.
 
 ```bash
 docker compose up -d --build
 ```
 
-브라우저에서 `http://127.0.0.1:8000`을 엽니다. 초기 요약 방식은 API 키가 필요 없는 챗봇 프롬프트 준비입니다.
+브라우저에서 `http://127.0.0.1:8200`을 엽니다. 운영 기본 포트는 **8200**이며 개발 기본값 8000과 분리합니다. 초기 요약 방식은 API 키가 필요 없는 챗봇 프롬프트 준비입니다.
 `처리 설정`에서 요약 API 방식·모델·키를 저장하면 자동 요약을 사용할 수 있습니다.
 MP4/TS는 오디오 변환부터, WAV/MP3는 음성 인식부터, UTF-8 TXT는 요약부터 처리합니다.
 TXT만 선택한 작업에서 마지막 단계를 음성 인식/변환으로 지정하면 입력 오류로 표시됩니다.
@@ -453,10 +457,11 @@ GPU를 사용할 수 있는 것은 아닙니다. GPU 장치 전달과 런타임 
 LAN 접속은 허용할 서버 주소를 명시해서 실행합니다. 로그인 없는 개인 모드이며 외부 공개용이 아닙니다.
 
 ```bash
-LMS_BIND_ADDRESS=0.0.0.0 LMS_ALLOWED_HOSTS=localhost,127.0.0.1,192.168.0.10 docker compose up -d
+LMS_BIND_ADDRESS=0.0.0.0 LMS_WEB_PORT=8200 LMS_ALLOWED_HOSTS=localhost,127.0.0.1,192.168.0.10 docker compose up -d
 ```
 
-포트는 `LMS_WEB_PORT`로 변경할 수 있습니다. 동일 origin만 허용하며 별도 프런트엔드 origin이 필요하면
+운영 기본 호스트 포트는 8200이며 `LMS_WEB_PORT`로 변경할 수 있습니다. 컨테이너 내부 포트도 8200입니다
+(개발용 8000은 `python -m src.web`과 Vite 프록시에만 사용). 동일 origin만 허용하며 별도 프런트엔드 origin이 필요하면
 `LMS_ALLOWED_ORIGINS`에 명시합니다. 무제한 CORS는 사용하지 않습니다.
 
 - `web-data:/data`: SQLite 작업·시도·산출물, 업로드 상태, 웹 설정·비밀 버전. 설치형 설정을 자동으로 가져오지 않습니다.
@@ -489,3 +494,86 @@ uv run --extra web python -m src.web
 개발 서버 접속에 사용할 origin은 백엔드 `LMS_ALLOWED_ORIGINS`에 명시합니다.
 기본 데이터는 `.local/web-data`, 모델은 `.local/web-models`이며 환경 변수 `LMS_DATA_DIR`,
 `LMS_MODELS_DIR`, `LMS_STATIC_DIR`, `LMS_PORT`로 변경할 수 있습니다.
+
+## 운영 가이드 (7단계)
+
+인증 없는 개인용 단일 서버 운영을 기준으로 한다. 운영 기본 포트는 **8200**이며, 개발용 3000·8000은
+`python -m src.web`과 Vite 프런트엔드에만 사용한다. 설정 값은 저장소 루트의 `.env`(gitignore)에 두고
+`.env.example`을 복사해 쓴다. `docker compose`의 project 이름은 저장소 디렉토리 이름을 따르며 아래
+볼륨 이름은 기본값 `lms-summarizer_web-data`, `lms-summarizer_web-models`다.
+
+### 설치·시작
+
+```bash
+cp .env.example .env      # 주소·포트·허용 Host 조정
+docker compose up -d --build
+docker compose ps         # STATUS가 healthy인지 확인
+```
+
+최초 실행 때 음성 인식 모델(기본 `large-v3-turbo`, 약 800MB)을 `/models`에 내려받으므로
+첫 로컬 음성 인식 작업은 다운로드 시간만큼 오래 걸린다. 시험 삼아 브라우저에서
+`http://127.0.0.1:8200`을 연다.
+
+### 중지·재시작
+
+```bash
+docker compose stop web            # 잠시 멈춤(볼륨 유지)
+docker compose restart web         # 재시작
+docker compose down                # 컨테이너·네트워크 제거, 볼륨 유지
+```
+
+`down -v`는 데이터·모델 볼륨을 삭제하므로 일반 중지에 쓰지 않는다. 재시작 시 실행 중 시도는
+`중단(interrupted)`으로 기록하고 대기 작업은 자동 복원한다. 중단 작업은 화면에서 재시도한다.
+
+### 업데이트
+
+```bash
+docker compose up -d --build       # 새 이미지로 교체, 데이터·모델 볼륨 유지
+```
+
+업데이트 전 데이터·모델 볼륨을 백업한다. 앱은 이미지를 자동 교체하지 않으며 서버 진단의
+`업데이트 확인`은 릴리즈 정보만 알려 준다.
+
+### 백업·복원
+
+일관된 SQLite 사본을 위해 백업 전 잠시 컨테이너를 멈춘다.
+
+```bash
+docker compose stop web
+mkdir -p backup
+docker run --rm -v lms-summarizer_web-data:/data:ro -v "$PWD/backup":/backup alpine sh -c 'tar czf /backup/web-data.tar.gz -C /data .'
+docker run --rm -v lms-summarizer_web-models:/models:ro -v "$PWD/backup":/backup alpine sh -c 'tar cf /backup/web-models.tar -C /models .'
+docker compose start web
+```
+
+모델은 다시 내려받을 수 있으므로 필요할 때만 백업한다. 복원은 볼륨을 새로 만든 뒤 푼다.
+
+```bash
+docker compose down
+docker volume rm lms-summarizer_web-data lms-summarizer_web-models
+docker volume create lms-summarizer_web-data
+docker volume create lms-summarizer_web-models
+docker run --rm -v lms-summarizer_web-data:/data -v "$PWD/backup":/backup:ro alpine sh -c 'cd /data && tar xzf /backup/web-data.tar.gz'
+docker run --rm -v lms-summarizer_web-models:/models -v "$PWD/backup":/backup:ro alpine sh -c 'cd /models && tar xf /backup/web-models.tar'
+docker compose up -d
+```
+
+복원 후 작업 목록·설정·원문/요약이 그대로 조회되는지 확인한다.
+
+### GPU·CPU
+
+이미지 기본 실행은 CPU faster-whisper다. `faster-whisper` GPU 가속은 CUDA 기반이라
+NVIDIA GPU가 필요하다. AMD 내장 GPU(예: Radeon 780M)는 CUDA를 지원하지 않아 CPU로 동작하며,
+AMD ROCm 가속은 지원 대상이 아니다. GPU를 쓰려면 NVIDIA 장치 전달과 CUDA extra 구성이 필요하고,
+그 전까지는 CPU 추론으로 운영한다.
+
+### 문제 해결
+
+- 화면이 안 열림/포트 충돌: `.env`의 `LMS_WEB_PORT`를 다른 값(예: 8200)으로 바꾸고 재기동한다.
+- LAN·Tailscale 접속이 400: 접속 주소를 `LMS_ALLOWED_HOSTS`에 추가한다(포트 제외, 쉼표 구분).
+  예 `LMS_ALLOWED_HOSTS=localhost,127.0.0.1,192.168.0.104,100.105.226.124`.
+- Headless에서 페이지 확인이 필요: `LMS_CHROME_HEADLESS=false`로 재기동한다(이미지에 Xvfb 포함).
+- 모델 다운로드 실패: 네트워크를 확인하고 재시도한다. `web-models` 볼륨을 지우면 다시 받는다.
+- 디스크 부족으로 제출 거부: `LMS_MIN_FREE_BYTES`(기본 2GiB)와 볼륨 사용량을 확인한다.
+- 중복 supervisor 오류: 데이터 볼륨을 하나의 컨테이너에만 마운트한다(단일 서버 전제).
+- 인증이 없으므로 공유 네트워크 밖(공개 인터넷)에 직접 노출하지 않는다.

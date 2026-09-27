@@ -4,8 +4,9 @@ services:
     platform: linux/amd64
     init: true
     ports:
-      - "${LMS_BIND_ADDRESS:-127.0.0.1}:${LMS_WEB_PORT:-8000}:8000"
+      - "${LMS_BIND_ADDRESS:-127.0.0.1}:${LMS_WEB_PORT:-8200}:8200"
     environment:
+      LMS_PORT: "8200"
       LMS_ALLOWED_HOSTS: "${LMS_ALLOWED_HOSTS:-localhost,127.0.0.1}"
       LMS_CHROME_HEADLESS: "${LMS_CHROME_HEADLESS:-true}"
       LMS_CHROME_PATH: "${LMS_CHROME_PATH:-/usr/bin/google-chrome}"

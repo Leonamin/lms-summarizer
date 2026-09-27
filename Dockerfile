@@ -25,6 +25,7 @@ COPY --from=frontend /frontend/dist ./frontend/dist
 RUN useradd --uid 10001 --create-home lms \
     && mkdir -p /data /models && chown lms:lms /data /models
 USER lms
-EXPOSE 8000
-HEALTHCHECK --interval=30s --timeout=5s --start-period=30s CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/me', timeout=3)"
+EXPOSE 8200
+ENV LMS_PORT=8200
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8200/api/v1/me', timeout=3)"
 CMD ["python", "-m", "src.web"]
