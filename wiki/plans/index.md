@@ -17,6 +17,10 @@ okf_version: "0.1"
 
 ## 문서
 
+
+- [core-web-dashboard-todo.md](core-web-dashboard-todo.md) — 공통 코어·웹 대시보드 진행 TODO (p1)
+- [core-web-dashboard-plan.md](core-web-dashboard-plan.md) — 기능 대응·구조·단계별 완료 기준 상세 계획 (p1)
+
 - [cdp-audio-video-split.md](cdp-audio-video-split.md) — CDP 영상 추출 오디오/비디오 분리 mp4 검증 (p1)
 - [login-flow-e2e-test.md](login-flow-e2e-test.md) — 새 로그인 플로우 실환경 E2E 테스트 (p1)
 - [faster-whisper-gpu-windows.md](faster-whisper-gpu-windows.md) — faster-whisper Windows GPU 잔여 항목 (p1)

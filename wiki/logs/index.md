@@ -12,6 +12,12 @@ okf_version: "0.1"
 
 ## 로그
 
+- [2026-09-27-core-web-stage1-contract.md](2026-09-27-core-web-stage1-contract.md) — 완료된 1단계 기능·기술·API 계약과 실제 LMS 검증 결과
+
+- [2026-09-27-core-web-stage1.md](2026-09-27-core-web-stage1.md) — 1단계 기능 조사·기술 계약·Chrome 검증 착수
+
+- [2026-09-27-core-web-dashboard-planning.md](2026-09-27-core-web-dashboard-planning.md) — 코어·웹 대시보드 결정, 상세 계획과 TODO 기록
+
 - [2026-09-14-settings-categories-password.md](2026-09-14-settings-categories-password.md) — 설정 카테고리 내비게이션 + 비밀번호 평문 저장
 - [2026-09-14-ui-redesign.md](2026-09-14-ui-redesign.md) — UI 전면 개편: 사이드바 탭, 소스 카드, 파이프라인 모니터, 모달 폐기
 - [2026-09-14-log-autoscroll-cuda-fix.md](2026-09-14-log-autoscroll-cuda-fix.md) — 로그 자동 스크롤 + CUDA 12 런타임(cublas64_12) 수정

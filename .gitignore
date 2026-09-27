@@ -201,3 +201,6 @@ cython_debug/
 user_settings.json.claude/
 .claude/
 .omc/
+
+# Local LMS verification credentials
+.local/lms-probe/
