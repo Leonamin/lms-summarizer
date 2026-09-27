@@ -37,7 +37,7 @@ def setup_import_path():
             except ImportError:
                 pass
     else:
-        application_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+        application_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 
     if application_path not in sys.path:
         sys.path.insert(0, application_path)
@@ -51,20 +51,33 @@ def main():
     """메인 함수"""
     import flet as ft
     from src.gui.theme import setup_page_theme
-    from src.gui.core.module_loader import load_required_modules
+    import asyncio
+    from src.desktop.runtime import DesktopRuntime
     from src.gui.views.main_view import MainView
 
-    def app_main(page: ft.Page):
-        setup_page_theme(page)
+    runtime = DesktopRuntime()
+    try:
+        runtime.start()
 
-        # 백엔드 모듈 로드
-        modules, errors = load_required_modules()
+        def app_main(page: ft.Page):
+            setup_page_theme(page)
+            view = MainView(page, runtime)
+            page.window.prevent_close = True
 
-        # 메인 뷰 생성
-        MainView(page, modules, errors)
+            async def window_event(event):
+                if event.type == ft.WindowEventType.CLOSE:
+                    view.close()
+                    await asyncio.to_thread(runtime.close)
+                    await page.window.destroy()
 
-    ft.app(target=app_main)
+            page.window.on_event = window_event
+            page.on_disconnect = lambda event: view.close()
+
+        ft.app(target=app_main)
+    finally:
+        runtime.close()
 
 
 if __name__ == "__main__":
-    main()
+    from src.desktop.main import main as desktop_main
+    desktop_main()

@@ -18,8 +18,8 @@ if (-not $APP_VERSION) {
 Write-Host "🚀 LMS Summarizer v$APP_VERSION Windows 빌드 시작..." -ForegroundColor Cyan
 
 # 프로젝트 루트 확인
-if (-not (Test-Path "src/gui/main.py")) {
-    Write-Host "❌ src/gui/main.py를 찾을 수 없습니다. 프로젝트 루트에서 실행해주세요." -ForegroundColor Red
+if (-not (Test-Path "src/desktop/main.py")) {
+    Write-Host "❌ src/desktop/main.py를 찾을 수 없습니다. 프로젝트 루트에서 실행해주세요." -ForegroundColor Red
     exit 1
 }
 
@@ -49,6 +49,16 @@ $distExe = "dist\$APP_NAME\$APP_NAME.exe"
 if (-not (Test-Path $distExe)) {
     Write-Host "❌ 빌드 실패: $distExe 를 찾을 수 없습니다." -ForegroundColor Red
     exit 1
+}
+
+# 콘솔 없는 번들에서도 spawn 워커 실행과 결과 생성을 확인
+$smokeResult = Join-Path $env:TEMP "lms-core-smoke-$([guid]::NewGuid()).json"
+try {
+    $process = Start-Process -FilePath $distExe -ArgumentList @("--core-smoke", "--core-smoke-result", "`"$smokeResult`"") -Wait -PassThru
+    if ($process.ExitCode -ne 0) { throw "Core smoke failed: $($process.ExitCode)" }
+    if ((Get-Content $smokeResult | ConvertFrom-Json).status -ne "ok") { throw "Core smoke result missing" }
+} finally {
+    if (Test-Path $smokeResult) { Remove-Item $smokeResult }
 }
 
 $distDir = "dist\$APP_NAME"

@@ -68,12 +68,14 @@ class AutoScrollLog:
 
     def _scroll_to_bottom(self):
         """끝으로 스크롤 (scroll_to는 코루틴 → page.run_task로 실행)"""
-        try:
-            coro = self._column.scroll_to(offset=-1, duration=150)
-            if self._page is not None:
-                self._page.run_task(coro)
-        except Exception:
-            pass
+        if self._page is None:
+            return
+        async def scroll():
+            try:
+                await self._column.scroll_to(offset=-1, duration=150)
+            except Exception:
+                pass  # Control may have been detached while the task was queued.
+        self._page.run_task(scroll)
 
     def clear(self):
         self._messages.clear()

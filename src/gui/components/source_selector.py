@@ -10,14 +10,7 @@ import flet as ft
 from src.gui.theme import Colors, Typography, Spacing, Radius
 from src.core.models.stages import PipelineStage
 
-# 확장자 → 시작 단계 자동 유추
-_EXTENSION_STAGE = {
-    ".mp4": PipelineStage.CONVERT_AUDIO,
-    ".ts": PipelineStage.CONVERT_AUDIO,
-    ".wav": PipelineStage.STT,
-    ".mp3": PipelineStage.STT,
-    ".txt": PipelineStage.SUMMARIZE,
-}
+from src.core.validation import initial_stage
 
 # 시작 단계 → 표시 라벨
 _STAGE_LABEL = {
@@ -123,10 +116,11 @@ class SourceSelector:
 
     def get_stage_for_file(self, path: str) -> PipelineStage:
         """파일 확장자로 해당 파일의 시작 단계를 반환"""
-        ext = Path(path).suffix.lower()
-        return _EXTENSION_STAGE.get(ext, PipelineStage.CONVERT_AUDIO)
+        return initial_stage(Path(path).name)
 
     def get_stage_label_for_file(self, path: str) -> str:
         """파일 확장자로 해당 파일의 시작 단계 라벨(한글)을 반환"""
-        return _STAGE_LABEL.get(
-            self.get_stage_for_file(path), "변환")
+        try:
+            return _STAGE_LABEL[self.get_stage_for_file(path)]
+        except ValueError:
+            return "지원하지 않는 파일"

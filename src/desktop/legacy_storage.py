@@ -522,7 +522,8 @@ _legacy_lock = threading.RLock()
 def _serialized(fn):
     @wraps(fn)
     def call(*args, **kwargs):
-        with _legacy_lock:
+        # Share the JSON lock with DesktopRuntime history updates.
+        with _legacy_lock, JsonStore(Path(get_settings_path())).lock:
             return fn(*args, **kwargs)
     return call
 for _name in tuple(globals()):

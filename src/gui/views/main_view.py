@@ -13,7 +13,6 @@ import flet as ft
 from src.gui.theme import Colors, Typography, Spacing, Radius
 from src.gui.config.constants import Messages
 from src.gui.core.validators import InputValidator
-from src.gui.core.module_loader import check_required_modules
 from src.gui.core.thread_safe import invoke_on_ui
 from src.gui.core.file_manager import (
     ensure_downloads_directory, save_user_inputs, load_user_inputs,
@@ -28,29 +27,33 @@ from src.gui.components.pipeline_monitor import PipelineMonitor
 from src.gui.components.log_drawer import LogDrawer
 from src.gui.views.settings_view import open_settings_dialog
 from src.gui.views.course_list_view import CourseListView
-from src.gui.workers.queue_manager import QueueManager
 
 
 class MainView:
     """메인 뷰 — 큐 중심 재구성"""
 
-    def __init__(self, page: ft.Page, modules: Dict, module_errors: List[str]):
+    def __init__(self, page: ft.Page, runtime):
         self.page = page
-        self.modules = modules
-        self.module_errors = module_errors
-        self.queue_manager: QueueManager = None
+        self.runtime = runtime
+        self._course_views = []
         self._urls_from_course_list: List[str] = []
 
         self._snackbar = ft.SnackBar(content=ft.Text(""), duration=3000)
 
         self.sidebar = Sidebar(page=page, on_path_changed=self._on_path_changed)
         self.source_selector = SourceSelector(on_source_changed=self._on_source_changed)
-        self.pipeline_monitor = PipelineMonitor()
+        self.pipeline_monitor = PipelineMonitor(
+            on_cancel=lambda job: self._job_action('cancel', job),
+            on_retry=lambda job: self._job_action('retry', job),
+            on_result=lambda job: self._job_action('open_result', job),
+            on_copy=lambda job: self._job_action('copy_prompt', job))
         self.log_drawer = LogDrawer(page=page)
 
         self._build_ui()
         self._load_saved_inputs()
-        self._check_module_status()
+        self._unsubscribe = self.runtime.subscribe(invoke_on_ui(self.page, self._runtime_update))
+        for job in self.runtime.jobs():
+            self._on_task_updated(job)
 
     # ── UI 빌드 ───────────────────────────────────────────
 
@@ -364,6 +367,7 @@ class MainView:
             password=password,
             on_urls_selected=self._on_urls_selected,
         )
+        self._course_views.append(course_view)
         course_view.show()
 
     def _on_urls_selected(self, urls: List[str]):
@@ -422,11 +426,6 @@ class MainView:
             self._show_snackbar(error_message, Colors.ERROR)
             return
 
-        all_loaded, missing = check_required_modules(self.modules)
-        if not all_loaded:
-            self._show_snackbar(f"{Messages.MODULE_LOAD_ERROR}: {', '.join(missing)}", Colors.ERROR)
-            return
-
         self._enqueue(urls, files, inputs)
 
     def _enqueue(self, urls: List[str], files: List[str], inputs: Dict[str, str]):
@@ -438,44 +437,26 @@ class MainView:
         set_subject_category(self.sidebar.get_subject_category())
         set_subject_custom(self.sidebar.get_subject_custom())
 
-        if self.queue_manager is None:
-            self.queue_manager = QueueManager(
-                self.modules,
-                on_log=invoke_on_ui(self.page, lambda m: self.log_drawer.append_message(m)),
-                on_task_updated=invoke_on_ui(self.page, self._on_task_updated),
-                on_idle_changed=invoke_on_ui(self.page, self._on_queue_idle),
-            )
-
         settings = self._build_queue_settings(inputs, engine, model_name)
-        self.log_drawer.append_message(
-            f"작업 추가: URL {len(urls)}개, 파일 {len(files)}개")
-
-        if urls:
-            tasks = self.queue_manager.submit(urls, settings)
-            for task in tasks:
-                self.pipeline_monitor.update_task(task)
-            # 제출된 URL 입력란 비움
-            self._url_field.value = ""
-
-        if files:
-            self._enqueue_files(files, settings)
-
-        self._stop_btn.visible = True
+        files = list(files)
+        self._start_btn.disabled = True
         self.page.update()
-
-    def _enqueue_files(self, files: List[str], settings: Dict):
-        """파일 소스 처리 — 각 파일의 확장자로 시작 단계를 정해 처리 큐에 직접 투입"""
-        items = [
-            (path, self.source_selector.get_stage_label_for_file(path))
-            for path in files
-        ]
-
-        tasks = self.queue_manager.submit_files(items, settings)
-        for task in tasks:
-            self.pipeline_monitor.update_task(task)
-        # 선택 파일 초기화
-        self._picked_files = []
-        self._rebuild_file_list()
+        async def submit():
+            import asyncio
+            try:
+                job_ids = await asyncio.to_thread(self.runtime.submit, urls, files, settings)
+                for job_id in job_ids:
+                    self._on_task_updated(self.runtime.service.detail(self.runtime.context, job_id))
+                self.log_drawer.append_message(f"작업 추가: URL {len(urls)}개, 파일 {len(files)}개")
+                self._url_field.value = ""
+                self._picked_files = []
+                self._rebuild_file_list()
+            except Exception as exc:
+                self._show_snackbar(f"작업 추가 실패: {getattr(exc, 'code', type(exc).__name__)}", Colors.ERROR)
+            finally:
+                self._start_btn.disabled = False
+                self.page.update()
+        self.page.run_task(submit)
 
     def _stt_execution_params(self):
         from src.gui.core.file_manager import get_stt_api_key, load_settings
@@ -510,18 +491,35 @@ class MainView:
 
     def _on_task_updated(self, task):
         self.pipeline_monitor.update_task(task)
+        self._stop_btn.visible = any(job['status'] in ('queued', 'running', 'cancelling')
+                                     for job in self.pipeline_monitor._tasks.values())
         self.page.update()
 
-    def _on_queue_idle(self, running: bool):
-        self._stop_btn.visible = bool(self.queue_manager and self.queue_manager.is_running())
-        if not running:
-            self._show_snackbar("모든 작업이 완료되었습니다.", Colors.PRIMARY)
-        self.page.update()
+    def _runtime_update(self, job, message):
+        if message:
+            self.log_drawer.append_message(message)
+        if job:
+            self._on_task_updated(job)
+
+    def _job_action(self, action, job):
+        async def run():
+            import asyncio
+            try:
+                method = getattr(self.runtime, action)
+                args = (job['id'], job['current_attempt_id']) if action in ('cancel', 'retry') else (job,)
+                await asyncio.to_thread(method, *args)
+            except Exception as exc:
+                self._show_snackbar(f"작업 처리 실패: {getattr(exc, 'code', type(exc).__name__)}", Colors.ERROR)
+        self.page.run_task(run)
+
+    def close(self):
+        self._unsubscribe()
+        for view in self._course_views:
+            view.close()
 
     def _handle_queue_stop(self):
         def do_stop(e):
-            if self.queue_manager:
-                self.queue_manager.request_stop()
+            self.runtime.cancel_all()
             confirm_dialog.open = False
             self.page.update()
 
@@ -557,14 +555,6 @@ class MainView:
             self.page.update()
         except Exception:
             pass
-
-    def _check_module_status(self):
-        if self.module_errors:
-            self.log_drawer.append_message("일부 모듈 로드 실패:")
-            for error in self.module_errors:
-                self.log_drawer.append_message(f"   - {error}")
-            self.log_drawer.append_message(Messages.INSTALL_REQUIREMENTS)
-            self.page.update()
 
     def _load_saved_inputs(self):
         saved = load_user_inputs()
