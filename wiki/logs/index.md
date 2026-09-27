@@ -12,6 +12,8 @@ okf_version: "0.1"
 
 ## 로그
 
+- [2026-09-27-core-web-stage6.md](2026-09-27-core-web-stage6.md) — LMS 과목·주차 조회·URL 입력·전체 공급자 설정·프롬프트·로그·진단·PC/모바일 화면 대응과 61개 테스트
+
 - [2026-09-27-core-web-stage5.md](2026-09-27-core-web-stage5.md) — React/FastAPI/SSE 웹 최소 흐름·Docker 볼륨·컨테이너 재생성 복원과 51개 테스트
 
 - [2026-09-27-core-web-stage4.md](2026-09-27-core-web-stage4.md) — 설치형 공통 서비스 전환·중복 처리기 정리·Linux 번들 검증과 OS 잔여 항목

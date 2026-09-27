@@ -1,7 +1,7 @@
 """Validated web DTOs; the owner and server paths are never client inputs."""
 from typing import Literal
 from uuid import UUID
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from src.core.prompts import DEFAULT_PROMPT
 
 class DTO(BaseModel):
@@ -15,10 +15,40 @@ class Settings(DTO):
     stt_model: str = Field(default='large-v3-turbo', max_length=200)
     stt_base_url: str = Field(default='', max_length=2000)
     stt_compatible_model: str = Field(default='', max_length=200)
-    stt_params: dict = Field(default_factory=dict)
+    stt_params: dict = Field(default_factory=lambda: {'device': 'cpu', 'compute_type': 'int8'})
+    request_timeout: float = Field(default=120, ge=5, le=1800)
+
+    @field_validator('stt_params')
+    @classmethod
+    def validate_stt_params(cls, value):
+        allowed = {'device', 'compute_type', 'language', 'initial_prompt', 'repeat_threshold', 'vad_filter'}
+        if set(value) - allowed:
+            raise ValueError('Unknown STT parameter')
+        if value.get('device', 'cpu') not in ('cpu','auto','cuda'):
+            raise ValueError('Invalid device')
+        if value.get('compute_type', 'int8') not in ('auto','int8','float16','float32','int8_float16'):
+            raise ValueError('Invalid precision')
+        for name, limit in (('language', 20), ('initial_prompt', 10000)):
+            if name in value and (not isinstance(value[name], str) or len(value[name]) > limit):
+                raise ValueError('Invalid text parameter')
+        if 'repeat_threshold' in value and (type(value['repeat_threshold']) is not int or not 1 <= value['repeat_threshold'] <= 100):
+            raise ValueError('Invalid repeat threshold')
+        if 'vad_filter' in value and type(value['vad_filter']) is not bool:
+            raise ValueError('Invalid VAD flag')
+        return value
+
+    @field_validator('base_url', 'stt_base_url')
+    @classmethod
+    def validate_endpoint(cls, value):
+        from urllib.parse import urlsplit
+        if value:
+            url = urlsplit(value)
+            if url.scheme not in ('http', 'https') or not url.hostname or url.username or url.password or url.query or url.fragment:
+                raise ValueError('Invalid endpoint')
+        return value
     student_id: str = Field(default='', max_length=64)
     prompt_mode: Literal['structured', 'custom'] = 'structured'
-    summary_mode: str = Field(default='normal', max_length=64)
+    summary_mode: Literal['quick','normal','detailed'] = 'normal'
     subject_category: str = Field(default='자동 감지', max_length=100)
     subject_custom: str = Field(default='', max_length=500)
     custom_prompt: str = Field(default=DEFAULT_PROMPT, min_length=1, max_length=100000)
@@ -46,3 +76,6 @@ class JobCreate(DTO):
 
 class AttemptCommand(DTO):
     attempt_id: UUID
+
+class CourseRefresh(DTO):
+    course_id: str | None = Field(default=None, pattern=r'^\d+$', max_length=30)

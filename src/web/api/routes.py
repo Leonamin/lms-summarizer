@@ -11,7 +11,7 @@ from starlette.concurrency import run_in_threadpool
 from src.core.models.jobs import Source, ServiceError
 from src.core.models.settings import UserContext
 from src.core.models.stages import PipelineStage
-from src.web.schemas import AttemptCommand, JobCreate, SecretPut, SettingsPatch, UploadCreate
+from src.web.schemas import AttemptCommand, JobCreate, SecretPut, SettingsPatch, UploadCreate, CourseRefresh, Settings
 
 router = APIRouter(prefix='/api/v1')
 OWNER = UserContext()
@@ -171,4 +171,74 @@ def system(request: Request):
             'chrome_available': Path(config.chrome_path).is_file(),
             'limits': {'upload_bytes': config.max_upload_bytes, 'text_bytes': config.max_text_bytes,
                        'batch': 50, 'active_jobs': 200},
-            'stage_counts': request.app.state.service.stage_counts(OWNER)}
+            'stage_counts': request.app.state.service.stage_counts(OWNER),
+            'health': request.app.state.service.health(),
+            'runtime': {'local_stt_device': 'CPU 기본', 'chrome_mode': 'headless' if config.headless else 'headed/Xvfb', 'data_storage': '서버 데이터 볼륨',
+                        'models_storage': '서버 모델 볼륨'},
+            'retention': {'input': '성공 후 원본 보관 설정 적용; 실패·취소·중단은 재시도용 보존',
+                          'results': '원문·요약·프롬프트·이력 자동 삭제 없음', 'logs_days': 7},
+            'update_instructions': ['docker compose up -d --build', '업데이트 전에 데이터·모델 볼륨 백업']}
+
+
+@router.get('/catalog')
+def get_catalog():
+    from src.core.catalog import catalog
+    return catalog()
+
+@router.post('/prompt-preview')
+def preview(body: Settings):
+    from src.core.models.settings import PromptSettings
+    return {'text': PromptSettings(mode=body.prompt_mode, summary_mode=body.summary_mode,
+                                  subject_category=body.subject_category, subject_custom=body.subject_custom,
+                                  custom_prompt=body.custom_prompt).resolve()}
+
+@router.get('/courses')
+def courses(request: Request):
+    state = request.app.state
+    revision = state.settings.snapshot(state.settings.public()['settings_revision'])
+    with state.service.lock:
+        return state.service.courses.cached(revision)
+
+@router.get('/courses/{course_id}/lectures')
+def lectures(course_id: str, request: Request):
+    state = request.app.state
+    revision = state.settings.snapshot(state.settings.public()['settings_revision'])
+    with state.service.lock:
+        return state.service.courses.cached(revision, course_id)
+
+@router.post('/course-refreshes', status_code=202)
+def refresh_courses(body: CourseRefresh, request: Request):
+    state = request.app.state
+    revision = state.settings.snapshot(state.settings.public()['settings_revision'])
+    with state.service.lock:
+        state.service._ensure_open()
+        return state.service.courses.submit(OWNER, revision, body.course_id)
+
+@router.get('/course-refreshes/{query_id}')
+def refresh_status(query_id: UUID, request: Request):
+    with request.app.state.service.lock:
+        return request.app.state.service.courses.get(OWNER, str(query_id))
+
+@router.get('/jobs/{job_id}/logs')
+def job_logs(job_id: UUID, request: Request, cursor: int = Query(default=0, ge=0), limit: int = Query(default=100, ge=1, le=200)):
+    return request.app.state.service.logs(OWNER, str(job_id), cursor, limit)
+
+@router.post('/system/update-check')
+def update_check():
+    import requests
+    from src import __version__
+    import re
+    try:
+        response = requests.get('https://api.github.com/repos/Leonamin/lms-summarizer/releases/latest', timeout=5)
+        response.raise_for_status()
+        data = response.json()
+        tag = data['tag_name']
+        if not re.fullmatch(r'v?\d+\.\d+\.\d+', tag):
+            raise ValueError()
+        url = data['html_url']
+        if not url.startswith('https://github.com/Leonamin/lms-summarizer/releases/'):
+            raise ValueError()
+        return {'status': 'ok', 'latest': tag, 'url': url,
+                'newer': tuple(map(int, tag.lstrip('v').split('.'))) > tuple(map(int, __version__.lstrip('v').split('.')))}
+    except (requests.RequestException, KeyError, ValueError):
+        return {'status': 'unavailable'}

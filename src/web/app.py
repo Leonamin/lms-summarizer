@@ -18,6 +18,9 @@ from src.web.settings import WebSettings
 from src.web.uploads import Uploads
 
 MESSAGES = {
+    'credentials_missing': '필요한 LMS 계정 또는 공급자 자격 증명을 설정해 주세요.',
+    'invalid_url': 'https://canvas.ssu.ac.kr/courses/로 시작하는 LMS 강의 URL을 입력해 주세요.',
+    'queue_full': '작업 대기열이 가득 찼습니다. 잠시 후 다시 제출해 주세요.',
     'not_found': '항목을 찾을 수 없습니다.', 'settings_conflict': '설정이 변경되었습니다. 새로 불러와 주세요.',
     'invalid_settings': '프롬프트 또는 설정을 확인해 주세요.', 'invalid_file_content': '파일 내용이 지원하는 형식과 맞지 않습니다.',
     'unsupported_file': 'MP4, TS, WAV, MP3, UTF-8 TXT 파일을 지원합니다.',

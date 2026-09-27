@@ -50,6 +50,7 @@ class StageCommand:
     resolved_prompt: str = field(repr=False)
     credentials: dict[str, str] = field(default_factory=dict, repr=False)
     model_cache_dir: Optional[str] = field(default=None, repr=False)
+    catalog_query: Optional[dict] = field(default=None, repr=False)
 
 @dataclass(frozen=True)
 class StageResult:
@@ -58,6 +59,7 @@ class StageResult:
     kind: str = ""
     error_code: str = ""
     model_reused: bool = False
+    data: Optional[dict | list] = field(default=None, repr=False)
 
 class ServiceError(Exception):
     def __init__(self, code: str):

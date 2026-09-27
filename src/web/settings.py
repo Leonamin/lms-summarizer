@@ -1,5 +1,6 @@
 """Persistent web settings with optimistic edits and immutable submission snapshots."""
 from dataclasses import asdict
+import json
 from pathlib import Path
 from src.core.models.jobs import ServiceError
 from src.core.models.settings import PromptSettings, SettingsRevision, UserContext
@@ -18,15 +19,22 @@ class WebSettings:
         self.store = JsonStore(Path(config.data_dir) / 'web-settings.json')
         self.lock = self.store.lock
         with self.lock:
-            if not self.store.read():
+            state = self.store.read()
+            if not state:
                 self._save({'revision': 1, 'settings': Settings().model_dump(), 'secrets': {}, 'snapshots': {}})
+            else:
+                fixed = state['snapshots'][state['settings_revision']]
+                values = json.loads(fixed['settings_json'])
+                if values.get('chrome_path') != config.chrome_path or values.get('headless') != config.headless:
+                    state['revision'] += 1
+                    self._save(state)
 
     def _save(self, state):
         values = dict(state['settings'])
         prompt = PromptSettings(mode=values.pop('prompt_mode'), summary_mode=values.pop('summary_mode'),
             subject_category=values.pop('subject_category'), subject_custom=values.pop('subject_custom'),
             custom_prompt=values.pop('custom_prompt'))
-        values.update(chrome_path=self.config.chrome_path, headless=True)
+        values.update(chrome_path=self.config.chrome_path, headless=self.config.headless)
         refs = state['secrets']
         selected = {
             'lms_password': refs.get('lms_password'),
@@ -45,7 +53,7 @@ class WebSettings:
 
     def public(self):
         state = self.store.read()
-        return {k: state[k] for k in ('revision', 'settings', 'settings_revision')} | {
+        return {k: (Settings(**state[k]).model_dump() if k == 'settings' else state[k]) for k in ('revision', 'settings', 'settings_revision')} | {
             'secrets': {name: {'configured': bool(state['secrets'].get(name))} for name in SECRET_NAMES}}
 
     def patch(self, request):

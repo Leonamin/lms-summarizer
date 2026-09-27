@@ -14,6 +14,7 @@ export interface Settings {
   subject_custom: string;
   custom_prompt: string;
   keep_source: boolean;
+  request_timeout: number;
 }
 export interface SettingsResponse {
   revision: number;

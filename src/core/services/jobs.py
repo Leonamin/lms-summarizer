@@ -48,6 +48,7 @@ class JobService:
         self.event_days, self.event_limit = event_days, event_limit
         self._ctx = multiprocessing.get_context('spawn')
         self._slots = {}
+        self._catalog_turn = True
         self._thread = None
         self._stopping = False
         self._closed = False
@@ -58,6 +59,8 @@ class JobService:
             self.db = JobRepository(self.paths.file('jobs.sqlite3'))
             self.secrets = SecretRepository(self.paths.file('secrets'))
             self._recover()
+            from src.core.services.courses import CourseQueries
+            self.courses = CourseQueries(self)
             self._collect_files()
         except BaseException:
             if hasattr(self, 'db'):
@@ -350,6 +353,14 @@ class JobService:
             return {'jobs':[self.detail(context, r['id']) for r in rows],
                     'next_cursor':rows[-1]['rowid'] if rows else after, 'event_cursor':cursor}
 
+    def logs(self, context, job_id, cursor=0, limit=100):
+        with self.lock:
+            self._job(context, job_id)
+            rows = self.db.execute("SELECT seq,type,payload,timestamp FROM events WHERE owner_id=? AND job_id=? AND seq>? ORDER BY seq LIMIT ?",
+                                   (context.owner_id, job_id, cursor, max(1,min(limit,200)))).fetchall()
+            return {'logs': [{'seq': r['seq'], 'type': r['type'], 'timestamp': r['timestamp'], **json.loads(r['payload'])} for r in rows],
+                    'next_cursor': rows[-1]['seq'] if rows else cursor}
+
     def artifact_path(self, context: UserContext, artifact_id: str) -> Path:
         with self.lock:
             artifact = self._artifact(context, artifact_id)
@@ -460,6 +471,9 @@ class JobService:
         if shutil.disk_usage(self.paths.root).free < self.min_free_bytes:
             return
         run = self._queued(stage)
+        if stage == PipelineStage.DOWNLOAD and (self._catalog_turn or not run) and self.courses.dispatch(slot):
+            self._catalog_turn = False
+            return
         if not run:
             return
         attempt = self.db.get('attempts', run['attempt_id'])
@@ -495,6 +509,8 @@ class JobService:
             self._write_job(job, attempt)
             self._event(job, 'stage.updated', stage=int(stage), stage_status='running')
             self._event(job, 'log', stage=int(stage), message='stage_started')
+        if stage == PipelineStage.DOWNLOAD:
+            self._catalog_turn = True
         slot.update(command=command,started=time.monotonic(),cancel_deadline=None)
         slot['cancel'].clear()
         slot['connection'].send(command)
@@ -508,6 +524,13 @@ class JobService:
         return job and run and job['current_attempt_id'] == result.token.attempt_id and run['status'] == 'running' and run['generation'] == result.token.generation
 
     def _finish(self, result, slot):
+        command = slot['command']
+        if command and command.catalog_query is not None:
+            if result.token != command.token:
+                return False
+            self.courses.finish(command, result)
+            slot.update(command=None, cancel_deadline=None, started=None)
+            return True
         if not self._valid_result(result, slot):
             return False
         token = result.token
@@ -625,7 +648,9 @@ class JobService:
     def _abort_slot(self, stage, slot, status, code):
         command = slot['command']
         self._dispose(slot)
-        if command:
+        if command and command.catalog_query is not None:
+            self.courses.finish(command, code=code)
+        elif command:
             job = self.db.get('jobs',command.token.job_id)
             attempt = self.db.get('attempts',command.token.attempt_id)
             with self.db.transaction():
@@ -641,7 +666,7 @@ class JobService:
         self.changed.notify_all()
 
     def _discard(self, command):
-        if command:
+        if command and command.catalog_query is None:
             shutil.rmtree(Path(command.output_dir).parent, ignore_errors=True)
 
     def _tick(self):
@@ -703,6 +728,7 @@ class JobService:
                 self._slots.clear()
                 try:
                     self._recover()
+                    self.courses.recover()
                     self._collect_files()
                 except Exception:
                     pass  # Recovery runs again on the next startup if storage is unavailable.
@@ -726,7 +752,7 @@ class JobService:
             self._ensure_open()
             self.secrets.get(context.owner_id, version)
             affected = self.secret_usage(context, version)
-            if affected and not force:
+            if (affected or self.courses.uses_secret(context.owner_id, version)) and not force:
                 raise ServiceError('secret_in_use')
             self.secrets._store(version).path.unlink()
             return affected
@@ -770,6 +796,7 @@ class JobService:
                     self._dispose(slot)
                 self._slots.clear()
                 self._recover()
+                self.courses.recover()
                 self._collect_files()
                 self.db.close()
             finally:

@@ -10,6 +10,8 @@ import type {
   Upload,
 } from "./types";
 import "./style.css";
+import { SettingsEditor } from "./SettingsEditor";
+import { LMSPanel, ServerPanel, JobLogs } from "./WorkspaceExtras";
 
 const stages = ["다운로드", "오디오 변환", "음성 인식", "요약"];
 const statuses: Record<string, string> = {
@@ -57,7 +59,6 @@ function App() {
     [error, setError] = useState(""),
     [connection, setConnection] = useState("연결 중");
   const [settingsOpen, setSettingsOpen] = useState(false),
-    [key, setKey] = useState(""),
     [endStage, setEndStage] = useState(4);
   const [jobModel, setJobModel] = useState("chatgpt");
   const [text, setText] = useState(""),
@@ -215,22 +216,13 @@ function App() {
       });
       setSettings(saved);
       setDraft(saved.settings);
-      if (key.trim()) {
-        await api(
-          "/secrets/" + encodeURIComponent("summary:" + draft.ai_engine),
-          { method: "PUT", body: JSON.stringify({ value: key.trim() }) },
-        );
-        setKey("");
-        const refreshed = await api<SettingsResponse>("/settings");
-        setSettings(refreshed);
-      }
       setNotice("설정을 저장했습니다. 새로 제출하는 작업부터 적용됩니다.");
     } catch (cause) {
       report(cause);
       if (cause instanceof ApiError && cause.code === "settings_conflict") {
         const fresh = await api<SettingsResponse>("/settings");
         setSettings(fresh);
-        setDraft(fresh.settings);
+        // Preserve unsaved edits after a concurrent credential/settings update.
       }
     } finally {
       setSaving(false);
@@ -456,178 +448,22 @@ function App() {
             </button>
           </div>
         )}
-        {settingsOpen && draft && settings ? (
-          <section className="settings-sheet panel">
-            <div className="section-heading">
-              <span className="eyebrow">PREFERENCES</span>
-              <h2>어떻게 처리할까요?</h2>
-            </div>
-            <div className="settings-grid">
-              <label>
-                요약 방식
-                <select
-                  value={draft.ai_engine}
-                  onChange={(e) => {
-                    setDraft({
-                      ...draft,
-                      ai_engine: e.target.value,
-                      ai_model: e.target.value === "clipboard" ? "chatgpt" : "",
-                    });
-                    setKey("");
-                  }}
-                >
-                  {[
-                    ["clipboard", "챗봇에서 직접 요약"],
-                    ["gemini", "Gemini API"],
-                    ["openai", "OpenAI API"],
-                    ["claude", "Claude API"],
-                    ["grok", "Grok API"],
-                    ["custom", "OpenAI 호환 API"],
-                  ].map(([v, l]) => (
-                    <option key={v} value={v}>
-                      {l}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                {draft.ai_engine === "clipboard" ? "챗봇" : "요약 모델"}
-                {draft.ai_engine === "clipboard" ? (
-                  <select
-                    value={draft.ai_model}
-                    onChange={(e) =>
-                      setDraft({ ...draft, ai_model: e.target.value })
-                    }
-                  >
-                    {[
-                      ["chatgpt", "ChatGPT"],
-                      ["gemini-web", "Gemini"],
-                      ["claude-web", "Claude"],
-                      ["grok-web", "Grok"],
-                    ].map(([v, l]) => (
-                      <option key={v} value={v}>
-                        {l}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <input
-                    value={draft.ai_model}
-                    placeholder="모델 이름"
-                    onChange={(e) =>
-                      setDraft({ ...draft, ai_model: e.target.value })
-                    }
-                  />
-                )}
-              </label>
-              {draft.ai_engine !== "clipboard" && (
-                <label>
-                  요약 API 키{" "}
-                  <span className="muted">
-                    {settings.secrets["summary:" + draft.ai_engine]?.configured
-                      ? "저장됨 · 입력하면 교체"
-                      : "미설정"}
-                  </span>
-                  <input
-                    type="password"
-                    autoComplete="new-password"
-                    value={key}
-                    onChange={(e) => setKey(e.target.value)}
-                    placeholder="키를 입력하면 서버에 저장"
-                  />
-                </label>
-              )}
-              {draft.ai_engine === "custom" && (
-                <label>
-                  API 주소
-                  <input
-                    value={draft.base_url}
-                    onChange={(e) =>
-                      setDraft({ ...draft, base_url: e.target.value })
-                    }
-                    placeholder="https://…/v1"
-                  />
-                </label>
-              )}
-              <label>
-                음성 인식 방식
-                <select
-                  value={draft.stt_engine}
-                  onChange={(e) =>
-                    setDraft({ ...draft, stt_engine: e.target.value })
-                  }
-                >
-                  <option value="faster-whisper">
-                    faster-whisper · 서버 CPU
-                  </option>
-                  <option value="openai-whisper" disabled>
-                    OpenAI Whisper API
-                  </option>
-                  <option value="openai-compatible" disabled>
-                    OpenAI 호환 STT
-                  </option>
-                  <option value="returnzero" disabled>
-                    ReturnZero
-                  </option>
-                </select>
-              </label>
-              <label>
-                음성 인식 모델
-                <input
-                  value={draft.stt_model}
-                  onChange={(e) =>
-                    setDraft({ ...draft, stt_model: e.target.value })
-                  }
-                />
-              </label>
-            </div>
-
-            <label>
-              프롬프트 방식
-              <select
-                value={draft.prompt_mode}
-                onChange={(e) =>
-                  setDraft({ ...draft, prompt_mode: e.target.value })
-                }
-              >
-                <option value="structured">기본 강의 요약</option>
-                <option value="custom">직접 작성</option>
-              </select>
-            </label>
-            {draft.prompt_mode === "custom" && (
-              <label>
-                요약 지시문
-                <textarea
-                  rows={7}
-                  value={draft.custom_prompt}
-                  onChange={(e) =>
-                    setDraft({ ...draft, custom_prompt: e.target.value })
-                  }
-                />
-              </label>
-            )}
-            <label className="check">
-              <input
-                type="checkbox"
-                checked={draft.keep_source}
-                onChange={(e) =>
-                  setDraft({ ...draft, keep_source: e.target.checked })
-                }
-              />
-              처리 후 서버 원본 보관
-            </label>
-            <div className="form-footer">
-              <p>비밀 값은 다시 표시하지 않습니다.</p>
-              <button
-                className="primary"
-                disabled={saving}
-                onClick={() => void saveSettings()}
-              >
-                {saving ? "저장 중…" : "설정 저장"}
-              </button>
-            </div>
-          </section>
-        ) : (
+        {settingsOpen && draft && settings && (
+          <SettingsEditor
+            draft={draft}
+            setDraft={setDraft}
+            settings={settings}
+            onSecrets={(fresh) =>
+              setSettings((old) =>
+                !old || fresh.revision >= old.revision ? fresh : old,
+              )
+            }
+            save={() => void saveSettings()}
+            saving={saving}
+            report={report}
+          />
+        )}
+        <div hidden={settingsOpen}>
           <>
             <section className="overview" aria-label="작업 현황">
               <div>
@@ -662,6 +498,19 @@ function App() {
                 })}
               </div>
             </section>
+            <LMSPanel
+              settings={settings}
+              endStage={endStage}
+              setEndStage={setEndStage}
+              onSubmitted={async (ids) => {
+                const added = await Promise.all(
+                  ids.map((id) => api<Job>("/jobs/" + id)),
+                );
+                merge(added);
+                setSelected(ids[0]);
+              }}
+              report={report}
+            />
             <section className="intake panel">
               <div className="intake-title">
                 <span className="eyebrow">ADD MATERIAL</span>
@@ -741,6 +590,7 @@ function App() {
                       <option value={4}>요약 / 프롬프트 준비</option>
                       <option value={3}>음성 인식까지만</option>
                       <option value={2}>오디오 변환까지만</option>
+                      <option value={1}>다운로드까지만 (LMS URL)</option>
                     </select>
                   </label>
                   <button
@@ -948,6 +798,23 @@ function App() {
                             </button>
                           ))}
                         </div>
+                        <div className="file-downloads">
+                          {available
+                            .filter(
+                              (item) => !item.display_name.endsWith(".txt"),
+                            )
+                            .map((item) => (
+                              <a
+                                key={item.id}
+                                href={
+                                  "/api/v1/artifacts/" + item.id + "/download"
+                                }
+                                download
+                              >
+                                {kinds[item.kind]} 다운로드 ↓
+                              </a>
+                            ))}
+                        </div>
                         {artifact && (
                           <div className="reader">
                             <div className="reader-toolbar">
@@ -1039,6 +906,7 @@ function App() {
                         </p>
                       </div>
                     )}
+                    <JobLogs job={current} />
                     <details className="attempt-history">
                       <summary>시도 이력</summary>
                       {current.attempts.map((attempt) => (
@@ -1065,7 +933,8 @@ function App() {
               </section>
             </div>
           </>
-        )}
+        </div>
+        <ServerPanel report={report} />
         <footer className="page-footer">
           <span>LMS SUMMARIZER</span>
           <span>화면을 닫아도 서버의 작업은 계속됩니다.</span>

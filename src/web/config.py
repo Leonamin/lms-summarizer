@@ -14,4 +14,5 @@ class WebConfig:
     min_free_bytes: int = field(default_factory=lambda: int(os.getenv('LMS_MIN_FREE_BYTES', str(2 * 1024**3))))
     max_text_bytes: int = 16 * 1024**2
     content_limit: int = 2 * 1024**2
-    chrome_path: str = '/usr/bin/google-chrome'
+    chrome_path: str = field(default_factory=lambda: os.getenv('LMS_CHROME_PATH', '/usr/bin/google-chrome'))
+    headless: bool = field(default_factory=lambda: os.getenv('LMS_CHROME_HEADLESS', 'true').lower() not in ('false','0'))

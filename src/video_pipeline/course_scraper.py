@@ -39,6 +39,12 @@ _TYPE_CLASS_MAP = {
 }
 
 
+def _attendance_from_classes(classes):
+    import re
+    tokens = set(re.split(r'[\s_-]+', classes.replace('attendance_status', '')))
+    return next((status for status in ('attendance', 'late', 'absent', 'excused') if status in tokens), 'none')
+
+
 class CourseScraper:
     """Canvas LMS 과목/강의 스크래퍼"""
 
@@ -325,10 +331,7 @@ class CourseScraper:
         att_el = await el.query_selector("[class*='attendance_status']")
         if att_el:
             att_classes = await att_el.get_attribute("class") or ""
-            for status in ("attendance", "late", "absent", "excused"):
-                if status in att_classes:
-                    attendance = status
-                    break
+            attendance = _attendance_from_classes(att_classes)
 
         # 완료 상태
         completion = "incomplete"

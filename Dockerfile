@@ -11,7 +11,7 @@ ENV UV_PYTHON_INSTALL_DIR=/opt/python UV_PYTHON=3.11.15 UV_LINK_MODE=copy \
     PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 \
     LMS_DATA_DIR=/data LMS_MODELS_DIR=/models LMS_STATIC_DIR=/app/frontend/dist \
     PATH=/app/.venv/bin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl \
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl xvfb xauth \
     && curl -fsSL https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb -o /tmp/chrome.deb \
     && apt-get install -y --no-install-recommends /tmp/chrome.deb \
     && rm /tmp/chrome.deb && rm -rf /var/lib/apt/lists/*

@@ -1089,3 +1089,200 @@ main {
     }
   }
 }
+
+/* Expanded learning controls share the workspace's quiet teal/navy palette. */
+fieldset {
+  border: 0;
+  border-top: 1px solid var(--border, #dde5e4);
+  margin: 28px 0;
+  padding: 22px 0 0;
+  min-width: 0;
+}
+legend {
+  font-weight: 700;
+  font-size: 17px;
+  padding-right: 14px;
+}
+fieldset details {
+  margin-top: 18px;
+}
+.secret-field {
+  min-width: 0;
+}
+.secret-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+.secret-actions .check {
+  margin: 0;
+  font-size: 12px;
+}
+.prompt-preview {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: inherit;
+  font-size: 13px;
+  background: #f5f8f7;
+  padding: 18px;
+  max-height: 420px;
+  overflow: auto;
+}
+.lms-panel {
+  padding: 28px;
+  margin-bottom: 20px;
+}
+.course-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin: 18px 0;
+}
+.course-tools label {
+  margin: 0;
+}
+.lecture-week {
+  border-bottom: 1px solid #dde5e4;
+  padding: 16px 0;
+}
+.lecture-week summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.lecture-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 4px;
+  margin: 0;
+}
+.lecture-row input {
+  width: 18px;
+  flex-shrink: 0;
+}
+.lecture-row span {
+  min-width: 0;
+}
+.lecture-row strong,
+.lecture-row small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.lecture-row:has(input:disabled) {
+  opacity: 0.6;
+}
+.job-logs {
+  list-style: none;
+  padding: 0;
+  max-height: 280px;
+  overflow: auto;
+  font-size: 12px;
+}
+.job-logs li {
+  display: flex;
+  gap: 16px;
+  border-bottom: 1px solid #eef2f0;
+  padding: 8px 0;
+}
+.job-logs time {
+  color: #627570;
+  font-variant-numeric: tabular-nums;
+}
+.server-panel {
+  margin-top: 24px;
+  padding: 24px;
+}
+.server-panel summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.diagnostic-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+  margin-top: 24px;
+}
+.diagnostic-grid p {
+  font-size: 13px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.diagnostic-grid code {
+  display: block;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+  padding: 12px;
+  background: #f2f6f4;
+}
+@media (max-width: 760px) {
+  .lms-panel {
+    padding: 20px;
+  }
+  .lms-panel .section-heading {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .diagnostic-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .lms-panel .form-footer {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .lms-panel .form-footer button {
+    width: 100%;
+  }
+}
+.lms-panel > label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  margin: 16px 0;
+}
+.lms-panel select,
+.lms-panel textarea {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #fafcfc;
+  font-size: 13px;
+  padding: 11px;
+  color: #354e5f;
+  min-width: 0;
+  max-width: 100%;
+}
+.lms-panel > label select,
+.lms-panel textarea {
+  width: 100%;
+}
+.lms-panel textarea {
+  resize: vertical;
+  line-height: 1.7;
+}
+.lms-panel .course-tools label:not(.check) {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+.lms-panel .manual-note {
+  margin-left: 0;
+  margin-right: 0;
+  font-size: 12px;
+}
+@media (max-width: 760px) {
+  .lms-panel select,
+  .lms-panel textarea,
+  .settings-sheet input,
+  .settings-sheet select,
+  .settings-sheet textarea {
+    font-size: 16px;
+  }
+}
