@@ -12,6 +12,8 @@ okf_version: "0.1"
 
 ## 로그
 
+- [2026-09-27-core-web-stage2.md](2026-09-27-core-web-stage2.md) — 공통 코어·저장 경계·데스크톱 호환 분리와 Flet 없는 실행 검증
+
 - [2026-09-27-core-web-stage1-contract.md](2026-09-27-core-web-stage1-contract.md) — 완료된 1단계 기능·기술·API 계약과 실제 LMS 검증 결과
 
 - [2026-09-27-core-web-stage1.md](2026-09-27-core-web-stage1.md) — 1단계 기능 조사·기술 계약·Chrome 검증 착수

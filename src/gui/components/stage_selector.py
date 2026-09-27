@@ -9,7 +9,7 @@ import flet as ft
 from src.gui.theme import Colors, Typography, Radius, Spacing
 from src.gui.core.file_manager import ensure_downloads_directory
 from src.gui.core.artifact_detector import ArtifactDetector
-from src.pipeline_stage import PipelineStage, STAGE_LABELS
+from src.core.models.stages import PipelineStage, STAGE_LABELS
 
 # 각 단계별 설명 텍스트
 _STAGE_DESCRIPTIONS: dict[PipelineStage, str] = {

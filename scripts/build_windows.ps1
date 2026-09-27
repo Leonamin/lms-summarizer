@@ -32,7 +32,7 @@ if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
 
 # 의존성 설치
 Write-Host "📦 의존성 설치 중..."
-uv sync
+uv sync --extra desktop --extra cuda
 uv pip install pyinstaller
 
 # 이전 빌드 정리
@@ -42,7 +42,7 @@ if (Test-Path "dist") { Remove-Item -Recurse -Force "dist" }
 
 # spec 파일로 빌드
 Write-Host "🔨 PyInstaller 빌드 시작..."
-uv run pyinstaller lms-summarizer.spec
+uv run --extra desktop --extra cuda pyinstaller lms-summarizer.spec
 
 # 빌드 결과 확인
 $distExe = "dist\$APP_NAME\$APP_NAME.exe"

@@ -6,7 +6,6 @@ import time
 from abc import ABC, abstractmethod
 import os
 import requests
-from src.user_setting import UserSetting
 
 # https://developers.rtzr.ai/docs/stt-file/
 
@@ -130,7 +129,8 @@ def transcribe_audio_to_text(
         if _reuse_transcriber is not None:
             transcriber = _reuse_transcriber
         else:
-            transcriber = ReturnZeroTranscriber()
+            transcriber = ReturnZeroTranscriber(client_id=params.pop("client_id", None),
+                                               client_secret=params.pop("client_secret", None))
     else:
         raise ValueError("지원하지 않는 엔진입니다")
 
@@ -562,10 +562,11 @@ class OpenAICompatibleSTTTranscriber(Transcriber):
 
 
 class ReturnZeroTranscriber(Transcriber):
-    def __init__(self):
-        user_setting = UserSetting()
-        self.client_id = user_setting.RETURNZERO_CLIENT_ID
-        self.client_secret = user_setting.RETURNZERO_CLIENT_SECRET
+    def __init__(self, client_id: str = None, client_secret: str = None):
+        if not client_id or not client_secret:
+            raise ValueError("ReturnZero client_id and client_secret are required")
+        self.client_id = client_id
+        self.client_secret = client_secret
         self.token = self._authenticate()
 
     def _authenticate(self) -> str:

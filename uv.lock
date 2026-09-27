@@ -714,32 +714,45 @@ dependencies = [
     { name = "anthropic" },
     { name = "av" },
     { name = "faster-whisper" },
-    { name = "flet", extra = ["all"] },
     { name = "google-genai" },
-    { name = "nvidia-cublas-cu12" },
-    { name = "nvidia-cuda-runtime-cu12" },
     { name = "openai" },
     { name = "playwright" },
-    { name = "pyperclip" },
     { name = "python-dotenv" },
     { name = "requests" },
+]
+
+[package.optional-dependencies]
+cuda = [
+    { name = "nvidia-cublas-cu12" },
+    { name = "nvidia-cuda-runtime-cu12" },
+]
+desktop = [
+    { name = "flet", extra = ["all"] },
+    { name = "pyperclip" },
+]
+web = [
+    { name = "fastapi" },
+    { name = "uvicorn" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "anthropic", specifier = ">=0.84.0" },
     { name = "av", specifier = ">=13.0.0" },
+    { name = "fastapi", marker = "extra == 'web'", specifier = ">=0.115.0" },
     { name = "faster-whisper", specifier = ">=1.1.0" },
-    { name = "flet", extras = ["all"], specifier = "==0.81.0" },
+    { name = "flet", extras = ["all"], marker = "extra == 'desktop'", specifier = "==0.81.0" },
     { name = "google-genai", specifier = ">=1.66.0" },
-    { name = "nvidia-cublas-cu12", specifier = ">=12.9.2.10" },
-    { name = "nvidia-cuda-runtime-cu12", specifier = ">=12.9.79" },
+    { name = "nvidia-cublas-cu12", marker = "extra == 'cuda'", specifier = ">=12.9.2.10" },
+    { name = "nvidia-cuda-runtime-cu12", marker = "extra == 'cuda'", specifier = ">=12.9.79" },
     { name = "openai", specifier = ">=1.84.0" },
     { name = "playwright", specifier = ">=1.52.0" },
-    { name = "pyperclip", specifier = ">=1.9.0" },
+    { name = "pyperclip", marker = "extra == 'desktop'", specifier = ">=1.9.0" },
     { name = "python-dotenv", specifier = ">=1.1.0" },
     { name = "requests", specifier = ">=2.32.3" },
+    { name = "uvicorn", marker = "extra == 'web'", specifier = ">=0.34.0" },
 ]
+provides-extras = ["desktop", "web", "cuda"]
 
 [[package]]
 name = "markdown-it-py"

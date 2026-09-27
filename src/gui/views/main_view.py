@@ -477,6 +477,21 @@ class MainView:
         self._picked_files = []
         self._rebuild_file_list()
 
+    def _stt_execution_params(self):
+        from src.gui.core.file_manager import get_stt_api_key, load_settings
+        params = dict(get_stt_params())
+        engine = get_stt_engine()
+        if engine in ("openai-whisper", "openai-compatible"):
+            params["api_key"] = get_stt_api_key(engine)
+        if engine == "openai-compatible":
+            params["base_url"] = get_stt_api_key("openai-compatible-base-url")
+            params["model_name"] = get_stt_api_key("openai-compatible-model")
+        if engine == "returnzero":
+            saved = load_settings()
+            params["client_id"] = saved.get("returnzero_client_id", "")
+            params["client_secret"] = saved.get("returnzero_client_secret", "")
+        return params
+
     def _build_queue_settings(self, inputs: Dict, engine: str, model_name: str) -> Dict:
         return {
             'user_inputs': inputs,
@@ -489,7 +504,8 @@ class MainView:
             'headless': not get_debug_mode(),
             'stt_engine': get_stt_engine(),
             'stt_model': get_stt_model(),
-            'stt_params': get_stt_params(),
+            'stt_params': self._stt_execution_params(),
+            'downloads_dir': ensure_downloads_directory(),
         }
 
     def _on_task_updated(self, task):

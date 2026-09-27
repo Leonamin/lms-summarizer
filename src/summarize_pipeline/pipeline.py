@@ -4,11 +4,7 @@ from pathlib import Path
 
 from src.summarize_pipeline.providers import create_provider
 
-try:
-    from src.gui.core.file_manager import DEFAULT_PROMPT as _DEFAULT_PROMPT
-except ImportError:
-    _DEFAULT_PROMPT = "다음 강의 내용을 한국어로 자세히 요약해주세요."
-
+from src.core.prompts import DEFAULT_PROMPT as _DEFAULT_PROMPT
 
 class SummarizePipeline:
     def __init__(
@@ -18,8 +14,11 @@ class SummarizePipeline:
         engine: str = "gemini",
         api_key: str = None,
         base_url: str = None,
+        output_dir: str = None,
+        manual_action=None,
     ):
-        self.downloads_dir = None  # 다운로드 경로는 나중에 설정됨
+        self.downloads_dir = output_dir
+        self.manual_action = manual_action
         self.model_name = model_name
         self.prompt = prompt or _DEFAULT_PROMPT
         self.engine = engine
@@ -29,6 +28,8 @@ class SummarizePipeline:
     def process(self, text_path: str) -> str:
         """텍스트 요약"""
         # 파일명 추출
+        if not self.downloads_dir:
+            raise ValueError("output_dir must be explicitly supplied")
         filename = Path(text_path).stem
         output_path = os.path.join(self.downloads_dir, f"{filename}_summarized.txt")
         os.makedirs(self.downloads_dir, exist_ok=True)
@@ -41,7 +42,7 @@ class SummarizePipeline:
             content = f.read()
 
         # Provider를 통해 요약 생성
-        provider = create_provider(self.engine, api_key=self.api_key, model_name=self.model_name, base_url=self.base_url)
+        provider = create_provider(self.engine, api_key=self.api_key, model_name=self.model_name, base_url=self.base_url, manual_action=self.manual_action)
         summary = provider.summarize(content, self.prompt)
 
         end_time = time.time()

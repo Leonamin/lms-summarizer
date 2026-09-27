@@ -21,7 +21,7 @@ class UserSetting:
         self.OPENAI_API_KEY = self.gui_inputs.get('openai_api_key')
 
         # GUI 입력이 없으면 .env에서 로드 (CLI 모드)
-        if not self.user_id:
+        if gui_inputs is None:
             env_path = Path(__file__).parent / '.env'
             if env_path.exists():
                 load_dotenv(env_path)

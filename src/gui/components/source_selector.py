@@ -8,7 +8,7 @@ from pathlib import Path
 import flet as ft
 
 from src.gui.theme import Colors, Typography, Spacing, Radius
-from src.pipeline_stage import PipelineStage
+from src.core.models.stages import PipelineStage
 
 # 확장자 → 시작 단계 자동 유추
 _EXTENSION_STAGE = {

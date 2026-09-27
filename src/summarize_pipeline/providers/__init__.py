@@ -32,7 +32,7 @@ ENGINE_API_KEY_MAP: dict[str, str] = {
 
 
 def create_provider(engine: str, api_key: str = None, model_name: str = None,
-                    base_url: str = None) -> AIProvider:
+                    base_url: str = None, manual_action=None) -> AIProvider:
     """엔진 이름으로 Provider 인스턴스를 생성하는 팩토리 함수
 
     Args:
@@ -45,7 +45,7 @@ def create_provider(engine: str, api_key: str = None, model_name: str = None,
         AIProvider 인스턴스
     """
     if engine == "clipboard":
-        return ClipboardProvider(target=model_name or "chatgpt")
+        return ClipboardProvider(target=model_name or "chatgpt", on_ready=manual_action)
 
     cls = ENGINE_REGISTRY.get(engine)
     if not cls:

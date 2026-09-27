@@ -13,7 +13,7 @@ from playwright.async_api import async_playwright, Playwright, Page, Frame
 
 from src.video_pipeline.login import perform_login_if_needed, LoginFailedError
 from src.video_pipeline.browser_utils import DEFAULT_CHROME_PATH, default_user_agent
-from src.gui.config.course_models import (
+from src.core.models.courses import (
     Course, LectureItem, Week, CourseDetail,
     LectureType, VIDEO_LECTURE_TYPES,
 )

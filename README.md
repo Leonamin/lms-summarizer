@@ -113,8 +113,8 @@ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | ie
 ```bash
 git clone https://github.com/Leonamin/lms-summarizer.git
 cd lms-summarizer
-uv sync
-uv run python src/gui/main.py
+uv sync --extra desktop
+uv run --extra desktop python src/gui/main.py
 ```
 
 </details>
@@ -320,7 +320,7 @@ GitHub Actions(`release.yml`)가 `v*` 태그 push 시 macOS/Windows 빌드를 �
 로컬에서 직접 빌드하려면:
 
 ```bash
-uv run pyinstaller lms-summarizer.spec
+uv run --extra desktop pyinstaller lms-summarizer.spec
 ```
 
 ### 커밋 메시지 규칙
@@ -349,3 +349,19 @@ docs: 문서      |  style: 스타일   |  test: 테스트
 이 프로젝트는 [MIT License](LICENSE)에 따라 배포됩니다.
 
 본 프로젝트는 개인 학습 보조 목적으로 제작되었습니다. LMS 서비스 약관을 준수하여 사용하시기 바랍니다.
+
+### 공통 코어와 실행 환경
+
+공통 모델·프롬프트·검증·저장 경계는 `src/core`, 설치형 호환 입력·저장·OS 동작은
+`src/desktop`, 웹 전송 경계는 `src/web`에 있습니다. 기존 GUI import 경로는 호환용으로 유지합니다.
+
+- 설치형: `uv sync --extra desktop`, `uv run --extra desktop lms-summarizer`
+- Windows CUDA 설치형: `uv sync --extra desktop --extra cuda`
+- 코어 진단: `uv run lms-summarizer-core`
+- 웹 의존성: `uv sync --extra web` (웹 서버/API는 후속 단계에서 구현)
+- 코어 검증: `uv run python -m unittest discover -s tests -v`
+
+파이프라인은 출력 경로와 실행 설정·자격 증명을 명시적으로 받습니다.
+`output_dir` 생성자 인자 또는 기존 `downloads_dir` 속성으로 출력 경로를 전달할 수 있습니다.
+설치형 `settings.json`의 설정·과목 캐시·이력 구조와 기존 결과 경로는 유지합니다.
+웹 저장 경로는 별도로 전달하며 설치형 데이터를 자동으로 가져오지 않습니다.

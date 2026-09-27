@@ -26,7 +26,7 @@ _STOP = object()  # 스레드 종료 신호
 _SESSION_SETTING_KEYS = (
     'user_inputs', 'save_video_dir', 'model_name', 'engine', 'base_url',
     'summary_prompt', 'chrome_path', 'headless',
-    'stt_engine', 'stt_model', 'stt_params',
+    'stt_engine', 'stt_model', 'stt_params', 'downloads_dir',
 )
 
 _ACTIVE_STATUSES = None  # 하단에서 설정 (TaskStatus 정의 후)
@@ -346,8 +346,7 @@ class QueueManager:
             log_callback=self._log,
             headless=settings.get('headless', True),
         )
-        from src.gui.core.file_manager import ensure_downloads_directory
-        video_pipeline.downloads_dir = ensure_downloads_directory()
+        video_pipeline.downloads_dir = settings['downloads_dir']
 
         self._log("브라우저 세션 시작 (로그인 포함)")
         await video_pipeline.open_session()
@@ -443,7 +442,7 @@ class QueueManager:
                 self._update_task(task, TaskStatus.DONE)
                 processor.finalize(video_path, task.url, summary_path,
                                    time.monotonic() - start_time,
-                                   delete_source=(start_stage == "변환"))
+                                   delete_source=bool(task.url))
             except CancelledException:
                 self._update_task(task, TaskStatus.CANCELLED)
                 break

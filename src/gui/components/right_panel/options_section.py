@@ -11,8 +11,8 @@ from src.gui.core.file_manager import (
     ensure_downloads_directory,
     get_summary_mode, get_subject_category, get_subject_custom,
 )
-from src.pipeline_stage import PipelineStage
-from src.summarize_pipeline.prompts import (
+from src.core.models.stages import PipelineStage
+from src.core.prompts import (
     SummaryMode, SUMMARY_MODE_LABELS, SUBJECT_CATEGORIES,
 )
 

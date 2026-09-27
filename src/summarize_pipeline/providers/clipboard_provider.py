@@ -5,8 +5,6 @@
 ChatGPT, Claude 웹, Grok 웹 등 다양한 챗봇으로 확장 가능합니다.
 """
 
-import pyperclip
-import webbrowser
 
 from .base import AIProvider
 
@@ -22,14 +20,17 @@ CHATBOT_URLS = {
 class ClipboardProvider(AIProvider):
     """클립보드 복사 + 외부 챗봇 브라우저 열기 방식의 Provider"""
 
-    def __init__(self, target: str = "chatgpt", **kwargs):
+    def __init__(self, target: str = "chatgpt", on_ready=None, **kwargs):
+        self.on_ready = on_ready
         self.target = target
         self.chat_url = CHATBOT_URLS.get(target, CHATBOT_URLS["chatgpt"])
 
     def summarize(self, text: str, prompt: str) -> str:
         final_prompt = f"{prompt}\n\n다음 텍스트를 요약해줘:\n\n{text}"
-        pyperclip.copy(final_prompt)
-        webbrowser.open(self.chat_url)
+        if self.on_ready:
+            self.on_ready(final_prompt, self.chat_url)
+        else:
+            return final_prompt
         return (
             f"[클립보드 모드] 프롬프트가 클립보드에 복사되었습니다. "
             f"{self.chat_url} 에서 붙여넣기 하세요."

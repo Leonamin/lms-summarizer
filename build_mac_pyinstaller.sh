@@ -29,7 +29,7 @@ fi
 
 # 의존성 설치
 echo "📦 의존성 설치 중..."
-uv sync
+uv sync --extra desktop
 uv pip install pyinstaller
 
 # 기존 빌드 정리
@@ -38,7 +38,7 @@ rm -rf build/ dist/
 
 # spec 파일로 빌드
 echo "🔨 PyInstaller 빌드 시작..."
-uv run pyinstaller lms-summarizer.spec
+uv run --extra desktop pyinstaller lms-summarizer.spec
 
 # 빌드 결과 확인
 DIST_APP="dist/${APP_NAME}.app"

@@ -9,7 +9,7 @@ import os
 from pathlib import Path
 from typing import Dict, List, Tuple
 
-from src.pipeline_stage import PipelineStage, ARTIFACT_EXTENSIONS
+from src.core.models.stages import PipelineStage, ARTIFACT_EXTENSIONS
 
 
 class ArtifactDetector:

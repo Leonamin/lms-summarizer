@@ -9,7 +9,7 @@ from typing import List, Optional
 import flet as ft
 
 from src.gui.theme import Colors, Typography, Spacing, Radius, divider
-from src.gui.config.course_models import (
+from src.core.models.courses import (
     Course, CourseDetail, LectureItem, LectureType, VIDEO_LECTURE_TYPES,
 )
 from src.gui.core.file_manager import save_course_cache, load_course_cache

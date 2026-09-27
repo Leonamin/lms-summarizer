@@ -14,7 +14,7 @@ okf_version: "0.1"
 
 공통 코어를 사용하는 설치형과 Docker 웹 대시보드를 제공한다. 확정 정책은 [ADR-002](../decisions/002-core-and-web-dashboard.md), 진행도는 [TODO](core-web-dashboard-todo.md)를 따른다.
 
-1단계 기능 조사·기술 계약·Docker Chrome의 실제 LMS 로그인/CDP 검증을 완료했다. [1단계 계약](../logs/2026-09-27-core-web-stage1-contract.md)과 [ADR-003](../decisions/003-web-runtime-and-job-contract.md)에 기술·정책 선택을 기록했다. 코어 리팩토링·제품 웹 구현은 미착수다. 실제 강의 전체 다운로드·STT·요약은 후속 단계에서 검증한다. 아래 초기 제안 중 구체화된 부분은 1단계 계약을 따른다.
+1단계 기능 조사·기술 계약·Docker Chrome의 실제 LMS 로그인/CDP 검증을 완료했다. [1단계 계약](../logs/2026-09-27-core-web-stage1-contract.md)과 [ADR-003](../decisions/003-web-runtime-and-job-contract.md)에 기술·정책 선택을 기록했다. 2단계 코어 분리를 완료했다([구현·검증](../logs/2026-09-27-core-web-stage2.md)). 영속 작업 실행기·제품 웹 구현은 미착수다. 실제 강의 전체 다운로드·STT·요약은 후속 단계에서 검증한다. 아래 초기 제안 중 구체화된 부분은 1단계 계약을 따른다.
 
 ## 범위
 

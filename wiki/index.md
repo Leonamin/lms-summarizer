@@ -15,5 +15,5 @@ okf_version: "0.1"
 - [concepts/](concepts/index.md) — 프로젝트 개념, 도메인과 시스템 설명
 - [decisions/](decisions/index.md) — 기술·제품 의사결정 기록 (ADR), 공통 코어·웹 확정 정책
 - [references/](references/index.md) — 외부 자료와 도구 참고 문서
-- [plans/](plans/index.md) — 진행 중·예정된 작업 항목, 코어·웹 상세 계획, 1단계 구현 계약과 진행 TODO
+- [plans/](plans/index.md) — 진행 중·예정된 작업 항목, 코어·웹 상세 계획, 1단계 구현 계약·2단계 완료와 진행 TODO
 - [logs/](logs/index.md) — 위키 변경 이력 및 완료된 작업 기록

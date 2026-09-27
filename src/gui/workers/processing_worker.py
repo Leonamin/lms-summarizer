@@ -20,7 +20,7 @@ from src.gui.core.file_manager import (
     add_history_entry, get_app_data_dir,
 )
 from src.gui.core.module_loader import check_required_modules
-from src.pipeline_stage import PipelineStage, STAGE_LABELS
+from src.core.models.stages import PipelineStage, STAGE_LABELS
 
 
 def _setup_file_logger() -> logging.Logger:

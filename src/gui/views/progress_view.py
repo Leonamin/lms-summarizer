@@ -16,7 +16,7 @@ from src.gui.core.file_manager import (
     open_in_file_explorer, ensure_downloads_directory, get_auto_open_folder,
 )
 from src.gui.components.auto_scroll_log import AutoScrollLog
-from src.pipeline_stage import PipelineStage, STAGE_LABELS
+from src.core.models.stages import PipelineStage, STAGE_LABELS
 
 # 처리 단계 정의 (PipelineStage 기반)
 _STEPS = [(stage.value, STAGE_LABELS[stage]) for stage in PipelineStage]
