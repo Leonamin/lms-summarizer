@@ -5,7 +5,7 @@ from src.core.models.settings import PromptSettings, SettingsRevision
 
 def snapshot_settings(owner_id: str, settings: dict, prompt: PromptSettings,
                       secret_versions: dict[str, str]) -> SettingsRevision:
-    forbidden = {"password", "api_key", "api_keys", "stt_api_key", "stt_api_keys", "client_secret", "returnzero_client_secret"}
+    forbidden = {"password", "api_key", "api_keys", "stt_api_key", "stt_api_keys", "client_secret", "returnzero_client_secret", "returnzero_client_id", "client_id", "credentials", "secrets"}
     def check(value):
         if isinstance(value, dict):
             if forbidden.intersection(value):

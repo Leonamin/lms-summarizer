@@ -8,9 +8,11 @@ from .base import AIProvider
 class GeminiProvider(AIProvider):
     """Google Gemini API를 사용한 요약 엔진"""
 
-    def __init__(self, api_key: str, model_name: str = None):
+    def __init__(self, api_key: str, model_name: str = None, request_timeout: float = 120):
         from google import genai
-        self._client = genai.Client(api_key=api_key)
+        from google.genai import types
+        self._client = genai.Client(api_key=api_key, http_options=types.HttpOptions(
+            timeout=int(request_timeout * 1000), retry_options=types.HttpRetryOptions(attempts=1)))
         self._model_name = model_name or self.default_model()
 
     def summarize(self, text: str, prompt: str) -> str:

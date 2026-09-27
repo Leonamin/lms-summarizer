@@ -106,7 +106,7 @@ class VideoPipeline:
                 lecture_dir.mkdir(parents=True, exist_ok=True)
                 save_dir = str(lecture_dir)
 
-            filepath = download_video(video_url, save_dir=save_dir, filename=title,
+            filepath = download_video(video_url, save_dir=save_dir, filename=sanitize_dirname(title) if title else None,
                                      progress_callback=self.progress_callback)
             self._log(f"동영상 다운로드 완료: {filepath}")
             return filepath
