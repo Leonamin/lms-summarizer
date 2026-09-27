@@ -4,6 +4,7 @@ Public methods use owner contexts and IDs. Paths and secrets remain internal.
 """
 from dataclasses import asdict
 from datetime import datetime, timedelta, timezone
+import errno
 import hashlib
 import json
 import multiprocessing
@@ -360,10 +361,16 @@ class JobService:
                 if self._closed:
                     return
                 batch = self.events_since(context, cursor)
-                if not batch['reset'] and not batch['events']:
+                deadline = time.monotonic() + heartbeat
+                while not batch['reset'] and not batch['events']:
                     if self._closed:
                         return
-                    self.changed.wait(timeout=heartbeat)
+                    if stop is not None and stop.is_set():
+                        return
+                    remaining = deadline - time.monotonic()
+                    if remaining <= 0:
+                        break
+                    self.changed.wait(timeout=remaining)
                     if self._closed:
                         return
                     batch = self.events_since(context, cursor)
@@ -442,6 +449,7 @@ class JobService:
         attempt = self.db.get('attempts', run['attempt_id'])
         job = self.db.get('jobs', attempt['job_id'])
         revision = self.db.get('settings_revisions', job['settings_revision_id'])
+        output = None
         try:
             credentials = self._credentials(revision)
             if run['input_id']:
@@ -455,9 +463,13 @@ class JobService:
             output = self.paths.file(f"jobs/{job['id']}/{attempt['id']}/{run['id']}/.part")
             output.mkdir(parents=True, exist_ok=False)
             command = StageCommand(token, source, str(output), revision['settings_json'], revision['resolved_prompt'], credentials, str(self.paths.models))
-        except ServiceError as exc:
+        except (ServiceError, OSError) as exc:
+            code = exc.code if isinstance(exc, ServiceError) else 'disk_full' if exc.errno == errno.ENOSPC else 'stage_failed'
             with self.db.transaction():
-                self._terminal(job, attempt, 'failed', exc.code)
+                self._terminal(job, attempt, 'failed', code)
+            # A failed mkdir may have created some of the parent directories.
+            if output is not None:
+                shutil.rmtree(output.parent, ignore_errors=True)
             return
         with self.db.transaction():
             now = utcnow()
@@ -646,7 +658,10 @@ class JobService:
                 if slot['cancel_deadline'] and now >= slot['cancel_deadline']:
                     self._abort_slot(stage, slot, 'cancelled', 'cancelled')
                 elif now - slot['started'] >= self.stage_timeout:
-                    self._abort_slot(stage, slot, 'failed', 'stage_timeout')
+                    if slot['cancel_deadline']:
+                        self._abort_slot(stage, slot, 'cancelled', 'cancelled')
+                    else:
+                        self._abort_slot(stage, slot, 'failed', 'stage_timeout')
             elif slot['ready']:
                 self._dispatch(stage, slot)
 

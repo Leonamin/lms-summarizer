@@ -18,6 +18,13 @@ def read_legacy(path: Path) -> LegacyData:
     if not api_keys and inputs.get("api_key"):
         api_keys = {"gemini": inputs["api_key"]}
     stt_keys = raw.get("stt_api_keys", {})
+    stt_params = dict(raw.get("stt_params", {}))
+    stt_key = stt_params.pop("api_key", None)
+    stt_credentials = {}
+    for name in ("client_id", "client_secret", "returnzero_client_id", "returnzero_client_secret"):
+        value = stt_params.pop(name, None)
+        if value:
+            stt_credentials[name if name.startswith('returnzero_') else f'returnzero_{name}'] = value
     engine = inputs.get("ai_engine", "gemini")
     prompt_mode = "structured" if raw.get("summary_mode") or not raw.get("summary_prompt") else "custom"
     prompt = PromptSettings(mode=prompt_mode, summary_mode=raw.get("summary_mode", "normal"),
@@ -30,15 +37,18 @@ def read_legacy(path: Path) -> LegacyData:
         "base_url": raw.get("base_urls", inputs.get("base_urls", {})).get(engine, inputs.get("base_url", "")),
         "stt_engine": raw.get("stt_engine", "faster-whisper"),
         "stt_model": raw.get("stt_model", "large-v3-turbo"),
-        "stt_base_url": stt_keys.get("openai-compatible-base-url", ""),
-        "stt_compatible_model": stt_keys.get("openai-compatible-model", ""),
-        "stt_params": raw.get("stt_params", {}),
+        "stt_base_url": stt_keys.get("openai-compatible-base-url", stt_params.pop("base_url", "")),
+        "stt_compatible_model": stt_keys.get("openai-compatible-model", stt_params.pop("model_name", "")),
+        "stt_params": stt_params,
         "prompt_mode": prompt_mode, "resolved_prompt": prompt.resolve(),
         "downloads_dir": raw.get("downloads_dir", ""),
     }
     secrets = {f"summary:{k}": v for k, v in api_keys.items() if v}
     secrets.update({f"stt:{k}": v for k, v in stt_keys.items()
                     if v and k not in ("openai-compatible-base-url", "openai-compatible-model")})
+    if stt_key:
+        secrets.setdefault(f"stt:{settings['stt_engine']}", stt_key)
+    secrets.update(stt_credentials)
     for key in ("password", "returnzero_client_id", "returnzero_client_secret"):
         value = inputs.get(key, raw.get(key, ""))
         if value:

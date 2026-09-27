@@ -28,11 +28,11 @@ jobs:
 
       - name: 의존성 설치
         run: |
-          uv sync --frozen
+          uv sync --frozen --extra desktop
           uv pip install pyinstaller
 
       - name: PyInstaller 빌드
-        run: uv run pyinstaller lms-summarizer.spec
+        run: uv run --extra desktop pyinstaller lms-summarizer.spec
 
       - name: ZIP 패키징
         run: |
@@ -67,12 +67,12 @@ jobs:
 
       - name: 의존성 설치
         run: |
-          uv sync --frozen
+          uv sync --frozen --extra desktop --extra cuda
           uv pip install pyinstaller
 
       - name: 핵심 모듈 import 검증
         run: |
-          uv run python -c "
+          uv run --extra desktop --extra cuda python -c "
           from faster_whisper import WhisperModel; print('faster-whisper OK')
           import flet; print('flet OK')
           from src.audio_pipeline.pipeline import AudioToTextPipeline; print('AudioToTextPipeline OK')
@@ -82,7 +82,7 @@ jobs:
           "
 
       - name: PyInstaller 빌드
-        run: uv run pyinstaller lms-summarizer.spec
+        run: uv run --extra desktop --extra cuda pyinstaller lms-summarizer.spec
 
       - name: ZIP 패키징
         shell: pwsh

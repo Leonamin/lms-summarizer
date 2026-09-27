@@ -3,7 +3,7 @@ import contextlib
 import errno
 import os
 from src.core.models.jobs import StageResult, ServiceError
-from src.core.runtime.processes import isolate_process, watch_parent
+from src.core.runtime.processes import isolate_process, watch_parent, kill_descendants
 
 SAFE_ERRORS = {'cancelled', 'credentials_missing', 'input_missing', 'output_missing',
                'download_failed', 'disk_full', 'stage_failed'}
@@ -36,6 +36,13 @@ def worker_main(connection, lifetime, cancelled, executor_factory):
             except (EOFError, OSError):
                 break
     finally:
-        with contextlib.suppress(Exception):
-            executor.close()
-        connection.close()
+        try:
+            with contextlib.suppress(Exception):
+                executor.close()
+            # Detached children become untraceable once this worker exits.
+            # Clean up here while their parent is still alive, including children
+            # created after the supervisor stopped polling during shutdown.
+            if os.name != 'nt':
+                kill_descendants(os.getpid())
+        finally:
+            connection.close()
