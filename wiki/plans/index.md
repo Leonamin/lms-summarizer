@@ -18,8 +18,9 @@ okf_version: "0.1"
 ## 문서
 
 
-- [core-web-dashboard-todo.md](core-web-dashboard-todo.md) — 공통 코어·웹 대시보드 진행 TODO, 6단계 완료·4단계 OS 검증 잔여 (p1)
+- [core-web-dashboard-todo.md](core-web-dashboard-todo.md) — 공통 코어·웹 대시보드 진행 TODO, 7단계 완료·8단계 개선 미착수·4단계 OS 검증 잔여 (p1)
 - [core-web-dashboard-plan.md](core-web-dashboard-plan.md) — 기능 대응·구조·단계별 완료 기준 상세 계획 (p1)
+- [auto-play-new-lectures.md](auto-play-new-lectures.md) — 신규 강의 감지·자동 재생·자동 저장과 다운로드 교착 방지 (p1) (8단계)
 
 - [cdp-audio-video-split.md](cdp-audio-video-split.md) — CDP 영상 추출 오디오/비디오 분리 mp4 검증 (p1)
 - [login-flow-e2e-test.md](login-flow-e2e-test.md) — 새 로그인 플로우 실환경 E2E 테스트 (p1)

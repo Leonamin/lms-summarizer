@@ -12,6 +12,10 @@ okf_version: "0.1"
 
 ## 로그
 
+- [2026-09-27-core-web-stage8-planning.md](2026-09-27-core-web-stage8-planning.md) — 8단계 개선 작업(타이포그래피·UX/UI, 신규 강의 감지·자동 재생·자동 저장) 계획·ADR 추가
+
+- [2026-09-27-core-web-stage7.md](2026-09-27-core-web-stage7.md) — Ubuntu 26.04 대상 호스트의 실제 LMS 전체 처리·CPU 추론·취소/복구·백업/복원·LAN/Tailscale·운영 문서
+
 - [2026-09-27-core-web-stage6.md](2026-09-27-core-web-stage6.md) — LMS 과목·주차 조회·URL 입력·전체 공급자 설정·프롬프트·로그·진단·PC/모바일 화면 대응과 61개 테스트
 
 - [2026-09-27-core-web-stage5.md](2026-09-27-core-web-stage5.md) — React/FastAPI/SSE 웹 최소 흐름·Docker 볼륨·컨테이너 재생성 복원과 51개 테스트
