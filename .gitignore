@@ -209,3 +209,7 @@ user_settings.json.claude/
 node_modules/
 .local/web-data/
 .local/web-models/
+
+# 로컬 터미널 녹화(script) 및 운영 백업 산출물
+typescript
+backup/
