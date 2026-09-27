@@ -1,19 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { api, ApiError } from "./api";
-import type { Job, SettingsResponse } from "./types";
-const attendanceLabels: Record<string, string> = {
-  attendance: "출석",
-  attended: "출석",
-  late: "지각",
-  absent: "결석",
-  excused: "출석 인정",
-  none: "출석 정보 없음",
-};
-const completionLabels: Record<string, string> = {
-  completed: "완료",
-  complete: "완료",
-  incomplete: "미완료",
-};
+import { api, ApiError } from "../api";
+import type { SettingsResponse } from "../types";
+import {
+  attendanceLabels,
+  completionLabels,
+  requestId,
+} from "../lib/format";
+
 type Course = {
   id: string;
   long_name: string;
@@ -47,7 +40,8 @@ type Cache<T> = {
   expired: boolean;
   refresh: Query | null;
 };
-export function LMSPanel({
+
+export function LmsImportPanel({
   settings,
   endStage,
   setEndStage,
@@ -56,31 +50,32 @@ export function LMSPanel({
 }: {
   settings: SettingsResponse | null;
   endStage: number;
-  setEndStage: (n: number) => void;
+  setEndStage: (stage: number) => void;
   onSubmitted: (ids: string[]) => Promise<void>;
-  report: (e: unknown) => void;
+  report: (cause: unknown) => void;
 }) {
-  const [tab, setTab] = useState("urls"),
-    [urls, setUrls] = useState(""),
-    [courses, setCourses] = useState<Cache<Course[]> | null>(null),
-    [course, setCourse] = useState(""),
-    [detail, setDetail] = useState<Cache<Detail | null> | null>(null),
-    [selected, setSelected] = useState<string[]>([]),
-    [query, setQuery] = useState<Query | null>(null),
-    [busy, setBusy] = useState(false),
-    [message, setMessage] = useState(""),
-    [term, setTerm] = useState("all"),
-    [favorites, setFavorites] = useState(false);
+  const [tab, setTab] = useState("urls");
+  const [urls, setUrls] = useState("");
+  const [courses, setCourses] = useState<Cache<Course[]> | null>(null);
+  const [course, setCourse] = useState("");
+  const [detail, setDetail] = useState<Cache<Detail | null> | null>(null);
+  const [selected, setSelected] = useState<string[]>([]);
+  const [query, setQuery] = useState<Query | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  const [term, setTerm] = useState("all");
+  const [favorites, setFavorites] = useState(false);
+  const [uncertain, setUncertain] = useState(false);
   const batch = useRef<{
     sources: { kind: string; reference: string }[];
     settings_revision: string;
     end_stage: number;
     key: string;
   } | null>(null);
-  const [uncertain, setUncertain] = useState(false);
-  const epoch = useRef(0),
-    courseRef = useRef(course);
+  const epoch = useRef(0);
+  const courseRef = useRef(course);
   courseRef.current = course;
+
   useEffect(() => {
     epoch.current++;
     setCourses(null);
@@ -90,14 +85,15 @@ export function LMSPanel({
     setQuery(null);
     const gen = epoch.current;
     api<Cache<Course[]>>("/courses")
-      .then((r) => {
+      .then((result) => {
         if (gen === epoch.current) {
-          setCourses(r);
-          setQuery(r.refresh);
+          setCourses(result);
+          setQuery(result.refresh);
         }
       })
       .catch(report);
   }, [settings?.settings.student_id, settings?.revision]);
+
   useEffect(() => {
     setDetail(null);
     setSelected([]);
@@ -105,10 +101,10 @@ export function LMSPanel({
     let alive = true;
     const gen = epoch.current;
     api<Cache<Detail | null>>("/courses/" + course + "/lectures")
-      .then((r) => {
+      .then((result) => {
         if (alive && gen === epoch.current) {
-          setDetail(r);
-          setQuery(r.refresh);
+          setDetail(result);
+          setQuery(result.refresh);
         }
       })
       .catch(report);
@@ -116,6 +112,7 @@ export function LMSPanel({
       alive = false;
     };
   }, [course]);
+
   useEffect(() => {
     if (!query || !["queued", "running"].includes(query.status)) return;
     let alive = true;
@@ -145,8 +142,8 @@ export function LMSPanel({
               result.error_code +
               ")",
           );
-      } catch (e) {
-        if (alive) report(e);
+      } catch (cause) {
+        if (alive) report(cause);
       }
     };
     const timer = setInterval(() => void poll(), 1000);
@@ -155,6 +152,7 @@ export function LMSPanel({
       clearInterval(timer);
     };
   }, [query?.id, query?.status, course]);
+
   async function refresh(id: string | null) {
     setBusy(true);
     try {
@@ -165,12 +163,13 @@ export function LMSPanel({
         }),
       );
       setMessage("다운로드 단계 사이에서 목록을 조회합니다.");
-    } catch (e) {
-      report(e);
+    } catch (cause) {
+      report(cause);
     } finally {
       setBusy(false);
     }
   }
+
   async function submit(references: string[]) {
     if (!settings || (!references.length && !batch.current)) return;
     setBusy(true);
@@ -181,9 +180,7 @@ export function LMSPanel({
         sources: references.map((reference) => ({ kind: "url", reference })),
         settings_revision: settings.settings_revision,
         end_stage: endStage,
-        key: Array.from(crypto.getRandomValues(new Uint8Array(16)), (v) =>
-          v.toString(16).padStart(2, "0"),
-        ).join(""),
+        key: requestId(),
       };
       const { key, ...body } = batch.current;
       const result = await api<{ job_ids: string[] }>("/jobs", {
@@ -198,9 +195,9 @@ export function LMSPanel({
       setSelected([]);
       setUrls("");
       setMessage(result.job_ids.length + "개 URL 작업을 추가했습니다.");
-    } catch (e) {
-      report(e);
-      if (e instanceof ApiError && !acknowledged) {
+    } catch (cause) {
+      report(cause);
+      if (cause instanceof ApiError && !acknowledged) {
         batch.current = null;
         setUncertain(false);
       } else {
@@ -213,11 +210,13 @@ export function LMSPanel({
       setBusy(false);
     }
   }
+
   const available =
     detail?.data?.weeks
-      .flatMap((w) => w.lectures)
-      .filter((l) => l.is_video && !l.is_upcoming) ?? [];
+      .flatMap((week) => week.lectures)
+      .filter((lecture) => lecture.is_video && !lecture.is_upcoming) ?? [];
   const urlLines = urls.split(/\s+/).filter(Boolean);
+
   return (
     <section className="panel lms-panel">
       <div className="section-heading">
@@ -225,7 +224,7 @@ export function LMSPanel({
           <span className="eyebrow">FROM YOUR LMS</span>
           <h2>LMS 강의 가져오기</h2>
         </div>
-        <div className="artifact-tabs" role="group" aria-label="LMS 입력 방식">
+        <div className="segmented" role="group" aria-label="LMS 입력 방식">
           <button
             className={tab === "urls" ? "active" : ""}
             onClick={() => setTab("urls")}
@@ -241,13 +240,15 @@ export function LMSPanel({
         </div>
       </div>
       <div className="course-tools">
-        <p className="muted">처리 설정에서 학번·비밀번호를 저장해 주세요.</p>
+        <p className="muted" style={{ flex: 1 }}>
+          처리 설정에서 학번·비밀번호를 저장해 주세요.
+        </p>
         <label>
           LMS 마지막 처리 단계
           <select
             value={endStage}
             disabled={busy || uncertain}
-            onChange={(e) => setEndStage(Number(e.target.value))}
+            onChange={(event) => setEndStage(Number(event.target.value))}
           >
             <option value={4}>요약 / 프롬프트 준비</option>
             <option value={3}>음성 인식까지만</option>
@@ -262,7 +263,7 @@ export function LMSPanel({
         </p>
       )}
       {query && ["queued", "running"].includes(query.status) && (
-        <p role="status">
+        <p role="status" className="muted">
           목록 조회 {query.status === "queued" ? "대기 중" : "실행 중"} ·
           새로고침해도 조회는 계속됩니다.
         </p>
@@ -275,7 +276,7 @@ export function LMSPanel({
               rows={3}
               value={urls}
               disabled={busy || uncertain}
-              onChange={(e) => setUrls(e.target.value)}
+              onChange={(event) => setUrls(event.target.value)}
               placeholder="https://canvas.ssu.ac.kr/courses/… (한 줄에 하나)"
             />
           </label>
@@ -317,8 +318,8 @@ export function LMSPanel({
               <select value={term} onChange={(e) => setTerm(e.target.value)}>
                 <option value="all">전체 학기</option>
                 {[...new Set(courses?.data.map((c) => c.term) ?? [])].map(
-                  (t) => (
-                    <option key={t}>{t}</option>
+                  (value) => (
+                    <option key={value}>{value}</option>
                   ),
                 )}
               </select>
@@ -346,14 +347,14 @@ export function LMSPanel({
               <option value="">과목을 선택하세요</option>
               {courses?.data
                 .filter(
-                  (c) =>
-                    (term === "all" || c.term === term) &&
-                    (!favorites || c.is_favorited),
+                  (item) =>
+                    (term === "all" || item.term === term) &&
+                    (!favorites || item.is_favorited),
                 )
-                .map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.is_favorited ? "★ " : ""}
-                    {c.long_name} · {c.term}
+                .map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.is_favorited ? "★ " : ""}
+                    {item.long_name} · {item.term}
                   </option>
                 ))}
             </select>
@@ -372,16 +373,16 @@ export function LMSPanel({
                   강의 새로고침
                 </button>
                 <button
-                  className="quiet"
+                  className="ghost"
                   disabled={uncertain}
                   onClick={() =>
-                    setSelected([...new Set(available.map((l) => l.url))])
+                    setSelected([...new Set(available.map((item) => item.url))])
                   }
                 >
                   영상 전체 선택
                 </button>
                 <button
-                  className="quiet"
+                  className="ghost"
                   disabled={uncertain}
                   onClick={() => setSelected([])}
                 >
@@ -393,36 +394,41 @@ export function LMSPanel({
                   ? "강의 캐시가 없거나 만료되었습니다. 새로고침해 주세요."
                   : `강의 캐시 ${Math.floor((detail?.cache_age_seconds ?? 0) / 60)}분 전`}
               </p>
-              {detail?.data?.weeks.map((w) => (
+              {detail?.data?.weeks.map((week) => (
                 <details
-                  key={w.week_number + "-" + w.title}
+                  key={week.week_number + "-" + week.title}
                   className="lecture-week"
                   open
                 >
-                  <summary>{w.title}</summary>
-                  {w.lectures.map((l, i) => (
-                    <label className="lecture-row" key={l.url + i}>
+                  <summary>{week.title}</summary>
+                  {week.lectures.map((lecture, index) => (
+                    <label className="lecture-row" key={lecture.url + index}>
                       <input
                         type="checkbox"
-                        disabled={uncertain || !l.is_video || l.is_upcoming}
-                        checked={selected.includes(l.url)}
-                        onChange={(e) =>
+                        disabled={
+                          uncertain || !lecture.is_video || lecture.is_upcoming
+                        }
+                        checked={selected.includes(lecture.url)}
+                        onChange={(event) =>
                           setSelected(
-                            e.target.checked
-                              ? [...selected, l.url]
-                              : selected.filter((v) => v !== l.url),
+                            event.target.checked
+                              ? [...selected, lecture.url]
+                              : selected.filter((value) => value !== lecture.url),
                           )
                         }
                       />
                       <span>
-                        <strong>{l.title}</strong>
+                        <strong>{lecture.title}</strong>
                         <small>
-                          {l.duration ?? ""} ·{" "}
-                          {attendanceLabels[l.attendance] ?? l.attendance} /{" "}
-                          {completionLabels[l.completion] ?? l.completion}{" "}
-                          {l.is_upcoming
+                          {lecture.duration ?? ""} ·{" "}
+                          {attendanceLabels[lecture.attendance] ??
+                            lecture.attendance}{" "}
+                          /{" "}
+                          {completionLabels[lecture.completion] ??
+                            lecture.completion}{" "}
+                          {lecture.is_upcoming
                             ? "· 예정"
-                            : !l.is_video
+                            : !lecture.is_video
                               ? "· 영상 아님"
                               : ""}
                         </small>
@@ -452,191 +458,5 @@ export function LMSPanel({
         </>
       )}
     </section>
-  );
-}
-export function JobLogs({ job }: { job: Job }) {
-  const cursor = useRef(0);
-  const [logs, setLogs] = useState<
-      {
-        seq: number;
-        type: string;
-        timestamp: string;
-        message?: string;
-        stage?: number;
-        status?: string;
-        attempt_id?: string;
-      }[]
-    >([]),
-    [error, setError] = useState("");
-  useEffect(() => {
-    let alive = true;
-    setLogs([]);
-    setError("");
-    cursor.current = 0;
-    const load = () =>
-      api<{ logs: typeof logs; next_cursor: number }>(
-        "/jobs/" + job.id + "/logs?limit=200&cursor=" + cursor.current,
-      )
-        .then((r) => {
-          if (alive) {
-            cursor.current = r.next_cursor;
-            setLogs((old) =>
-              [
-                ...old,
-                ...r.logs.filter((l) => !old.some((o) => o.seq === l.seq)),
-              ].slice(-200),
-            );
-            setError("");
-          }
-        })
-        .catch(() => alive && setError("로그를 불러오지 못했습니다."));
-    void load();
-    const timer = setInterval(load, 3000);
-    return () => {
-      alive = false;
-      clearInterval(timer);
-    };
-  }, [job.id]);
-  const labels: Record<string, string> = {
-    stage_started: "단계 시작",
-    stage_completed: "단계 완료",
-    queued: "대기",
-    running: "실행",
-    completed: "완료",
-    failed: "실패",
-    cancelled: "취소",
-    interrupted: "중단",
-    cancelling: "취소 요청",
-  };
-  return (
-    <details className="attempt-history">
-      <summary>작업 로그 · 최근 200개</summary>
-      {error && <p role="status">{error}</p>}
-      <ol className="job-logs">
-        {logs.map((l) => (
-          <li key={l.seq}>
-            <time>{new Date(l.timestamp).toLocaleTimeString("ko-KR")}</time>
-            <span>
-              {l.stage ? "단계 " + l.stage + " · " : ""}
-              {labels[l.message ?? l.status ?? ""] ?? l.type}
-            </span>
-          </li>
-        ))}
-      </ol>
-      {!logs.length && !error && (
-        <p>저장된 로그가 없습니다. 로그는 7일 동안 보관합니다.</p>
-      )}
-    </details>
-  );
-}
-export function ServerPanel({ report }: { report: (e: unknown) => void }) {
-  const [system, setSystem] = useState<{
-      version: string;
-      sqlite_version: string;
-      free_bytes: number;
-      chrome_available: boolean;
-      health: { running: boolean; error_code: string | null };
-      stage_counts: Record<string, unknown>;
-      runtime: { chrome_mode: string; local_stt_device: string };
-    } | null>(null),
-    [update, setUpdate] = useState<{
-      status: string;
-      latest?: string;
-      newer?: boolean;
-      url?: string;
-    } | null>(null),
-    [busy, setBusy] = useState(false);
-  async function load() {
-    try {
-      setSystem(await api("/system"));
-    } catch (e) {
-      report(e);
-    }
-  }
-  useEffect(() => {
-    void load();
-  }, []);
-  async function check() {
-    setBusy(true);
-    try {
-      setUpdate(
-        await api("/system/update-check", { method: "POST", body: "{}" }),
-      );
-    } catch (e) {
-      report(e);
-    } finally {
-      setBusy(false);
-    }
-  }
-  return (
-    <details className="panel server-panel">
-      <summary>서버 진단·버전·업데이트</summary>
-      <div className="diagnostic-grid">
-        <div>
-          <h3>실행 상태</h3>
-          <p>
-            버전 {system?.version ?? "확인 중"} · SQLite{" "}
-            {system?.sqlite_version ?? "—"}
-          </p>
-          <p>
-            작업 서비스 {system?.health.running ? "실행 중" : "확인 필요"} ·
-            Chrome {system?.chrome_available ? "사용 가능" : "경로 확인 필요"}
-          </p>
-          <p>
-            여유 공간{" "}
-            {system ? (system.free_bytes / 1024 ** 3).toFixed(1) + " GiB" : "—"}
-          </p>
-          <button className="quiet" onClick={() => void load()}>
-            진단 새로고침
-          </button>
-        </div>
-        <div>
-          <h3>서버 실행·저장</h3>
-          <p>
-            시스템 Chrome · {system?.runtime.chrome_mode ?? "확인 중"} / 로컬
-            STT · {system?.runtime.local_stt_device ?? "CPU 기본"}
-          </p>
-          <p>
-            데이터와 모델은 별도 서버 볼륨에 저장합니다. 기기 폴더 열기는 결과
-            다운로드로 제공합니다.
-          </p>
-          <p>
-            Chrome 경로·화면 모드는 서버 실행 설정입니다. 접속 기기 경로를
-            사용하지 않습니다.
-          </p>
-        </div>
-        <div>
-          <h3>업데이트 안내</h3>
-          <button
-            className="secondary"
-            disabled={busy}
-            onClick={() => void check()}
-          >
-            {busy ? "확인 중…" : "최신 릴리즈 확인"}
-          </button>
-          {update && (
-            <p role="status">
-              {update.status === "unavailable"
-                ? "릴리즈를 확인하지 못했습니다. 나중에 다시 확인해 주세요."
-                : update.newer
-                  ? `새 버전 ${update.latest}`
-                  : `최신 확인: ${update.latest}`}
-              {update.url && (
-                <>
-                  {" "}
-                  ·{" "}
-                  <a href={update.url} target="_blank" rel="noreferrer">
-                    릴리즈 보기 ↗
-                  </a>
-                </>
-              )}
-            </p>
-          )}
-          <p>데이터·모델 볼륨을 백업한 뒤 서버에서 실행하세요.</p>
-          <code>docker compose up -d --build</code>
-          <p>화면에서 앱을 자동 교체하지 않습니다.</p>
-        </div>
-      </div>
-    </details>
   );
 }

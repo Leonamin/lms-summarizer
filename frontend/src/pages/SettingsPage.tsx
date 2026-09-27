@@ -1,15 +1,18 @@
 import { useEffect, useState } from "react";
-import { api } from "./api";
-import type { Settings, SettingsResponse } from "./types";
+import { api } from "../api";
+import type { Settings, SettingsResponse } from "../types";
+import { SecretField } from "../components/SecretField";
+
 type Model = { id: string; label: string };
 type Provider = { default_model: string; models: Model[] };
-export type Catalog = {
+type Catalog = {
   summary: Record<string, Provider>;
   stt: Record<string, Provider>;
   summary_modes: Record<string, string>;
   subject_categories: string[];
   default_prompt: string;
 };
+
 const summaryLabels: Record<string, string> = {
   clipboard: "챗봇에서 직접 요약",
   gemini: "Gemini API",
@@ -24,94 +27,8 @@ const sttLabels: Record<string, string> = {
   "openai-compatible": "OpenAI 호환 STT",
   returnzero: "ReturnZero",
 };
-function SecretField({
-  name,
-  label,
-  settings,
-  onChange,
-  report,
-  disabled,
-  onBusy,
-}: {
-  name: string;
-  label: string;
-  settings: SettingsResponse;
-  onChange: (s: SettingsResponse) => void;
-  report: (e: unknown) => void;
-  disabled: boolean;
-  onBusy: (busy: boolean) => void;
-}) {
-  const [value, setValue] = useState(""),
-    [busy, setBusy] = useState(false),
-    [show, setShow] = useState(false);
-  useEffect(() => {
-    setValue("");
-    setShow(false);
-  }, [name]);
-  async function change(remove = false) {
-    setBusy(true);
-    onBusy(true);
-    try {
-      await api("/secrets/" + encodeURIComponent(name), {
-        method: remove ? "DELETE" : "PUT",
-        ...(remove ? {} : { body: JSON.stringify({ value }) }),
-      });
-      setValue("");
-      onChange(await api<SettingsResponse>("/settings"));
-    } catch (e) {
-      report(e);
-    } finally {
-      setBusy(false);
-      onBusy(false);
-    }
-  }
-  return (
-    <div className="secret-field">
-      <label>
-        {label}{" "}
-        <span className="muted">
-          {settings.secrets[name]?.configured
-            ? "저장됨 · 입력하면 교체"
-            : "미설정"}
-        </span>
-        <input
-          type={show ? "text" : "password"}
-          autoComplete="new-password"
-          value={value}
-          disabled={disabled || busy}
-          onChange={(e) => setValue(e.target.value)}
-        />
-      </label>
-      <div className="secret-actions">
-        <label className="check">
-          <input
-            type="checkbox"
-            checked={show}
-            onChange={(e) => setShow(e.target.checked)}
-          />
-          입력 값 보기
-        </label>
-        <button
-          type="button"
-          className="quiet"
-          disabled={disabled || busy || !value.trim()}
-          onClick={() => void change()}
-        >
-          저장·교체
-        </button>
-        <button
-          type="button"
-          className="quiet danger"
-          disabled={disabled || busy || !settings.secrets[name]?.configured}
-          onClick={() => void change(true)}
-        >
-          삭제
-        </button>
-      </div>
-    </div>
-  );
-}
-export function SettingsEditor({
+
+export function SettingsPage({
   draft,
   setDraft,
   settings,
@@ -121,16 +38,16 @@ export function SettingsEditor({
   report,
 }: {
   draft: Settings;
-  setDraft: (s: Settings) => void;
+  setDraft: (settings: Settings) => void;
   settings: SettingsResponse;
-  onSecrets: (s: SettingsResponse) => void;
+  onSecrets: (settings: SettingsResponse) => void;
   save: () => void;
   saving: boolean;
-  report: (e: unknown) => void;
+  report: (cause: unknown) => void;
 }) {
   const [secretBusy, setSecretBusy] = useState(0);
-  const [catalog, setCatalog] = useState<Catalog | null>(null),
-    [preview, setPreview] = useState("");
+  const [catalog, setCatalog] = useState<Catalog | null>(null);
+  const [preview, setPreview] = useState("");
   useEffect(() => {
     api<Catalog>("/catalog").then(setCatalog).catch(report);
   }, []);
@@ -147,7 +64,7 @@ export function SettingsEditor({
           method: "POST",
           body: JSON.stringify(draft),
         })
-          .then((r) => active && setPreview(r.text))
+          .then((result) => active && setPreview(result.text))
           .catch(() => {}),
       250,
     );
@@ -165,14 +82,16 @@ export function SettingsEditor({
       onChange={onSecrets}
       report={report}
       disabled={saving}
-      onBusy={(busy) => setSecretBusy((n) => n + (busy ? 1 : -1))}
+      onBusy={(busy) => setSecretBusy((count) => count + (busy ? 1 : -1))}
     />
   );
+
   return (
     <section className="settings-sheet panel">
       <div className="section-heading">
-        <span className="eyebrow">PREFERENCES</span>
-        <h2>어떻게 처리할까요?</h2>
+        <div>
+          <h2>어떻게 처리할까요?</h2>
+        </div>
       </div>
       <fieldset disabled={saving}>
         <legend>LMS 계정</legend>
@@ -186,7 +105,7 @@ export function SettingsEditor({
             <input
               value={draft.student_id}
               autoComplete="off"
-              onChange={(e) => change("student_id", e.target.value)}
+              onChange={(event) => change("student_id", event.target.value)}
             />
           </label>
           {secret("lms_password", "LMS 비밀번호")}
@@ -199,18 +118,18 @@ export function SettingsEditor({
             요약 방식
             <select
               value={draft.ai_engine}
-              onChange={(e) =>
+              onChange={(event) =>
                 setDraft({
                   ...draft,
-                  ai_engine: e.target.value,
+                  ai_engine: event.target.value,
                   ai_model:
-                    catalog?.summary[e.target.value]?.default_model ?? "",
+                    catalog?.summary[event.target.value]?.default_model ?? "",
                 })
               }
             >
-              {Object.entries(summaryLabels).map(([v, l]) => (
-                <option key={v} value={v}>
-                  {l}
+              {Object.entries(summaryLabels).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
                 </option>
               ))}
             </select>
@@ -220,13 +139,13 @@ export function SettingsEditor({
             <input
               list="summary-models"
               value={draft.ai_model}
-              onChange={(e) => change("ai_model", e.target.value)}
+              onChange={(event) => change("ai_model", event.target.value)}
               placeholder="목록에서 선택하거나 모델 ID 입력"
             />
             <datalist id="summary-models">
-              {catalog?.summary[draft.ai_engine]?.models.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.label}
+              {catalog?.summary[draft.ai_engine]?.models.map((model) => (
+                <option key={model.id} value={model.id}>
+                  {model.label}
                 </option>
               ))}
             </datalist>
@@ -240,7 +159,7 @@ export function SettingsEditor({
                 type="url"
                 value={draft.base_url}
                 placeholder="https://…/v1"
-                onChange={(e) => change("base_url", e.target.value)}
+                onChange={(event) => change("base_url", event.target.value)}
               />
               <small>키 없이 사용하는 서버도 지원합니다.</small>
             </label>
@@ -254,17 +173,17 @@ export function SettingsEditor({
             음성 인식 방식
             <select
               value={draft.stt_engine}
-              onChange={(e) =>
+              onChange={(event) =>
                 setDraft({
                   ...draft,
-                  stt_engine: e.target.value,
-                  stt_model: catalog?.stt[e.target.value]?.default_model ?? "",
+                  stt_engine: event.target.value,
+                  stt_model: catalog?.stt[event.target.value]?.default_model ?? "",
                 })
               }
             >
-              {Object.entries(sttLabels).map(([v, l]) => (
-                <option key={v} value={v}>
-                  {l}
+              {Object.entries(sttLabels).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
                 </option>
               ))}
             </select>
@@ -279,19 +198,19 @@ export function SettingsEditor({
                     ? draft.stt_compatible_model
                     : draft.stt_model
                 }
-                onChange={(e) =>
+                onChange={(event) =>
                   change(
                     draft.stt_engine === "openai-compatible"
                       ? "stt_compatible_model"
                       : "stt_model",
-                    e.target.value,
+                    event.target.value,
                   )
                 }
               />
               <datalist id="stt-models">
-                {catalog?.stt[draft.stt_engine]?.models.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.label}
+                {catalog?.stt[draft.stt_engine]?.models.map((model) => (
+                  <option key={model.id} value={model.id}>
+                    {model.label}
                   </option>
                 ))}
               </datalist>
@@ -305,7 +224,7 @@ export function SettingsEditor({
               <input
                 type="url"
                 value={draft.stt_base_url}
-                onChange={(e) => change("stt_base_url", e.target.value)}
+                onChange={(event) => change("stt_base_url", event.target.value)}
                 placeholder="http://서버:포트/v1"
               />
             </label>
@@ -326,10 +245,10 @@ export function SettingsEditor({
                   장치
                   <select
                     value={String(draft.stt_params.device ?? "cpu")}
-                    onChange={(e) => param("device", e.target.value)}
+                    onChange={(event) => param("device", event.target.value)}
                   >
-                    {["cpu", "auto", "cuda"].map((v) => (
-                      <option key={v}>{v}</option>
+                    {["cpu", "auto", "cuda"].map((value) => (
+                      <option key={value}>{value}</option>
                     ))}
                   </select>
                   <small>
@@ -341,11 +260,13 @@ export function SettingsEditor({
                   연산 정밀도
                   <select
                     value={String(draft.stt_params.compute_type ?? "int8")}
-                    onChange={(e) => param("compute_type", e.target.value)}
+                    onChange={(event) =>
+                      param("compute_type", event.target.value)
+                    }
                   >
                     {["auto", "int8", "float16", "float32", "int8_float16"].map(
-                      (v) => (
-                        <option key={v}>{v}</option>
+                      (value) => (
+                        <option key={value}>{value}</option>
                       ),
                     )}
                   </select>
@@ -354,7 +275,7 @@ export function SettingsEditor({
                   언어 코드
                   <input
                     value={String(draft.stt_params.language ?? "ko")}
-                    onChange={(e) => param("language", e.target.value)}
+                    onChange={(event) => param("language", event.target.value)}
                     placeholder="ko / en"
                   />
                 </label>
@@ -365,14 +286,18 @@ export function SettingsEditor({
                     value={String(
                       draft.stt_params.initial_prompt ?? "한국어 강의입니다.",
                     )}
-                    onChange={(e) => param("initial_prompt", e.target.value)}
+                    onChange={(event) =>
+                      param("initial_prompt", event.target.value)
+                    }
                   />
                 </label>
                 <label className="check">
                   <input
                     type="checkbox"
                     checked={Boolean(draft.stt_params.vad_filter ?? true)}
-                    onChange={(e) => param("vad_filter", e.target.checked)}
+                    onChange={(event) =>
+                      param("vad_filter", event.target.checked)
+                    }
                   />
                   무음 구간 감지 (VAD)
                 </label>
@@ -385,8 +310,8 @@ export function SettingsEditor({
                 min={1}
                 max={100}
                 value={Number(draft.stt_params.repeat_threshold ?? 4)}
-                onChange={(e) =>
-                  param("repeat_threshold", Number(e.target.value))
+                onChange={(event) =>
+                  param("repeat_threshold", Number(event.target.value))
                 }
               />
             </label>
@@ -400,7 +325,7 @@ export function SettingsEditor({
             프롬프트 방식
             <select
               value={draft.prompt_mode}
-              onChange={(e) => change("prompt_mode", e.target.value)}
+              onChange={(event) => change("prompt_mode", event.target.value)}
             >
               <option value="structured">기본 강의 요약</option>
               <option value="custom">직접 작성</option>
@@ -412,7 +337,7 @@ export function SettingsEditor({
                 요약 모드
                 <select
                   value={draft.summary_mode}
-                  onChange={(e) => change("summary_mode", e.target.value)}
+                  onChange={(event) => change("summary_mode", event.target.value)}
                 >
                   {Object.entries(
                     catalog?.summary_modes ?? {
@@ -420,9 +345,9 @@ export function SettingsEditor({
                       normal: "일반 요약",
                       detailed: "상세 요약",
                     },
-                  ).map(([v, l]) => (
-                    <option key={v} value={v}>
-                      {l}
+                  ).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
                     </option>
                   ))}
                 </select>
@@ -431,10 +356,12 @@ export function SettingsEditor({
                 과목 분야
                 <select
                   value={draft.subject_category}
-                  onChange={(e) => change("subject_category", e.target.value)}
+                  onChange={(event) =>
+                    change("subject_category", event.target.value)
+                  }
                 >
-                  {(catalog?.subject_categories ?? ["자동 감지"]).map((v) => (
-                    <option key={v}>{v}</option>
+                  {(catalog?.subject_categories ?? ["자동 감지"]).map((value) => (
+                    <option key={value}>{value}</option>
                   ))}
                 </select>
               </label>
@@ -442,7 +369,9 @@ export function SettingsEditor({
                 과목명·분야 직접 입력
                 <input
                   value={draft.subject_custom}
-                  onChange={(e) => change("subject_custom", e.target.value)}
+                  onChange={(event) =>
+                    change("subject_custom", event.target.value)
+                  }
                   placeholder="직접 입력이 선택 분야보다 우선합니다."
                 />
               </label>
@@ -455,13 +384,13 @@ export function SettingsEditor({
             <textarea
               rows={8}
               value={draft.custom_prompt}
-              onChange={(e) => change("custom_prompt", e.target.value)}
+              onChange={(event) => change("custom_prompt", event.target.value)}
             />
           </label>
         )}
         <button
           type="button"
-          className="quiet"
+          className="ghost"
           onClick={() =>
             setDraft({
               ...draft,
@@ -483,41 +412,41 @@ export function SettingsEditor({
         </details>
       </fieldset>
       <fieldset disabled={saving}>
-        <legend>실행·보관</legend>
-        <label>
-          공급자 요청 제한 시간 (초)
-          <input
-            type="number"
-            min={5}
-            max={1800}
-            value={draft.request_timeout ?? 120}
-            onChange={(e) => change("request_timeout", Number(e.target.value))}
-          />
-        </label>
-        <label className="check">
-          <input
-            type="checkbox"
-            checked={draft.keep_source}
-            onChange={(e) => change("keep_source", e.target.checked)}
-          />
-          처리 후 서버 원본 보관
-        </label>
+        <legend>실행 · 보관</legend>
+        <div className="settings-grid">
+          <label>
+            공급자 요청 제한 시간 (초)
+            <input
+              type="number"
+              min={5}
+              max={1800}
+              value={draft.request_timeout ?? 120}
+              onChange={(event) =>
+                change("request_timeout", Number(event.target.value))
+              }
+            />
+          </label>
+          <label className="check">
+            <input
+              type="checkbox"
+              checked={draft.keep_source}
+              onChange={(event) => change("keep_source", event.target.checked)}
+            />
+            처리 후 서버 원본 보관
+          </label>
+        </div>
         <p className="muted">
-          실패·취소·중단 입력은 재시도용으로 보존합니다. 원문·요약·프롬프트와
-          작업 이력은 자동 삭제하지 않습니다. 파일은 서버 볼륨에 저장하며 이
-          기기로 다운로드할 수 있습니다.
+          실패·취소·중단 입력은 재시도용으로 보존합니다. 원문·요약·프롬프트와 작업
+          이력은 자동 삭제하지 않습니다. 파일은 서버 볼륨에 저장하며 이 기기로
+          다운로드할 수 있습니다.
         </p>
       </fieldset>
       <div className="form-footer">
         <p>
-          자격 증명은 개별 저장·교체합니다. 나머지 변경은 설정 저장 후 새
-          작업부터 적용됩니다.
+          자격 증명은 개별 저장·교체합니다. 나머지 변경은 설정 저장 후 새 작업부터
+          적용됩니다.
         </p>
-        <button
-          className="primary"
-          disabled={saving || secretBusy > 0}
-          onClick={save}
-        >
+        <button className="primary" disabled={saving || secretBusy > 0} onClick={save}>
           {saving ? "저장 중…" : "설정 저장"}
         </button>
       </div>
