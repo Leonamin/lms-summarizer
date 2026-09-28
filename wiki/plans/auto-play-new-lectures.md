@@ -110,9 +110,14 @@ okf_version: "0.1"
 
 **남음:** 자동 재생(출석) 워커와 팝업 유형별 처리·3회 반복 일시중지, 재생 시간 기준, CDP 락 순서 확정, 실제 LMS 확인.
 
+**선행 조사 (2026-09-28):** 실제 LMS로 재생 시작·인트로·팝업 DOM을 확인했다. 재생은
+`.vc-front-screen-play-btn`(내부 commons 프레임) → 인트로(`intro.mp4`, 약 5초) → 실제 미디어 순이며,
+이어보기·"재생 중" 팝업은 모두 `.confirm-msg-box`이고 `.confirm-msg-text` 내용으로 구분한다.
+자세한 선택자·문구는 [DOM 조사 로그](../logs/2026-09-28-autoplay-dom-investigation.md)에 기록했다.
+
 ## 남은 조사 (구현 시 코드·실제 LMS로 확정)
 
-- [ ] 이어보기/"재생 중" 팝업의 실제 DOM 선택자와 HTML 파싱 가능 여부
+- [x] 이어보기/"재생 중" 팝업의 실제 DOM 선택자와 HTML 파싱 가능 여부 — [DOM 조사](../logs/2026-09-28-autoplay-dom-investigation.md): 두 팝업 모두 `.confirm-msg-box`(`.confirm-msg-text`+`.confirm-ok-btn`/`.confirm-cancel-btn`)이고 텍스트로 구분
 - [x] 감지 주기 기본값(30분)과 설정 노출 방식 — 설정 필드·설정 화면으로 구현(슬라이스 1)
 - [ ] 감지·재생·다운로드의 Chrome/CDP 락 순서
 - [ ] 출석 인정을 위한 재생 시간 기준(끝까지/일부)

@@ -12,6 +12,8 @@ okf_version: "0.1"
 
 ## 로그
 
+- [2026-09-28-autoplay-dom-investigation.md](2026-09-28-autoplay-dom-investigation.md) — 실제 LMS 재생 시작·인트로·이어보기/재생 중 팝업 DOM 선택자와 텍스트 구분 확인
+
 - [2026-09-27-core-web-stage8-planning.md](2026-09-27-core-web-stage8-planning.md) — 8단계 개선 작업(타이포그래피·UX/UI, 신규 강의 감지·자동 재생·자동 저장) 계획·ADR 추가
 
 - [2026-09-27-core-web-stage7.md](2026-09-27-core-web-stage7.md) — Ubuntu 26.04 대상 호스트의 실제 LMS 전체 처리·CPU 추론·취소/복구·백업/복원·LAN/Tailscale·운영 문서
