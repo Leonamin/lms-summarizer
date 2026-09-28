@@ -86,15 +86,15 @@ CONFIRM_JS = """
 PROGRESS_JS = """
 () => {
   const pick = (el) => {
-    if (!el) return null;
     const src = el.currentSrc || el.src || '';
     const intro = /intro\\.mp4|preloader\\.mp4/.test(src) || (el.duration && el.duration < 6);
-    return { t: el.currentTime, dur: el.duration || 0, paused: el.paused, intro: intro };
+    return { t: el.currentTime, dur: el.duration || 0, paused: el.paused, intro: !!intro };
   };
-  const video = pick(document.querySelector('video.vc-vplay-video1') || document.querySelector('video'));
-  const audio = pick(document.querySelector('audio.vc-sdaudio-audio'));
-  if (audio && audio.dur && !audio.intro) return audio;
-  return video;
+  const all = [...document.querySelectorAll('video'), ...document.querySelectorAll('audio')]
+    .map(pick).filter((s) => s.dur > 0);
+  const real = all.filter((s) => !s.intro).sort((a, b) => b.dur - a.dur);
+  if (real.length) return real[0];
+  return all.sort((a, b) => b.dur - a.dur)[0] || null;
 }
 """
 
@@ -139,7 +139,6 @@ async def execute_playback(command) -> StageResult:
                 return StageResult(command.token, kind='playback',
                                    error_code='playback_failed',
                                    data={'reason': 'no_player'})
-            outer = page.frame(name='tool_content')
 
             async def click_play():
                 await video.evaluate(_click_js(FRONT_PLAY))
@@ -167,9 +166,18 @@ async def execute_playback(command) -> StageResult:
 
             async def reload_page():
                 await page.goto(url, wait_until='networkidle')
+                await asyncio.sleep(3)
 
-            attendance = await verify_attendance(
-                lambda: attendance_state(outer), lambda: click_refresh(outer), reload_page)
+            # Re-acquire the outer LTI frame each time: page.reload detaches it.
+            async def read_attendance():
+                frame = page.frame(name='tool_content')
+                return await attendance_state(frame) if frame else None
+
+            async def refresh_attendance():
+                frame = page.frame(name='tool_content')
+                return await click_refresh(frame) if frame else False
+
+            attendance = await verify_attendance(read_attendance, refresh_attendance, reload_page)
             data['attended'] = attendance['attended']
             if not attendance['attended']:
                 return StageResult(command.token, kind='playback', error_code='attendance_pending', data=data)
