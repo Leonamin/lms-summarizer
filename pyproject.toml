@@ -8,20 +8,24 @@ requires-python = ">=3.11,<3.13"
 dependencies = [
     "openai>=1.84.0",
     "playwright>=1.52.0",
-    "pyperclip>=1.9.0",
-    "flet[all]==0.81.0",
     "python-dotenv>=1.1.0",
     "requests>=2.32.3",
+    "httpx>=0.27.0",
+    "psutil>=6.0.0",
     "av>=13.0.0",
     "anthropic>=0.84.0",
     "google-genai>=1.66.0",
     "faster-whisper>=1.1.0",
-    "nvidia-cublas-cu12>=12.9.2.10",
-    "nvidia-cuda-runtime-cu12>=12.9.79",
 ]
 
+[project.optional-dependencies]
+desktop = ["flet[all]==0.81.0", "pyperclip>=1.9.0"]
+web = ["fastapi>=0.115.0", "uvicorn>=0.34.0"]
+cuda = ["nvidia-cublas-cu12>=12.9.2.10", "nvidia-cuda-runtime-cu12>=12.9.79"]
+
 [project.scripts]
-lms-summarizer = "src.gui.main:main"
+lms-summarizer = "src.desktop.main:main"
+lms-summarizer-core = "src.core.__main__:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src"]

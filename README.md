@@ -113,8 +113,8 @@ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | ie
 ```bash
 git clone https://github.com/Leonamin/lms-summarizer.git
 cd lms-summarizer
-uv sync
-uv run python src/gui/main.py
+uv sync --extra desktop
+uv run --extra desktop python src/gui/main.py
 ```
 
 </details>
@@ -320,7 +320,7 @@ GitHub Actions(`release.yml`)가 `v*` 태그 push 시 macOS/Windows 빌드를 �
 로컬에서 직접 빌드하려면:
 
 ```bash
-uv run pyinstaller lms-summarizer.spec
+uv run --extra desktop pyinstaller lms-summarizer.spec
 ```
 
 ### 커밋 메시지 규칙
@@ -349,3 +349,234 @@ docs: 문서      |  style: 스타일   |  test: 테스트
 이 프로젝트는 [MIT License](LICENSE)에 따라 배포됩니다.
 
 본 프로젝트는 개인 학습 보조 목적으로 제작되었습니다. LMS 서비스 약관을 준수하여 사용하시기 바랍니다.
+
+### 공통 코어와 실행 환경
+
+공통 모델·프롬프트·검증·저장 경계는 `src/core`, 설치형 호환 입력·저장·OS 동작은
+`src/desktop`, 웹 전송 경계는 `src/web`에 있습니다. 기존 GUI import 경로는 호환용으로 유지합니다.
+
+- 설치형: `uv sync --extra desktop`, `uv run --extra desktop lms-summarizer`
+- Windows CUDA 설치형: `uv sync --extra desktop --extra cuda`
+- 코어 진단: `uv run lms-summarizer-core`
+- 웹 의존성: `uv sync --extra web` (웹 서버/API는 후속 단계에서 구현)
+- 코어 검증: `uv run python -m unittest discover -s tests -v`
+
+파이프라인은 출력 경로와 실행 설정·자격 증명을 명시적으로 받습니다.
+`output_dir` 생성자 인자 또는 기존 `downloads_dir` 속성으로 출력 경로를 전달할 수 있습니다.
+설치형 `settings.json`의 설정·과목 캐시·이력 구조와 기존 결과 경로는 유지합니다.
+웹 저장 경로는 별도로 전달하며 설치형 데이터를 자동으로 가져오지 않습니다.
+
+### 영속 작업 서비스 (3단계)
+
+`src.core.services.jobs.JobService`는 앱 수명 동안 한 번 생성·시작하고 종료 시 `close()`합니다.
+데이터 디렉토리에 SQLite와 관리 입력·산출물을 저장하며, 같은 디렉토리의 중복 supervisor 실행은 차단합니다.
+설치형 화면은 공통 서비스를 직접 호출하고, 웹 서버는 FastAPI 수명에 연결한 공통 서비스를 HTTP/SSE로 제공합니다.
+
+- `import_file(context, path)`: 사용자 원본을 보존하고 관리 입력의 파일 ID 반환
+- `submit(context, sources, revision, idempotency_key=...)`: 고정 설정으로 작업 제출
+- `detail`, `list_jobs`, `stage_counts`, `artifact_path`: 소유자별 작업·단계·산출물 조회
+- `cancel`, `cancel_all`, `retry`: 대상 시도 확인, 취소, 원래 설정·입력으로 새 시도 생성
+- `events_since`, `subscribe`: 영속 이벤트 조회·구독; 구독 해제는 작업 취소와 무관
+- `secret_usage`, `delete_secret`: 참조 중 비밀 버전 보호 및 명시적 폐기의 영향 작업 조회
+
+네 단계는 각 한 개의 상주 spawn 프로세스를 사용하고 서로 다른 작업을 동시에 처리합니다.
+강제 취소는 프로세스 트리와 IPC를 회수한 후 슬롯을 교체합니다. 재시작 시 대기 작업은 복원하고,
+실행 중 시도는 `interrupted`로 기록합니다. 실패·취소·중단 작업은 자동 재시도하지 않습니다.
+
+서비스 기본값은 활성 작업 200개, 제출 50개, 입력 4 GiB, 디스크 여유 2 GiB,
+취소 유예 5초, 종료 유예 10초, 단계 제한 30분입니다. 생성자에서 조정할 수 있습니다.
+모델 캐시는 `models_dir`로 전달하며 기본값은 데이터 디렉토리 아래 `models/`입니다.
+공급자 요청은 연결 10초·요청 120초 기본값이며 SDK 자동 재시도를 끕니다.
+기존 다운로드 무결성 재시도는 유지합니다. 취소는 이미 전송된 외부 요청·비용을 되돌리지 못합니다.
+
+성공 후 `keep_source` 설정을 적용하고 중간 오디오를 정리합니다. 실패·취소·중단의 관리 입력과
+다른 작업이 참조하는 입력은 보존합니다. 원문·요약·수동 프롬프트·이력은 자동 삭제하지 않습니다.
+사용하지 않은 관리 입력은 기본 24시간, 이벤트·로그는 7일·10만 행 한도로 정리합니다.
+
+검증: `uv run --extra desktop --extra web python -m unittest discover -s tests -v`.
+실제 LMS·유료 공급자·로컬 Whisper 추론과 OS별 실행 검증은 후속 단계에서 별도로 진행합니다.
+
+
+## Docker 웹 작업실 (5–7단계)
+
+설치형과 별도 데이터로 실행하는 개인용 웹 화면입니다. 현재 파일 업로드, 단계별 처리, 개별·전체 취소,
+재시도, 시도 이력, STT 원문·요약·프롬프트 열람/다운로드를 지원합니다. 화면을 닫거나 새로고침해도
+작업은 서버에서 계속됩니다. LMS 과목·주차 조회와 URL 입력, 전체 공급자의 상세 설정, 프롬프트
+미리보기와 작업 로그·서버 진단을 제공합니다. 실제 LMS 강의의 다운로드→로컬 Whisper 추론→Gemini
+요약 전체 흐름과 취소·재시작 복구·백업/복원·LAN/Tailscale 접속을 대상 환경에서 확인했습니다.
+설치형 macOS/Windows 검증은 별도 잔여 항목입니다.
+
+요약 공급자가 일시적으로 과부하(예: Gemini 503)면 단계가 실패로 기록됩니다. 첫 버전은 완료 단계를
+자동 재사용하지 않으므로 재시도 시 원래 입력 단계부터(다운로드·STT 포함) 다시 실행합니다.
+
+```bash
+docker compose up -d --build
+```
+
+브라우저에서 `http://127.0.0.1:8200`을 엽니다. 운영 기본 포트는 **8200**이며 개발 기본값 8000과 분리합니다. 초기 요약 방식은 API 키가 필요 없는 챗봇 프롬프트 준비입니다.
+`처리 설정`에서 요약 API 방식·모델·키를 저장하면 자동 요약을 사용할 수 있습니다.
+MP4/TS는 오디오 변환부터, WAV/MP3는 음성 인식부터, UTF-8 TXT는 요약부터 처리합니다.
+TXT만 선택한 작업에서 마지막 단계를 음성 인식/변환으로 지정하면 입력 오류로 표시됩니다.
+로컬 음성 인식은 CPU faster-whisper이며 첫 실행 때 모델을 다운로드해 `/models`에 보관합니다.
+
+### LMS·공급자 설정
+
+`처리 설정`에서 학번과 LMS 비밀번호를 각각 저장한 뒤 `과목·주차`의 과목 새로고침을 누릅니다.
+과목을 선택하고 강의 새로고침을 실행하면 주차별 영상·시간·출석 상태가 표시됩니다.
+예정 강의·비영상은 선택할 수 없습니다. 과목/강의 캐시는 계정과 비밀번호 버전별로 분리하고
+24시간 후 만료합니다. 조회는 다운로드 워커에서 다운로드 사이에 실행하며 브라우저를 동시에 조작하지 않습니다.
+조회 실행 중 서버가 종료되면 중단으로 기록하고, 대기 조회는 재기동 후 이어서 실행합니다.
+`URL 입력`에는 여러 Canvas LMS 강의 URL을 한 줄에 하나씩 넣고 종료 단계를 선택합니다.
+
+요약은 Gemini/OpenAI/Claude/Grok/OpenAI 호환과 수동 챗봇을, 음성 인식은 faster-whisper,
+OpenAI Whisper/OpenAI 호환/ReturnZero를 선택할 수 있습니다. 모델은 기존 앱 목록에서 선택하거나
+모델 ID를 직접 입력합니다. 호환 공급자는 주소·모델·선택적 키를, ReturnZero는 Client ID와 Client Secret을
+각각 설정합니다. 비밀 값은 다시 조회하지 않으며 입력한 값만 보기·교체할 수 있습니다.
+기존 작업이나 대기/실행 조회가 사용하는 비밀 버전은 삭제하지 못합니다.
+
+STT 장치·정밀도·언어·인식 힌트·VAD·반복 제거, 공급자 요청 제한 시간, 요약 모드·분야·직접 과목명과
+사용자 프롬프트를 설정합니다. 프롬프트 미리보기는 서버의 공통 생성기를 사용합니다.
+설정 저장은 새 작업부터 적용하며 이미 제출한 작업·재시도는 원래 설정과 비밀 버전을 유지합니다.
+서버 진단 패널에서 버전·Chrome·용량·작업 서비스 상태와 릴리즈를 확인할 수 있습니다.
+
+### Chrome 진단
+
+기본은 시스템 Chrome headless입니다. 화면 모드 비교가 필요하면 다음과 같이 Xvfb를 사용합니다.
+
+```bash
+LMS_CHROME_HEADLESS=false docker compose up -d --force-recreate
+```
+
+자동 재생(출석)은 서버가 **Xvfb로 headed** 실행하며, 다운로드·조회의 headless 설정
+(`LMS_CHROME_HEADLESS`)과 무관하게 동작합니다. 이미지에 Xvfb가 포함되어 있고 서버 종료 때 정리합니다.
+
+Docker 이미지에는 Xvfb가 포함되며 서버 종료 때 정리합니다. `LMS_CHROME_PATH`는 **서버 내부** Chrome
+경로입니다. 접속 기기의 경로로 지정하지 않습니다. 기존 작업은 원래 Chrome 실행 설정도 유지하므로
+변경한 진단 설정을 적용하려면 새 조회/작업을 제출합니다. 기본 Docker 구성은 CPU이며 CUDA 선택만으로
+GPU를 사용할 수 있는 것은 아닙니다. GPU 장치 전달과 런타임 확인은 대상 호스트 운영 검증 항목입니다.
+
+### LAN 접속
+
+LAN 접속은 허용할 서버 주소를 명시해서 실행합니다. 로그인 없는 개인 모드이며 외부 공개용이 아닙니다.
+
+```bash
+LMS_BIND_ADDRESS=0.0.0.0 LMS_WEB_PORT=8200 LMS_ALLOWED_HOSTS=localhost,127.0.0.1,192.168.0.10 docker compose up -d
+```
+
+운영 기본 호스트 포트는 8200이며 `LMS_WEB_PORT`로 변경할 수 있습니다. 컨테이너 내부 포트도 8200입니다
+(개발용 8000은 `python -m src.web`과 Vite 프록시에만 사용). 동일 origin만 허용하며 별도 프런트엔드 origin이 필요하면
+`LMS_ALLOWED_ORIGINS`에 명시합니다. 무제한 CORS는 사용하지 않습니다.
+
+- `web-data:/data`: SQLite 작업·시도·산출물, 업로드 상태, 웹 설정·비밀 버전. 설치형 설정을 자동으로 가져오지 않습니다.
+- `web-models:/models`: 음성 인식 모델 캐시.
+- 서버는 한 프로세스와 네 단계 워커를 소유합니다. Uvicorn workers/서비스 replica를 늘리지 않습니다.
+- 파일 4 GiB, TXT 16 MiB, 한 번에 50개, 활성 작업 200개가 기본 한도입니다. 열람은 2 MiB까지이며 큰 텍스트는 다운로드합니다.
+- 미사용 업로드는 24시간 후 정리합니다. 실패·취소·중단 입력은 재시도용으로 남기고 원문·요약·프롬프트는 자동 삭제하지 않습니다.
+- LAN HTTP에서 자동 복사가 불가능하면 원문을 전체 선택하므로 기기의 복사 기능을 사용할 수 있습니다.
+
+```bash
+docker compose logs -f web
+docker compose down                 # 데이터·모델 볼륨 유지
+docker compose up -d --build         # 컨테이너 교체 후 기존 작업·결과 복원
+```
+
+실행 중 작업은 서버 종료/재시작 후 `중단`으로 기록하고, 대기 작업은 자동 재개합니다. 중단 작업은
+사용자가 재시도하며 원래 설정·비밀 버전을 유지합니다. `down -v`는 데이터·모델 볼륨을 삭제하므로
+일반 중지에 사용하지 않습니다.
+
+로컬 개발:
+
+```bash
+uv sync --extra web
+npm ci --prefix frontend
+npm run build --prefix frontend
+uv run --extra web python -m src.web
+```
+
+프런트엔드 개발 서버는 `npm run dev --prefix frontend`이며 `/api`를 localhost:8000으로 전달합니다.
+개발 서버 접속에 사용할 origin은 백엔드 `LMS_ALLOWED_ORIGINS`에 명시합니다.
+기본 데이터는 `.local/web-data`, 모델은 `.local/web-models`이며 환경 변수 `LMS_DATA_DIR`,
+`LMS_MODELS_DIR`, `LMS_STATIC_DIR`, `LMS_PORT`로 변경할 수 있습니다.
+
+## 운영 가이드 (7단계)
+
+인증 없는 개인용 단일 서버 운영을 기준으로 한다. 운영 기본 포트는 **8200**이며, 개발용 3000·8000은
+`python -m src.web`과 Vite 프런트엔드에만 사용한다. 설정 값은 저장소 루트의 `.env`(gitignore)에 두고
+`.env.example`을 복사해 쓴다. `docker compose`의 project 이름은 저장소 디렉토리 이름을 따르며 아래
+볼륨 이름은 기본값 `lms-summarizer_web-data`, `lms-summarizer_web-models`다.
+
+### 설치·시작
+
+```bash
+cp .env.example .env      # 주소·포트·허용 Host 조정
+docker compose up -d --build
+docker compose ps         # STATUS가 healthy인지 확인
+```
+
+최초 실행 때 음성 인식 모델(기본 `large-v3-turbo`, 약 800MB)을 `/models`에 내려받으므로
+첫 로컬 음성 인식 작업은 다운로드 시간만큼 오래 걸린다. 시험 삼아 브라우저에서
+`http://127.0.0.1:8200`을 연다.
+
+### 중지·재시작
+
+```bash
+docker compose stop web            # 잠시 멈춤(볼륨 유지)
+docker compose restart web         # 재시작
+docker compose down                # 컨테이너·네트워크 제거, 볼륨 유지
+```
+
+`down -v`는 데이터·모델 볼륨을 삭제하므로 일반 중지에 쓰지 않는다. 재시작 시 실행 중 시도는
+`중단(interrupted)`으로 기록하고 대기 작업은 자동 복원한다. 중단 작업은 화면에서 재시도한다.
+
+### 업데이트
+
+```bash
+docker compose up -d --build       # 새 이미지로 교체, 데이터·모델 볼륨 유지
+```
+
+업데이트 전 데이터·모델 볼륨을 백업한다. 앱은 이미지를 자동 교체하지 않으며 서버 진단의
+`업데이트 확인`은 릴리즈 정보만 알려 준다.
+
+### 백업·복원
+
+일관된 SQLite 사본을 위해 백업 전 잠시 컨테이너를 멈춘다.
+
+```bash
+docker compose stop web
+mkdir -p backup
+docker run --rm -v lms-summarizer_web-data:/data:ro -v "$PWD/backup":/backup alpine sh -c 'tar czf /backup/web-data.tar.gz -C /data .'
+docker run --rm -v lms-summarizer_web-models:/models:ro -v "$PWD/backup":/backup alpine sh -c 'tar cf /backup/web-models.tar -C /models .'
+docker compose start web
+```
+
+모델은 다시 내려받을 수 있으므로 필요할 때만 백업한다. 복원은 볼륨을 새로 만든 뒤 푼다.
+
+```bash
+docker compose down
+docker volume rm lms-summarizer_web-data lms-summarizer_web-models
+docker volume create lms-summarizer_web-data
+docker volume create lms-summarizer_web-models
+docker run --rm -v lms-summarizer_web-data:/data -v "$PWD/backup":/backup:ro alpine sh -c 'cd /data && tar xzf /backup/web-data.tar.gz'
+docker run --rm -v lms-summarizer_web-models:/models -v "$PWD/backup":/backup:ro alpine sh -c 'cd /models && tar xf /backup/web-models.tar'
+docker compose up -d
+```
+
+복원 후 작업 목록·설정·원문/요약이 그대로 조회되는지 확인한다.
+
+### GPU·CPU
+
+이미지 기본 실행은 CPU faster-whisper다. `faster-whisper` GPU 가속은 CUDA 기반이라
+NVIDIA GPU가 필요하다. AMD 내장 GPU(예: Radeon 780M)는 CUDA를 지원하지 않아 CPU로 동작하며,
+AMD ROCm 가속은 지원 대상이 아니다. GPU를 쓰려면 NVIDIA 장치 전달과 CUDA extra 구성이 필요하고,
+그 전까지는 CPU 추론으로 운영한다.
+
+### 문제 해결
+
+- 화면이 안 열림/포트 충돌: `.env`의 `LMS_WEB_PORT`를 다른 값(예: 8200)으로 바꾸고 재기동한다.
+- LAN·Tailscale 접속이 400: 접속 주소를 `LMS_ALLOWED_HOSTS`에 추가한다(포트 제외, 쉼표 구분).
+  예 `LMS_ALLOWED_HOSTS=localhost,127.0.0.1,192.168.0.104,100.105.226.124`.
+- Headless에서 페이지 확인이 필요: `LMS_CHROME_HEADLESS=false`로 재기동한다(이미지에 Xvfb 포함).
+- 모델 다운로드 실패: 네트워크를 확인하고 재시도한다. `web-models` 볼륨을 지우면 다시 받는다.
+- 디스크 부족으로 제출 거부: `LMS_MIN_FREE_BYTES`(기본 2GiB)와 볼륨 사용량을 확인한다.
+- 중복 supervisor 오류: 데이터 볼륨을 하나의 컨테이너에만 마운트한다(단일 서버 전제).
+- 인증이 없으므로 공유 네트워크 밖(공개 인터넷)에 직접 노출하지 않는다.

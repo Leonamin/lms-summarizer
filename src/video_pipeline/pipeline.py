@@ -8,7 +8,7 @@ from src.video_pipeline.login import perform_login_if_needed, LoginFailedError
 from src.video_pipeline.video_parser import extract_video_url
 from src.video_pipeline.download_video import download_video
 from src.video_pipeline.browser_utils import DEFAULT_CHROME_PATH, default_user_agent
-from src.user_setting import UserSetting
+from src.core.models.settings import LMSCredentials
 
 
 def sanitize_dirname(name: str) -> str:
@@ -23,15 +23,15 @@ _LOGIN_URL = "https://canvas.ssu.ac.kr/"
 
 
 class VideoPipeline:
-    def __init__(self, user_setting: UserSetting, extraction_timeout: float = 60,
+    def __init__(self, user_setting: LMSCredentials, extraction_timeout: float = 60,
                  progress_callback: Optional[Callable[[int, int], None]] = None,
                  chrome_path: str = None,
                  log_callback: Optional[Callable[[str], None]] = None,
-                 headless: bool = False):
+                 headless: bool = False, output_dir: str = None):
         self.user_setting = user_setting
         self.user_id = user_setting.user_id
         self.password = user_setting.password
-        self.downloads_dir = None  # 다운로드 경로는 나중에 설정됨
+        self.downloads_dir = output_dir
         self.extraction_timeout = extraction_timeout
         self.progress_callback = progress_callback
         self.chrome_path = chrome_path or DEFAULT_CHROME_PATH
@@ -88,6 +88,8 @@ class VideoPipeline:
 
     async def _process_single_url(self, page: Page, url: str) -> Optional[str]:
         """단일 URL에 대한 비디오 처리"""
+        if not self.downloads_dir:
+            raise ValueError("output_dir must be explicitly supplied")
         self._log(f"처리 중: {url}")
         await page.goto(url, wait_until="networkidle")
         self._log(f"페이지 이동 완료: {page.url}")
@@ -104,7 +106,7 @@ class VideoPipeline:
                 lecture_dir.mkdir(parents=True, exist_ok=True)
                 save_dir = str(lecture_dir)
 
-            filepath = download_video(video_url, save_dir=save_dir, filename=title,
+            filepath = download_video(video_url, save_dir=save_dir, filename=sanitize_dirname(title) if title else None,
                                      progress_callback=self.progress_callback)
             self._log(f"동영상 다운로드 완료: {filepath}")
             return filepath

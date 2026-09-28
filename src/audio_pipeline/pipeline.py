@@ -6,19 +6,21 @@ from src.audio_pipeline.transcriber import transcribe_audio_to_text
 
 
 class AudioToTextPipeline:
-    def __init__(self, sample_rate=16000, engine="faster-whisper", model_name="large-v3-turbo", stt_params=None, on_log=None):
+    def __init__(self, sample_rate=16000, engine="faster-whisper", model_name="large-v3-turbo", stt_params=None, on_log=None, output_dir=None):
         self.sample_rate = sample_rate
         self.engine = engine
         self.model_name = model_name
         self.stt_params = stt_params or {}
         self.on_log = on_log
-        self.downloads_dir = None  # 다운로드 경로는 나중에 설정됨
+        self.downloads_dir = output_dir
         self._cached_transcriber = None  # 모델 로드 캐싱 (다중 파일 처리 시 재사용)
 
     def convert_to_wav(self, input_path: str) -> str:
         """오디오/비디오 파일을 WAV로 변환하고 WAV 경로를 반환"""
         from src.audio_pipeline.converter import convert_audio_to_wav
 
+        if not self.downloads_dir:
+            raise ValueError("output_dir must be explicitly supplied")
         filename = Path(input_path).stem
         wav_path = os.path.join(self.downloads_dir, f"{filename}.wav")
         os.makedirs(self.downloads_dir, exist_ok=True)
@@ -36,6 +38,8 @@ class AudioToTextPipeline:
 
     def transcribe(self, wav_path: str, remove_wav: bool = True) -> str:
         """WAV 파일을 텍스트로 변환하고 텍스트 파일 경로를 반환"""
+        if not self.downloads_dir:
+            raise ValueError("output_dir must be explicitly supplied")
         filename = Path(wav_path).stem
         txt_path = os.path.join(self.downloads_dir, f"{filename}.txt")
         os.makedirs(self.downloads_dir, exist_ok=True)

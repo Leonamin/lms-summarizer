@@ -32,7 +32,7 @@ ENGINE_API_KEY_MAP: dict[str, str] = {
 
 
 def create_provider(engine: str, api_key: str = None, model_name: str = None,
-                    base_url: str = None) -> AIProvider:
+                    base_url: str = None, manual_action=None, request_timeout: float = 120) -> AIProvider:
     """엔진 이름으로 Provider 인스턴스를 생성하는 팩토리 함수
 
     Args:
@@ -45,13 +45,13 @@ def create_provider(engine: str, api_key: str = None, model_name: str = None,
         AIProvider 인스턴스
     """
     if engine == "clipboard":
-        return ClipboardProvider(target=model_name or "chatgpt")
+        return ClipboardProvider(target=model_name or "chatgpt", on_ready=manual_action)
 
     cls = ENGINE_REGISTRY.get(engine)
     if not cls:
         raise ValueError(f"지원하지 않는 엔진: {engine}")
 
-    kwargs = {"api_key": api_key, "model_name": model_name or cls.default_model()}
+    kwargs = {"api_key": api_key, "model_name": model_name or cls.default_model(), "request_timeout": request_timeout}
     # custom에만 base_url 전달 (다른 Provider는 파라미터를 무시)
     if base_url and engine == "custom":
         kwargs["base_url"] = base_url

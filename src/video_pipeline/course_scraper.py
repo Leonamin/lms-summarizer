@@ -13,7 +13,7 @@ from playwright.async_api import async_playwright, Playwright, Page, Frame
 
 from src.video_pipeline.login import perform_login_if_needed, LoginFailedError
 from src.video_pipeline.browser_utils import DEFAULT_CHROME_PATH, default_user_agent
-from src.gui.config.course_models import (
+from src.core.models.courses import (
     Course, LectureItem, Week, CourseDetail,
     LectureType, VIDEO_LECTURE_TYPES,
 )
@@ -37,6 +37,12 @@ _TYPE_CLASS_MAP = {
     "file": LectureType.FILE,
     "attachment": LectureType.FILE,
 }
+
+
+def _attendance_from_classes(classes):
+    import re
+    tokens = set(re.split(r'[\s_-]+', classes.replace('attendance_status', '')))
+    return next((status for status in ('attendance', 'late', 'absent', 'excused') if status in tokens), 'none')
 
 
 class CourseScraper:
@@ -325,10 +331,7 @@ class CourseScraper:
         att_el = await el.query_selector("[class*='attendance_status']")
         if att_el:
             att_classes = await att_el.get_attribute("class") or ""
-            for status in ("attendance", "late", "absent", "excused"):
-                if status in att_classes:
-                    attendance = status
-                    break
+            attendance = _attendance_from_classes(att_classes)
 
         # 완료 상태
         completion = "incomplete"

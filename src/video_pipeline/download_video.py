@@ -8,7 +8,6 @@ from typing import Callable, Optional
 
 import requests
 
-from src.gui.core.file_manager import get_downloads_dir
 
 
 def _get_ssl_verify():
@@ -51,7 +50,7 @@ def download_video(
         filename += '.mp4'
 
     if save_dir is None:
-        save_dir = get_downloads_dir()
+        raise ValueError("save_dir must be explicitly supplied")
     os.makedirs(save_dir, exist_ok=True)
     filepath = os.path.join(save_dir, filename)
 

@@ -8,9 +8,10 @@ from .base import AIProvider
 class OpenAIProvider(AIProvider):
     """OpenAI API를 사용한 요약 엔진"""
 
-    def __init__(self, api_key: str, model_name: str = None):
+    def __init__(self, api_key: str, model_name: str = None, request_timeout: float = 120):
+        import httpx
         from openai import OpenAI
-        self.client = OpenAI(api_key=api_key)
+        self.client = OpenAI(api_key=api_key, max_retries=0, timeout=httpx.Timeout(request_timeout, connect=10))
         self.model_name = model_name or self.default_model()
 
     def summarize(self, text: str, prompt: str) -> str:

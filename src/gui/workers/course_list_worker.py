@@ -7,7 +7,7 @@ import threading
 import traceback
 from typing import Optional, Callable, List
 
-from src.gui.config.course_models import Course
+from src.core.models.courses import Course
 from src.gui.core.file_manager import get_chrome_path, get_debug_mode
 from src.video_pipeline.login import LoginFailedError
 

@@ -59,13 +59,13 @@ except ImportError:
 binaries = []
 
 a = Analysis(
-    ["src/gui/main.py"],
+    ["src/desktop/main.py"],
     pathex=[".", "src"],
     binaries=binaries,
     datas=datas,
     hiddenimports=[
         # Flet
-        "flet", "flet_core", "flet_runtime",
+        "flet", "flet_desktop",
         # 앱 모듈
         "src.user_setting",
         "src.video_pipeline.pipeline",
@@ -77,7 +77,9 @@ a = Analysis(
         "src.audio_pipeline.converter",
         "src.audio_pipeline.transcriber",
         "src.summarize_pipeline.pipeline",
-        "src.summarize_pipeline.summarizer",
+        "src.desktop.runtime", "src.desktop.smoke",
+        "src.core.services.jobs", "src.core.runtime.worker", "src.core.runtime.executor",
+        "psutil", "sqlite3", "multiprocessing",
         "src.gui.core.file_manager",
         "src.gui.core.module_loader",
         "src.gui.core.validators",

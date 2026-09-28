@@ -12,7 +12,7 @@ from src.gui.theme import Colors, Spacing
 from src.gui.components.right_panel.lecture_section import LectureSection
 from src.gui.components.right_panel.options_section import OptionsSection
 from src.gui.components.right_panel.action_bar import ActionBar
-from src.pipeline_stage import PipelineStage
+from src.core.models.stages import PipelineStage
 
 
 class RightPanel:

@@ -9,7 +9,7 @@ from src.gui.components.left_panel.account_section import AccountSection
 from src.gui.components.left_panel.ai_settings import AISettingsSection
 from src.gui.components.left_panel.stt_settings import STTSettingsSection
 from src.gui.components.left_panel.storage_path import StoragePath
-from src.summarize_pipeline.prompts import (
+from src.core.prompts import (
     SummaryMode, SUMMARY_MODE_LABELS, SUBJECT_CATEGORIES,
 )
 

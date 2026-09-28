@@ -17,7 +17,7 @@ from src.gui.core.file_manager import (
     get_debug_mode, set_debug_mode,
     get_auto_open_folder, set_auto_open_folder,
 )
-from src.summarize_pipeline.prompts import (
+from src.core.prompts import (
     SummaryMode, SUMMARY_MODE_LABELS, SUBJECT_CATEGORIES,
     build_prompt,
 )

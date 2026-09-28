@@ -28,11 +28,16 @@ jobs:
 
       - name: 의존성 설치
         run: |
-          uv sync --frozen
+          uv sync --frozen --extra desktop
           uv pip install pyinstaller
 
       - name: PyInstaller 빌드
-        run: uv run pyinstaller lms-summarizer.spec
+        run: uv run --extra desktop pyinstaller lms-summarizer.spec
+
+      - name: 패키징된 공통 작업 프로세스 검증
+        run: |
+          dist/LMS-Summarizer.app/Contents/MacOS/LMS-Summarizer --core-smoke --core-smoke-result "$RUNNER_TEMP/core-smoke.json"
+          python -c 'import json, os; assert json.load(open(os.path.join(os.environ["RUNNER_TEMP"], "core-smoke.json")))["status"] == "ok"'
 
       - name: ZIP 패키징
         run: |
@@ -67,12 +72,12 @@ jobs:
 
       - name: 의존성 설치
         run: |
-          uv sync --frozen
+          uv sync --frozen --extra desktop --extra cuda
           uv pip install pyinstaller
 
       - name: 핵심 모듈 import 검증
         run: |
-          uv run python -c "
+          uv run --extra desktop --extra cuda python -c "
           from faster_whisper import WhisperModel; print('faster-whisper OK')
           import flet; print('flet OK')
           from src.audio_pipeline.pipeline import AudioToTextPipeline; print('AudioToTextPipeline OK')
@@ -82,7 +87,15 @@ jobs:
           "
 
       - name: PyInstaller 빌드
-        run: uv run pyinstaller lms-summarizer.spec
+        run: uv run --extra desktop --extra cuda pyinstaller lms-summarizer.spec
+
+      - name: 패키징된 공통 작업 프로세스 검증
+        shell: pwsh
+        run: |
+          $result = Join-Path $env:RUNNER_TEMP "core-smoke.json"
+          $process = Start-Process -FilePath "dist\LMS-Summarizer\LMS-Summarizer.exe" -ArgumentList @("--core-smoke", "--core-smoke-result", "`"$result`"") -Wait -PassThru
+          if ($process.ExitCode -ne 0) { throw "Core smoke failed: $($process.ExitCode)" }
+          if ((Get-Content $result | ConvertFrom-Json).status -ne "ok") { throw "Core smoke result missing" }
 
       - name: ZIP 패키징
         shell: pwsh

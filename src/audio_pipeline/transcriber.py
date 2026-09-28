@@ -6,7 +6,6 @@ import time
 from abc import ABC, abstractmethod
 import os
 import requests
-from src.user_setting import UserSetting
 
 # https://developers.rtzr.ai/docs/stt-file/
 
@@ -99,23 +98,25 @@ def transcribe_audio_to_text(
     _log = on_log or (lambda msg: None)
     params = dict(params or {})
     repeat_threshold = int(params.pop("repeat_threshold", 4))
+    request_timeout = float(params.pop("request_timeout", 120))
 
     if engine == "faster-whisper":
         if _reuse_transcriber is not None:
             transcriber = _reuse_transcriber
         else:
+            download_root = params.pop("download_root", None)
             device = params.pop("device", "auto")
             compute_type = params.pop("compute_type", "auto")
             transcriber = FasterWhisperTranscriber(
                 model_name=model_name, device=device, compute_type=compute_type,
-                params=params, on_log=on_log,
+                params=params, on_log=on_log, download_root=download_root,
             )
     elif engine == "openai-whisper":
         if _reuse_transcriber is not None:
             transcriber = _reuse_transcriber
         else:
             api_key = params.pop("api_key", None)
-            transcriber = OpenAIWhisperTranscriber(api_key=api_key, on_log=on_log)
+            transcriber = OpenAIWhisperTranscriber(api_key=api_key, on_log=on_log, request_timeout=request_timeout)
     elif engine == "openai-compatible":
         if _reuse_transcriber is not None:
             transcriber = _reuse_transcriber
@@ -124,13 +125,14 @@ def transcribe_audio_to_text(
             api_key = params.pop("api_key", None)
             transcriber = OpenAICompatibleSTTTranscriber(
                 base_url=base_url, api_key=api_key,
-                model_name=model_name, on_log=on_log,
+                model_name=model_name, on_log=on_log, request_timeout=request_timeout,
             )
     elif engine == "returnzero":
         if _reuse_transcriber is not None:
             transcriber = _reuse_transcriber
         else:
-            transcriber = ReturnZeroTranscriber()
+            transcriber = ReturnZeroTranscriber(client_id=params.pop("client_id", None),
+                                               client_secret=params.pop("client_secret", None), request_timeout=request_timeout)
     else:
         raise ValueError("지원하지 않는 엔진입니다")
 
@@ -161,7 +163,7 @@ class Transcriber(ABC):
 
 
 class FasterWhisperTranscriber(Transcriber):
-    def __init__(self, model_name="large-v3-turbo", device="auto", compute_type="auto", params=None, on_log=None):
+    def __init__(self, model_name="large-v3-turbo", device="auto", compute_type="auto", params=None, on_log=None, download_root=None):
         from faster_whisper import WhisperModel
         self._on_log = on_log or (lambda msg: None)
         self._language = (params or {}).get("language", "ko")
@@ -201,14 +203,14 @@ class FasterWhisperTranscriber(Transcriber):
         load_start = time.time()
 
         try:
-            self.model = WhisperModel(model_name, device=resolved_device, compute_type=resolved_compute)
+            self.model = WhisperModel(model_name, device=resolved_device, compute_type=resolved_compute, download_root=download_root)
         except Exception as e:
             if resolved_device != "cpu":
                 self._on_log(f"⚠️ GPU 초기화 실패: {e}")
                 self._on_log("[faster-whisper] CPU 모드로 전환합니다...")
                 resolved_device = "cpu"
                 resolved_compute = "int8"
-                self.model = WhisperModel(model_name, device="cpu", compute_type="int8")
+                self.model = WhisperModel(model_name, device="cpu", compute_type="int8", download_root=download_root)
             else:
                 raise
 
@@ -410,12 +412,13 @@ class FasterWhisperTranscriber(Transcriber):
 class OpenAIWhisperTranscriber(Transcriber):
     """OpenAI Whisper API 기반 클라우드 STT (로컬 모델 다운로드 불필요)"""
 
-    def __init__(self, api_key: str = None, on_log=None):
+    def __init__(self, api_key: str = None, on_log=None, request_timeout: float = 120):
+        import httpx
         from openai import OpenAI
         self._on_log = on_log or (lambda msg: None)
         if not api_key:
             raise ValueError("OpenAI Whisper API 키가 필요합니다.")
-        self.client = OpenAI(api_key=api_key)
+        self.client = OpenAI(api_key=api_key, max_retries=0, timeout=httpx.Timeout(request_timeout, connect=10))
         self._on_log("[openai-whisper] 클라우드 STT 엔진 초기화 완료")
 
     def transcribe(self, audio_path: str, txt_path: str):
@@ -454,7 +457,8 @@ class OpenAICompatibleSTTTranscriber(Transcriber):
     """
 
     def __init__(self, base_url: str = None, api_key: str = None,
-                 model_name: str = None, on_log=None):
+                 model_name: str = None, on_log=None, request_timeout: float = 120):
+        import httpx
         from openai import OpenAI
         self._on_log = on_log or (lambda msg: None)
 
@@ -472,6 +476,7 @@ class OpenAICompatibleSTTTranscriber(Transcriber):
         self.client = OpenAI(
             api_key=api_key or "not-needed",
             base_url=self._base_url,
+            max_retries=0, timeout=httpx.Timeout(request_timeout, connect=10),
         )
         self.model_name = resolved_model
         self._on_log(f"[openai-compatible-stt] 엔드포인트: {self._base_url}")
@@ -562,10 +567,12 @@ class OpenAICompatibleSTTTranscriber(Transcriber):
 
 
 class ReturnZeroTranscriber(Transcriber):
-    def __init__(self):
-        user_setting = UserSetting()
-        self.client_id = user_setting.RETURNZERO_CLIENT_ID
-        self.client_secret = user_setting.RETURNZERO_CLIENT_SECRET
+    def __init__(self, client_id: str = None, client_secret: str = None, request_timeout: float = 120):
+        self.request_timeout = (10, request_timeout)
+        if not client_id or not client_secret:
+            raise ValueError("ReturnZero client_id and client_secret are required")
+        self.client_id = client_id
+        self.client_secret = client_secret
         self.token = self._authenticate()
 
     def _authenticate(self) -> str:
@@ -573,6 +580,7 @@ class ReturnZeroTranscriber(Transcriber):
         resp = requests.post(
             "https://openapi.vito.ai/v1/authenticate",
             data={"client_id": self.client_id, "client_secret": self.client_secret},
+            timeout=self.request_timeout,
         )
         resp.raise_for_status()
         token = resp.json()["access_token"]
@@ -598,6 +606,7 @@ class ReturnZeroTranscriber(Transcriber):
                 "https://openapi.vito.ai/v1/transcribe",
                 headers=headers,
                 files=files,
+                timeout=self.request_timeout,
             )
         response.raise_for_status()
         return response.json()["id"]  # 이게 transcribe_id
@@ -609,7 +618,7 @@ class ReturnZeroTranscriber(Transcriber):
         start = time.time()
 
         while time.time() - start < timeout:
-            resp = requests.get(url, headers=headers)
+            resp = requests.get(url, headers=headers, timeout=self.request_timeout)
             resp.raise_for_status()
             data = resp.json()
             status = data.get("status")
