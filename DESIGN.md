@@ -287,7 +287,7 @@ Pretendard 가변 폰트 자체 호스팅(`frontend/public/fonts/PretendardVaria
 
 ### Cards / Panels
 - `{components.panel}` — `.panel`. 흰 배경, `--line` 헤어라인, 18px, `--shadow-sm`. 패딩 30px(설정 8px 32px 30px).
-- **좌측 accent bar 없음.** 파이프라인 단계는 상단 2px 헤어라인만.
+- **모든 카드가 동일한 1px 헤어라인 보더**를 쓴다. 파이프라인 단계 카드도 상단 강조 보더 없이 같다.
 
 ### Navigation
 - `{components.rail}` — 단색 `--rail`, `border-right: 1px solid rgba(255,255,255,.08)`.
