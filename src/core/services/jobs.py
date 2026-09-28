@@ -34,7 +34,7 @@ class JobService:
     def __init__(self, root: Path, *, executor_factory=PipelineExecutor, models_dir: Path = None,
                  min_free_bytes=2 * 1024**3, max_active=200, max_batch=50,
                  max_input_bytes=4 * 1024**3, cancel_grace=5, shutdown_grace=10,
-                 stage_timeout=1800, poll_interval=0.05, event_days=7, event_limit=100000, worker_start_timeout=30):
+                 stage_timeout=1800, playback_timeout=3 * 3600, poll_interval=0.05, event_days=7, event_limit=100000, worker_start_timeout=30):
         self.paths = DataPaths(Path(root).resolve(), Path(models_dir).resolve() if models_dir else Path(root).resolve() / 'models')
         self.lock = threading.RLock()
         self.changed = threading.Condition(self.lock)
@@ -43,6 +43,7 @@ class JobService:
         self.max_input_bytes = max_input_bytes
         self.cancel_grace, self.shutdown_grace = cancel_grace, shutdown_grace
         self.stage_timeout, self.poll_interval = stage_timeout, poll_interval
+        self.playback_timeout = playback_timeout
         self.worker_start_timeout = worker_start_timeout
         self._startup_failures = {stage:0 for stage in PipelineStage}
         self.event_days, self.event_limit = event_days, event_limit
@@ -61,6 +62,8 @@ class JobService:
             self._recover()
             from src.core.services.courses import CourseQueries
             self.courses = CourseQueries(self)
+            from src.core.services.playback import PlaybackQueue
+            self.playback = PlaybackQueue(self)
             self._collect_files()
         except BaseException:
             if hasattr(self, 'db'):
@@ -471,6 +474,8 @@ class JobService:
         if shutil.disk_usage(self.paths.root).free < self.min_free_bytes:
             return
         run = self._queued(stage)
+        if stage == PipelineStage.DOWNLOAD and self.playback.dispatch(slot):
+            return
         if stage == PipelineStage.DOWNLOAD and (self._catalog_turn or not run) and self.courses.dispatch(slot):
             self._catalog_turn = False
             return
@@ -530,6 +535,12 @@ class JobService:
                 return False
             self.courses.finish(command, result)
             slot.update(command=None, cancel_deadline=None, started=None)
+            return True
+        if command and command.playback is not None:
+            if result.token != command.token:
+                return False
+            self.playback.finish(command, result)
+            slot.update(command=None, cancel_deadline=None, started=None, budget=None)
             return True
         if not self._valid_result(result, slot):
             return False
@@ -650,6 +661,8 @@ class JobService:
         self._dispose(slot)
         if command and command.catalog_query is not None:
             self.courses.finish(command, code=code)
+        elif command and command.playback is not None:
+            self.playback.finish(command, code=code)
         elif command:
             job = self.db.get('jobs',command.token.job_id)
             attempt = self.db.get('attempts',command.token.attempt_id)
@@ -666,7 +679,7 @@ class JobService:
         self.changed.notify_all()
 
     def _discard(self, command):
-        if command and command.catalog_query is None:
+        if command and command.catalog_query is None and command.playback is None:
             shutil.rmtree(Path(command.output_dir).parent, ignore_errors=True)
 
     def _tick(self):
@@ -698,7 +711,7 @@ class JobService:
                 now = time.monotonic()
                 if slot['cancel_deadline'] and now >= slot['cancel_deadline']:
                     self._abort_slot(stage, slot, 'cancelled', 'cancelled')
-                elif now - slot['started'] >= self.stage_timeout:
+                elif now - slot['started'] >= (slot.get('budget') or self.stage_timeout):
                     if slot['cancel_deadline']:
                         self._abort_slot(stage, slot, 'cancelled', 'cancelled')
                     else:

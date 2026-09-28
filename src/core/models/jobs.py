@@ -51,6 +51,7 @@ class StageCommand:
     credentials: dict[str, str] = field(default_factory=dict, repr=False)
     model_cache_dir: Optional[str] = field(default=None, repr=False)
     catalog_query: Optional[dict] = field(default=None, repr=False)
+    playback: Optional[dict] = field(default=None, repr=False)
 
 @dataclass(frozen=True)
 class StageResult:

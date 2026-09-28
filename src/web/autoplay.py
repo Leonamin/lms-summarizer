@@ -9,9 +9,8 @@ Playback for attendance (Chrome/CDP) is intentionally not implemented here yet;
 it needs the real LMS popup DOM investigation recorded in the 8-B plan.
 """
 from datetime import datetime, timezone
-from src.core.models.jobs import ServiceError, Source
+from src.core.models.jobs import ServiceError
 from src.core.models.settings import UserContext
-from src.core.models.stages import PipelineStage
 from src.core.repositories.json_store import JsonStore
 from src.core.services.detection import flatten_lectures, mark_seen, select_new_videos
 
@@ -52,6 +51,7 @@ class AutoDetect:
             'last_run': state.get('last_run'),
             'last_error': state.get('last_error'),
             'detected': len(state.get('seen', {})),
+            'playing': len(self.service.playback.active(OWNER)),
         }
 
     def resume(self) -> dict:
@@ -68,6 +68,12 @@ class AutoDetect:
             return {'status': 'disabled'}
         if not force and state.get('paused'):
             return {'status': 'paused', 'reason': state.get('last_error')}
+        # A playback that repeated a popup 3 times pauses auto-play (ADR-004).
+        if not force and self.service.playback.popup_repeat_failed(OWNER):
+            state['paused'] = True
+            state['last_error'] = 'popup_repeat'
+            self.store.write(state)
+            return {'status': 'paused', 'reason': 'popup_repeat'}
         if not force and not self._due(state, config):
             return {'status': 'waiting'}
         courses = parse_courses(config.get('auto_detect_courses'))
@@ -114,8 +120,7 @@ class AutoDetect:
             if cache.get('expired') or not cache.get('data'):
                 self._refresh(course_id, revision)
                 return {'status': 'refreshing_course', 'course_id': course_id}
-        end_stage = PipelineStage.DOWNLOAD if (config.get('auto_save_scope') or 'download') == 'download' else PipelineStage.SUMMARIZE
-        submitted: list[str] = []
+        queued: list[str] = []
         for course_id in selected:
             with self.service.lock:
                 cache = self.service.courses.cached(revision, course_id)
@@ -123,14 +128,15 @@ class AutoDetect:
             for lecture in select_new_videos(state['seen'], lectures):
                 key = lecture.get('url') or lecture.get('title')
                 try:
-                    ids = self.service.submit(OWNER, [Source.url(lecture['url'])], revision,
-                                              end_stage=end_stage, idempotency_key='auto:' + str(key))
+                    record = self.service.playback.submit(
+                        OWNER, revision, lecture['url'], lecture.get('title', ''),
+                        config.get('auto_save_scope') or 'download')
                 except ServiceError as error:
-                    return self._record(state, error.code, submitted)
+                    return self._record(state, error.code, queued)
                 mark_seen(state['seen'], [lecture])
-                state['submitted'][key] = ids
-                submitted.extend(ids)
-        return self._record(state, None, submitted, completed=True)
+                state['submitted'][key] = [record['id']]
+                queued.append(record['id'])
+        return self._record(state, None, queued, completed=True)
 
     def _record(self, state, error, submitted=None, completed=False) -> dict:
         state['last_error'] = error

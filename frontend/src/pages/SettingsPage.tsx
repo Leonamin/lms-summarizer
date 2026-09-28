@@ -39,6 +39,7 @@ type AutoStatus = {
   last_run: string | null;
   last_error: string | null;
   detected: number;
+  playing: number;
 };
 
 export function SettingsPage({
@@ -537,7 +538,7 @@ export function SettingsPage({
           </button>
           {auto && (
             <span className="muted">
-              감지 {auto.detected}건 ·{" "}
+              감지 {auto.detected}건 · 재생 {auto.playing}건 ·{" "}
               {auto.paused
                 ? "일시중지"
                 : auto.last_error

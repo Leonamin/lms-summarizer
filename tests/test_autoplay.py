@@ -36,11 +36,28 @@ class FakeCourses:
         return {"id": "query", "course_id": course_id, "status": "queued"}
 
 
+class FakePlayback:
+    def __init__(self):
+        self.records = []
+
+    def submit(self, context, revision, url, title, scope):
+        record = {"id": "pb-%d" % (len(self.records) + 1), "url": url, "scope": scope, "title": title}
+        self.records.append(record)
+        return record
+
+    def active(self, context):
+        return []
+
+    def popup_repeat_failed(self, context):
+        return False
+
+
 class FakeService:
     def __init__(self, root):
         self.paths = SimpleNamespace(file=lambda rel: Path(root) / rel)
         self.lock = threading.RLock()
         self.courses = FakeCourses()
+        self.playback = FakePlayback()
         self.submitted = []
 
     def _ensure_open(self):
@@ -145,17 +162,16 @@ class AutoDetectTests(unittest.TestCase):
             }
             result = engine.tick(force=True)
             self.assertEqual(result["status"], "ok")
-            self.assertEqual([row["reference"] for row in service.submitted], ["u1"])
-            self.assertEqual(service.submitted[0]["end_stage"], int(PipelineStage.DOWNLOAD))
-            self.assertEqual(service.submitted[0]["key"], "auto:u1")
+            self.assertEqual([row["url"] for row in service.playback.records], ["u1"])
+            self.assertEqual(service.playback.records[0]["scope"], "download")
             self.assertTrue(engine.status()["last_run"])
-            # 4) rerun does not resubmit known lectures
+            # 4) rerun does not enqueue known lectures again
             engine.tick(force=True)
-            self.assertEqual(len(service.submitted), 1)
-            # 5) a genuinely new lecture is submitted
+            self.assertEqual(len(service.playback.records), 1)
+            # 5) a genuinely new lecture is enqueued
             service.courses.detail["123"]["weeks"][0]["lectures"].append(lecture("u4"))
             engine.tick(force=True)
-            self.assertEqual([row["reference"] for row in service.submitted], ["u1", "u4"])
+            self.assertEqual([row["url"] for row in service.playback.records], ["u1", "u4"])
 
     def test_full_scope_uses_summarize_stage(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -164,7 +180,7 @@ class AutoDetectTests(unittest.TestCase):
             service.courses.list_data = [{"id": "123"}]
             service.courses.detail["123"] = {"weeks": [{"lectures": [lecture("u1")]}]}
             engine.tick(force=True)
-            self.assertEqual(service.submitted[0]["end_stage"], int(PipelineStage.SUMMARIZE))
+            self.assertEqual(service.playback.records[0]["scope"], "full")
 
     def test_pause_blocks_until_resumed(self):
         with tempfile.TemporaryDirectory() as directory:

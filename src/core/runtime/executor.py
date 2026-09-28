@@ -19,6 +19,9 @@ class PipelineExecutor:
         if command.catalog_query is not None:
             from src.core.services.courses import execute_query
             return execute_query(command)
+        if command.playback is not None:
+            from src.video_pipeline.playback import execute_playback
+            return asyncio.run(execute_playback(command))
         output = Path(command.output_dir)
         output.mkdir(parents=True, exist_ok=True)
         token = command.token
