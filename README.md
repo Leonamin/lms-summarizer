@@ -447,6 +447,9 @@ STT 장치·정밀도·언어·인식 힌트·VAD·반복 제거, 공급자 요�
 LMS_CHROME_HEADLESS=false docker compose up -d --force-recreate
 ```
 
+자동 재생(출석) 기능은 영상 재생 때문에 **headed(Xvfb)가 필요**하므로 `LMS_CHROME_HEADLESS=false`로
+실행합니다. 이미지에 Xvfb가 포함되어 있고 서버 종료 때 정리합니다.
+
 Docker 이미지에는 Xvfb가 포함되며 서버 종료 때 정리합니다. `LMS_CHROME_PATH`는 **서버 내부** Chrome
 경로입니다. 접속 기기의 경로로 지정하지 않습니다. 기존 작업은 원래 Chrome 실행 설정도 유지하므로
 변경한 진단 설정을 적용하려면 새 조회/작업을 제출합니다. 기본 Docker 구성은 CPU이며 CUDA 선택만으로
