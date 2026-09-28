@@ -909,7 +909,7 @@ label.check input,
   top: 0;
   z-index: 1;
   display: grid;
-  grid-template-columns: 92px minmax(0, 1fr) 76px 84px;
+  grid-template-columns: 92px minmax(0, 1fr) 76px 44px 84px;
   gap: 12px;
   padding: 9px 24px;
   border-bottom: 1px solid var(--line);
@@ -920,9 +920,31 @@ label.check input,
   color: var(--faint);
 }
 
+.job-table-head [role="columnheader"] {
+  min-width: 0;
+}
+
+.job-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+}
+
+.job-sort:hover {
+  color: var(--ink);
+}
+
+.job-sort-caret {
+  font-size: 9px;
+  color: var(--brand);
+}
+
 .job-row {
   display: grid;
-  grid-template-columns: 92px minmax(0, 1fr) 76px 84px;
+  grid-template-columns: 92px minmax(0, 1fr) 76px 44px 84px;
   align-items: center;
   gap: 12px;
   width: 100%;
@@ -956,10 +978,15 @@ label.check input,
 }
 
 .job-stage,
+.job-attempts,
 .job-time {
   font-size: var(--t-xs);
   color: var(--muted);
   white-space: nowrap;
+}
+
+.job-attempts {
+  font-variant-numeric: tabular-nums;
 }
 
 .job-time {
@@ -1391,6 +1418,14 @@ fieldset details {
   overflow-wrap: anywhere;
 }
 
+.auto-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+}
+
 .form-footer {
   display: flex;
   justify-content: space-between;
@@ -1574,6 +1609,44 @@ fieldset details {
   min-width: 152px;
 }
 
+.combobox {
+  position: relative;
+  min-width: 0;
+}
+
+.combobox-input {
+  width: 100%;
+  padding-right: 36px;
+}
+
+.combobox-toggle {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-xs);
+  color: var(--faint);
+}
+
+.combobox-toggle:hover:not(:disabled) {
+  background: var(--bg);
+  color: var(--ink);
+}
+
+.combobox-menu {
+  max-height: 280px;
+}
+
+.combobox-empty {
+  padding: 12px;
+  font-size: var(--t-sm);
+  color: var(--muted);
+}
+
 /* ---------------------------------------------------------- responsive -- */
 @media (min-width: 1500px) {
   main {
@@ -1719,6 +1792,7 @@ fieldset details {
     padding: 10px 18px;
   }
   .job-stage,
+  .job-attempts,
   .job-time {
     display: none;
   }

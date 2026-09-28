@@ -53,6 +53,10 @@ class Settings(DTO):
     subject_custom: str = Field(default='', max_length=500)
     custom_prompt: str = Field(default=DEFAULT_PROMPT, min_length=1, max_length=100000)
     keep_source: bool = False
+    auto_detect_enabled: bool = False
+    auto_detect_interval_minutes: int = Field(default=30, ge=5, le=1440)
+    auto_detect_courses: str = Field(default='', max_length=2000)
+    auto_save_scope: Literal['download', 'full'] = 'download'
 
 class SettingsPatch(DTO):
     expected_revision: int = Field(ge=1)

@@ -219,6 +219,18 @@ def refresh_status(query_id: UUID, request: Request):
     with request.app.state.service.lock:
         return request.app.state.service.courses.get(OWNER, str(query_id))
 
+@router.get('/auto-detect')
+def auto_detect(request: Request):
+    return request.app.state.autodetect.status()
+
+@router.post('/auto-detect/check')
+def auto_detect_check(request: Request):
+    return request.app.state.autodetect.tick(force=True)
+
+@router.post('/auto-detect/resume')
+def auto_detect_resume(request: Request):
+    return request.app.state.autodetect.resume()
+
 @router.get('/jobs/{job_id}/logs')
 def job_logs(job_id: UUID, request: Request, cursor: int = Query(default=0, ge=0), limit: int = Query(default=100, ge=1, le=200)):
     return request.app.state.service.logs(OWNER, str(job_id), cursor, limit)

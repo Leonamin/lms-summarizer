@@ -10,6 +10,31 @@ const filterOptions = [
   { value: "retryable", label: "실패·취소·중단" },
 ];
 
+type SortKey = "status" | "name" | "stage" | "attempts" | "created";
+
+const columns: { key: SortKey; label: string }[] = [
+  { key: "status", label: "상태" },
+  { key: "name", label: "이름" },
+  { key: "stage", label: "시작" },
+  { key: "attempts", label: "시도" },
+  { key: "created", label: "만든 시각" },
+];
+
+const compare = (a: Job, b: Job, key: SortKey) => {
+  switch (key) {
+    case "name":
+      return a.display_name.localeCompare(b.display_name);
+    case "status":
+      return a.status.localeCompare(b.status);
+    case "stage":
+      return a.initial_stage - b.initial_stage;
+    case "attempts":
+      return a.attempts.length - b.attempts.length;
+    default:
+      return a.created_at.localeCompare(b.created_at);
+  }
+};
+
 export function JobList({
   jobs,
   selected,
@@ -23,6 +48,10 @@ export function JobList({
 }) {
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
+  const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({
+    key: "created",
+    dir: "desc",
+  });
   const working = jobs.filter(isActive);
   const filtered = jobs.filter(
     (job) =>
@@ -34,6 +63,16 @@ export function JobList({
             : job.retryable)) &&
       job.display_name.toLowerCase().includes(search.toLowerCase()),
   );
+  const sorted = [...filtered].sort(
+    (a, b) => compare(a, b, sort.key) * (sort.dir === "asc" ? 1 : -1),
+  );
+
+  const toggle = (key: SortKey) =>
+    setSort((current) =>
+      current.key === key
+        ? { key, dir: current.dir === "asc" ? "desc" : "asc" }
+        : { key, dir: key === "created" ? "desc" : "asc" },
+    );
 
   return (
     <section className="jobs-panel panel">
@@ -69,13 +108,37 @@ export function JobList({
         />
       </div>
       <div className="job-list">
-        <div className="job-table-head" aria-hidden="true">
-          <span>상태</span>
-          <span>이름</span>
-          <span>시작</span>
-          <span>만든 시각</span>
+        <div className="job-table-head" role="row">
+          {columns.map((column) => (
+            <span
+              key={column.key}
+              role="columnheader"
+              aria-sort={
+                sort.key === column.key
+                  ? sort.dir === "asc"
+                    ? "ascending"
+                    : "descending"
+                  : "none"
+              }
+            >
+              <button
+                type="button"
+                className="job-sort"
+                onClick={() => toggle(column.key)}
+              >
+                {column.label}
+                <span className="job-sort-caret" aria-hidden="true">
+                  {sort.key === column.key
+                    ? sort.dir === "asc"
+                      ? "▲"
+                      : "▼"
+                    : ""}
+                </span>
+              </button>
+            </span>
+          ))}
         </div>
-        {filtered.length === 0 ? (
+        {sorted.length === 0 ? (
           <div className="empty">
             <span aria-hidden="true">▤</span>
             <h3>
@@ -90,7 +153,7 @@ export function JobList({
             </p>
           </div>
         ) : (
-          filtered.map((job) => (
+          sorted.map((job) => (
             <button
               key={job.id}
               className={"job-row" + (selected === job.id ? " selected" : "")}
@@ -100,6 +163,7 @@ export function JobList({
               <span className={"status " + job.status}>{statusText(job)}</span>
               <span className="job-name">{job.display_name}</span>
               <span className="job-stage">{stages[job.initial_stage - 1]}</span>
+              <span className="job-attempts">{job.attempts.length}</span>
               <span className="job-time">{formatDate(job.created_at)}</span>
             </button>
           ))

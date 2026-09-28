@@ -3,6 +3,7 @@ import { api } from "../api";
 import type { Settings, SettingsResponse } from "../types";
 import { SecretField } from "../components/SecretField";
 import { Dropdown } from "../components/Dropdown";
+import { Combobox } from "../components/Combobox";
 
 type Model = { id: string; label: string };
 type Provider = { default_model: string; models: Model[] };
@@ -29,6 +30,17 @@ const sttLabels: Record<string, string> = {
   returnzero: "ReturnZero",
 };
 
+type AutoStatus = {
+  enabled: boolean;
+  interval_minutes: number;
+  courses: string[];
+  scope: string;
+  paused: boolean;
+  last_run: string | null;
+  last_error: string | null;
+  detected: number;
+};
+
 export function SettingsPage({
   draft,
   setDraft,
@@ -49,9 +61,41 @@ export function SettingsPage({
   const [secretBusy, setSecretBusy] = useState(0);
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [preview, setPreview] = useState("");
+  const [auto, setAuto] = useState<AutoStatus | null>(null);
+  const [checking, setChecking] = useState(false);
   useEffect(() => {
     api<Catalog>("/catalog").then(setCatalog).catch(report);
   }, []);
+  useEffect(() => {
+    api<AutoStatus>("/auto-detect").then(setAuto).catch(() => {});
+  }, []);
+  async function checkAutoDetect() {
+    setChecking(true);
+    try {
+      setAuto(
+        await api<AutoStatus>("/auto-detect/check", {
+          method: "POST",
+          body: "{}",
+        }),
+      );
+    } catch (cause) {
+      report(cause);
+    } finally {
+      setChecking(false);
+    }
+  }
+  async function resumeAutoDetect() {
+    try {
+      setAuto(
+        await api<AutoStatus>("/auto-detect/resume", {
+          method: "POST",
+          body: "{}",
+        }),
+      );
+    } catch (cause) {
+      report(cause);
+    }
+  }
   const change = (name: keyof Settings, value: unknown) =>
     setDraft({ ...draft, [name]: value });
   const param = (name: string, value: unknown) =>
@@ -135,19 +179,15 @@ export function SettingsPage({
           </label>
           <label>
             요약 모델
-            <input
-              list="summary-models"
+            <Combobox
               value={draft.ai_model}
-              onChange={(event) => change("ai_model", event.target.value)}
+              onChange={(value) => change("ai_model", value)}
+              ariaLabel="요약 모델"
               placeholder="목록에서 선택하거나 모델 ID 입력"
+              options={(catalog?.summary[draft.ai_engine]?.models ?? []).map(
+                (model) => ({ value: model.id, label: model.label }),
+              )}
             />
-            <datalist id="summary-models">
-              {catalog?.summary[draft.ai_engine]?.models.map((model) => (
-                <option key={model.id} value={model.id}>
-                  {model.label}
-                </option>
-              ))}
-            </datalist>
           </label>
           {draft.ai_engine !== "clipboard" &&
             secret("summary:" + draft.ai_engine, "요약 API 키")}
@@ -189,29 +229,26 @@ export function SettingsPage({
           {draft.stt_engine !== "returnzero" && (
             <label>
               음성 인식 모델
-              <input
-                list="stt-models"
+              <Combobox
                 value={
                   draft.stt_engine === "openai-compatible"
                     ? draft.stt_compatible_model
                     : draft.stt_model
                 }
-                onChange={(event) =>
+                onChange={(value) =>
                   change(
                     draft.stt_engine === "openai-compatible"
                       ? "stt_compatible_model"
                       : "stt_model",
-                    event.target.value,
+                    value,
                   )
                 }
+                ariaLabel="음성 인식 모델"
+                placeholder="목록에서 선택하거나 모델 ID 입력"
+                options={(catalog?.stt[draft.stt_engine]?.models ?? []).map(
+                  (model) => ({ value: model.id, label: model.label }),
+                )}
               />
-              <datalist id="stt-models">
-                {catalog?.stt[draft.stt_engine]?.models.map((model) => (
-                  <option key={model.id} value={model.id}>
-                    {model.label}
-                  </option>
-                ))}
-              </datalist>
             </label>
           )}
           {["openai-whisper", "openai-compatible"].includes(draft.stt_engine) &&
@@ -435,6 +472,92 @@ export function SettingsPage({
           이력은 자동 삭제하지 않습니다. 파일은 서버 볼륨에 저장하며 이 기기로
           다운로드할 수 있습니다.
         </p>
+      </fieldset>
+      <fieldset disabled={saving}>
+        <legend>자동 감지 · 자동 저장</legend>
+        <p className="muted">
+          켠 동안에만 선택 과목의 신규 영상을 설정 주기로 감지해 자동 저장합니다.
+          출석을 위한 자동 재생은 후속 단계입니다.
+        </p>
+        <div className="settings-grid">
+          <label className="check">
+            <input
+              type="checkbox"
+              checked={draft.auto_detect_enabled}
+              onChange={(event) =>
+                change("auto_detect_enabled", event.target.checked)
+              }
+            />
+            자동 감지 사용
+          </label>
+          <label>
+            감지 주기 (분)
+            <input
+              type="number"
+              min={5}
+              max={1440}
+              value={draft.auto_detect_interval_minutes ?? 30}
+              onChange={(event) =>
+                change("auto_detect_interval_minutes", Number(event.target.value))
+              }
+            />
+          </label>
+          <label>
+            감지할 과목 ID
+            <input
+              value={draft.auto_detect_courses}
+              onChange={(event) =>
+                change("auto_detect_courses", event.target.value)
+              }
+              placeholder="예: 12345, 67890"
+            />
+            <small>과목·주차 화면의 과목 ID를 쉼표로 구분합니다.</small>
+          </label>
+          <label>
+            자동 저장 범위
+            <Dropdown
+              value={draft.auto_save_scope}
+              onChange={(value) => change("auto_save_scope", value)}
+              ariaLabel="자동 저장 범위"
+              options={[
+                { value: "download", label: "다운로드만" },
+                { value: "full", label: "다운로드 + STT + 요약" },
+              ]}
+            />
+          </label>
+        </div>
+        <div className="auto-status">
+          <button
+            type="button"
+            className="ghost"
+            disabled={checking}
+            onClick={() => void checkAutoDetect()}
+          >
+            {checking ? "확인 중…" : "지금 확인"}
+          </button>
+          {auto && (
+            <span className="muted">
+              감지 {auto.detected}건 ·{" "}
+              {auto.paused
+                ? "일시중지"
+                : auto.last_error
+                  ? "오류: " + auto.last_error
+                  : "정상"}
+              {auto.last_run
+                ? " · 최근 " + new Date(auto.last_run).toLocaleString("ko-KR")
+                : ""}
+            </span>
+          )}
+          {auto?.paused && (
+            <button
+              type="button"
+              className="secondary"
+              onClick={() => void resumeAutoDetect()}
+            >
+              재개
+            </button>
+          )}
+        </div>
       </fieldset>
       <div className="form-footer">
         <p>

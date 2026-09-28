@@ -216,8 +216,8 @@ components:
 - **Pretendard + 조밀한 음수 자간의 제목.** 본문/제목 모두 `"Pretendard Variable"` 자체 호스팅. 제목은
   `letter-spacing` 음수(-0.2~-0.5px)로 조밀하게 조판한다.
 - **상태는 알약 배지.** 작업 상태·개수·라벨은 `rounded.pill` 배지로 표현하고, 색으로 의미를 구분한다.
-- **커스텀 드롭다운 + 컴팩트 표.** 네이티브 `<select>` 없이 커스텀 listbox `Dropdown`을 쓰고, 작업 목록은
-  헤더가 있는 조밀한 표(`.job-table-head`/`.job-row`)로 표현해 세로 스크롤 누적을 줄인다.
+- **커스텀 드롭다운/콤보박스 + 컴팩트 표.** 네이티브 `<select>`/`<datalist>` 없이 커스텀 `Dropdown`·`Combobox`을 쓰고,
+  작업 목록은 헤더가 있는 조밀한 표(`.job-table-head`/`.job-row`)로 표현해 세로 스크롤 누적을 줄인다.
 - **모달 없음.** 웹 UI에는 dialog/modal 시스템이 없다. 부가 정보는 페이지 전환 또는 네이티브 `<details>`
   접기로 처리한다(`ServerPanel`, `JobLogs`, `attempt-history`, 설정의 `details`). 파괴적 전체 동작만
   `window.confirm`을 쓴다(`App.tsx`의 `stopAll`).
@@ -314,8 +314,8 @@ components:
 ### Inputs / Forms
 - `{components.input}` — `input, textarea` 공통: `--paper-2` 배경, `--line-strong` 1px 테두리,
   `--radius-xs`, 패딩 `11px 12px`, `--ink` 텍스트. hover 시 브랜드 테두리, disabled 시 `--bg`/`--faint`.
-  선택 입력은 네이티브 `<select>` 대신 `Dropdown`(위 항목)을 쓴다. 모델 ID 입력만 예외적으로
-  `input` + `<datalist>`(자유 입력 콤보박스)를 유지한다.
+  선택 입력은 네이티브 `<select>` 대신 `Dropdown`을, 자유 입력(모델 ID)은 `Combobox`를 쓴다.
+  네이티브 `<select>`/`<datalist>`는 앱에서 쓰지 않는다.
 - 라벨은 `label`에 `display:flex; flex-direction:column; gap:8px`, `--muted` 13px. 체크박스는 `.check`(행 정렬,
   `accent-color: var(--brand)`).
 - 비밀 입력은 `SecretField`(`.secret-field` + `.secret-actions`)로 저장/교체/삭제 버튼과 "입력 값 보기" 체크를 묶는다.
@@ -350,6 +350,8 @@ components:
 - 키보드: 트리거 ArrowUp/Down/Enter/Space로 열고, 메뉴 ArrowUp/Down/Home/End/Enter/Escape/Tab과 첫 글자 type-ahead를
   지원한다. 메뉴는 트리거 폭에 맞춰 아래로 열리고 `--shadow`, 최대 높이 300px(모바일 50vh)로 스크롤된다.
 - 용도: LMS 마지막 처리 단계, 학기, 과목, 상태 필터, 요약/음성 방식, 장치·정밀도, 프롬프트 방식, 요약 모드, 과목 분야.
+- 자유 입력이 필요한 곳(모델 ID)은 `components/Combobox.tsx`의 `Combobox`를 쓴다. `input role="combobox"` +
+  필터형 listbox로 같은 `.dropdown-menu`/`.dropdown-item` 스타일을 재사용하고 우측 caret 토글이 있다.
 
 ### Data table
 - 작업 목록(`JobList`)은 컴팩트 표다. `.job-table-head`(sticky 헤더, 11px 대문자)와 `.job-row`가
@@ -371,7 +373,8 @@ components:
 - 색·라디우스·타이포·모션 속도·포커스 링은 `style.css` `:root` 토큰을 참조한다. 새 원시 hex를 하드코딩하지 않는다.
 - 새 상태/강조는 "진한 전경 + `-100`/`-soft` 배경" 쌍을 따른다. 브랜드 채도 배경에 흰 글자를 쓰는 것은 주요 액션/실행 상태에 한정한다.
 - 새 카드는 `.panel`(16px, `--line`, `--shadow-sm`)을, 새 컨트롤은 10px 라디우스와 위 버튼 변형을 재사용한다.
-- 선택 입력은 네이티브 `<select>`를 새로 쓰지 말고 `Dropdown` 컴포넌트를 쓴다. 작업 목록형 정보는 표(`.job-row`)로 표현한다.
+- 선택 입력은 네이티브 `<select>`를 새로 쓰지 말고 `Dropdown` 컴포넌트를 쓴다. 자유 입력이면 `Combobox`를 쓴다.
+  작업 목록형 정보는 표(`.job-row`)로 표현한다.
 - 새 부가 정보는 모달을 만들지 말고 페이지 전환 또는 `<details>`로 표현한다(현재 UI에 모달 시스템이 없다).
 - 포커스는 `:focus-visible` + `--ring`을 유지한다. 기본 outline을 되살리지 않는다.
 - 진입 애니메이션을 추가할 때는 `prefers-reduced-motion: no-preference` 게이트 안에 둔다.

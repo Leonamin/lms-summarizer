@@ -15,6 +15,10 @@ export interface Settings {
   custom_prompt: string;
   keep_source: boolean;
   request_timeout: number;
+  auto_detect_enabled: boolean;
+  auto_detect_interval_minutes: number;
+  auto_detect_courses: string;
+  auto_save_scope: string;
 }
 export interface SettingsResponse {
   revision: number;

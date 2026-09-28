@@ -13,6 +13,7 @@ from starlette.concurrency import run_in_threadpool
 from src.core.models.jobs import ServiceError
 from src.core.services.jobs import JobService
 from src.web.api.routes import router
+from src.web.autoplay import AutoDetect
 from src.web.config import WebConfig
 from src.web.settings import WebSettings
 from src.web.uploads import Uploads
@@ -49,10 +50,11 @@ def create_app(config=None, *, service_factory=JobService):
         service = service_factory(config.data_dir, models_dir=config.models_dir,
                                   min_free_bytes=config.min_free_bytes, max_input_bytes=config.max_upload_bytes)
         app.state.service, app.state.config = service, config
-        maintenance = None
+        tasks = []
         try:
             app.state.settings = WebSettings(config, service)
             app.state.uploads = Uploads(config, service)
+            app.state.autodetect = AutoDetect(service, app.state.settings)
             await run_in_threadpool(service.start)
             async def clean_uploads():
                 while True:
@@ -61,13 +63,21 @@ def create_app(config=None, *, service_factory=JobService):
                         await run_in_threadpool(app.state.uploads.cleanup)
                     except OSError:
                         pass  # A temporary disk failure must not kill the lifecycle task.
-            maintenance = asyncio.create_task(clean_uploads())
+            async def auto_detect_loop():
+                while True:
+                    await asyncio.sleep(15)
+                    try:
+                        await run_in_threadpool(app.state.autodetect.tick)
+                    except Exception:
+                        pass  # Auto-detect must never kill the lifecycle task.
+            tasks = [asyncio.create_task(clean_uploads()), asyncio.create_task(auto_detect_loop())]
             yield
         finally:
-            if maintenance:
-                maintenance.cancel()
+            for task in tasks:
+                task.cancel()
+            for task in tasks:
                 with suppress(asyncio.CancelledError):
-                    await maintenance
+                    await task
             await run_in_threadpool(service.close)
 
     app = FastAPI(title='LMS Summarizer', lifespan=lifespan)
