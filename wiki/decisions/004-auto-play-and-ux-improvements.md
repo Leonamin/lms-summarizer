@@ -56,7 +56,9 @@ Accepted — 2026-09-27 사용자 대화에서 개선 범위와 세부 방향(�
 `.xnvc-progress-info-attendance-status.attendance`, 타임아웃 시 새로고침)·**Chrome/CDP 단일 슬롯 락
 순서**(재생→과목 조회→다운로드)를 정했다. 이후 자동 재생 워커(재생 큐·팝업 처리·출석 확인·자동 저장
 제출)를 구현하고 실제 LMS에서 강의 1편을 끝까지 재생해 출석을 확인했다([워커 로그](../logs/2026-09-28-autoplay-worker.md)).
-감지→재생→자동 저장 전체 흐름과 팝업 3회 반복·readystream 검증은 남아 있다.
+이어서 신규 미완료 강의로 감지→재생→출석→자동 저장 전체 흐름과 이어보기 팝업 처리를 확인했다.
+**headed 정책**: 서버는 항상 Xvfb를 기동하고 재생만 headed(`headless=False`), 다운로드·조회는
+`LMS_CHROME_HEADLESS`를 따른다. 팝업 3회 반복 실제 재현과 readystream 끝까지 검증은 남아 있다.
 [자동 재생 상세 계획](../plans/auto-play-new-lectures.md)에 남긴다.
 
 ## 관련 문서

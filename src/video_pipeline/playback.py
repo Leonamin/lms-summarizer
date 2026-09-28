@@ -118,7 +118,7 @@ async def execute_playback(command) -> StageResult:
 
     async with async_playwright() as pw:
         browser = await pw.chromium.launch(
-            headless=values.get('headless', True), executable_path=values.get('chrome_path'),
+            headless=False, executable_path=values.get('chrome_path'),
             args=['--disable-blink-features=AutomationControlled', '--enable-proprietary-codecs',
                   '--no-sandbox', '--autoplay-policy=no-user-gesture-required'])
         context = await browser.new_context(user_agent=default_user_agent())

@@ -10,7 +10,9 @@ def main():
     config = WebConfig()
     display = None
     try:
-        if not config.headless and not os.getenv('DISPLAY'):
+        # Xvfb is always available so auto-play (which needs a headed browser) works
+        # even when downloads/queries run headless.
+        if not os.getenv('DISPLAY'):
             import subprocess
             import time
             display = subprocess.Popen(['Xvfb', ':99', '-screen', '0', '1280x900x24', '-nolisten', 'tcp'],

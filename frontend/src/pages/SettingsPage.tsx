@@ -78,7 +78,6 @@ export function SettingsPage({
   const [checking, setChecking] = useState(false);
   const [courses, setCourses] = useState<MiniCourse[]>([]);
   const [playbacks, setPlaybacks] = useState<Playback[]>([]);
-  const [chromeMode, setChromeMode] = useState("");
   useEffect(() => {
     api<Catalog>("/catalog").then(setCatalog).catch(report);
   }, []);
@@ -86,9 +85,6 @@ export function SettingsPage({
     api<AutoStatus>("/auto-detect").then(setAuto).catch(() => {});
     api<{ data: MiniCourse[] }>("/courses")
       .then((result) => setCourses(result.data ?? []))
-      .catch(() => {});
-    api<{ runtime: { chrome_mode: string } }>("/system")
-      .then((result) => setChromeMode(result.runtime.chrome_mode))
       .catch(() => {});
   }, []);
   const loadPlaybacks = () =>
@@ -577,10 +573,9 @@ export function SettingsPage({
             </div>
           )}
         </div>
-        {chromeMode === "headless" && draft.auto_detect_enabled && (
-          <p className="manual-note">
-            자동 재생은 영상 재생 때문에 headed(Xvfb)가 필요합니다. 서버를
-            <code> LMS_CHROME_HEADLESS=false</code>로 실행하세요.
+        {draft.auto_detect_enabled && (
+          <p className="muted">
+            자동 재생은 서버에서 Xvfb로 headed 실행됩니다(영상 재생을 위해 필요).
           </p>
         )}
         {playbacks.length > 0 && (
