@@ -14,6 +14,7 @@ export function WorkspacePage({
   merge,
   report,
   pending,
+  loading = false,
   onNotice,
   onCommand,
   onStopAll,
@@ -23,6 +24,7 @@ export function WorkspacePage({
   merge: (jobs: Job[]) => void;
   report: (cause: unknown) => void;
   pending: string | null;
+  loading?: boolean;
   onNotice: (message: string) => void;
   onCommand: (job: Job, action: "cancel" | "retry") => void;
   onStopAll: () => void;
@@ -121,6 +123,7 @@ export function WorkspacePage({
       <OverviewStats
         working={jobs.filter(isActive)}
         completed={jobs.filter((job) => job.status === "completed")}
+        loading={loading}
       />
       <LmsImportPanel
         settings={settings}
@@ -142,6 +145,7 @@ export function WorkspacePage({
           selected={selected}
           onSelect={setSelected}
           onStopAll={onStopAll}
+          loading={loading}
         />
         <ResultPanel
           job={current}
@@ -154,6 +158,7 @@ export function WorkspacePage({
           onOpenArtifact={(item) => void openArtifact(item)}
           onCommand={onCommand}
           onNotice={onNotice}
+          loadingFallback={loading}
         />
       </div>
     </>

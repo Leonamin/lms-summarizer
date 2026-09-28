@@ -40,11 +40,13 @@ export function JobList({
   selected,
   onSelect,
   onStopAll,
+  loading = false,
 }: {
   jobs: Job[];
   selected: string | null;
   onSelect: (id: string) => void;
   onStopAll: () => void;
+  loading?: boolean;
 }) {
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
@@ -80,7 +82,8 @@ export function JobList({
         <div>
           <span className="eyebrow">PROCESSING QUEUE</span>
           <h2>
-            작업 목록 <span className="heading-count">{jobs.length}</span>
+            작업 목록{" "}
+            <span className="heading-count">{loading ? "…" : jobs.length}</span>
           </h2>
         </div>
         {working.length > 0 && (
@@ -97,6 +100,7 @@ export function JobList({
           id="job-search"
           placeholder="파일 이름으로 찾기"
           value={search}
+          disabled={loading}
           onChange={(event) => setSearch(event.target.value)}
         />
         <Dropdown
@@ -104,6 +108,7 @@ export function JobList({
           onChange={setFilter}
           options={filterOptions}
           ariaLabel="상태 필터"
+          disabled={loading}
           className="job-filter"
         />
       </div>
@@ -138,7 +143,21 @@ export function JobList({
             </span>
           ))}
         </div>
-        {sorted.length === 0 ? (
+        {loading ? (
+          Array.from({ length: 6 }).map((_, index) => (
+            <div
+              className="job-row skeleton-row"
+              key={"skeleton-" + index}
+              aria-hidden="true"
+            >
+              <span className="skeleton sk-badge" />
+              <span className="skeleton sk-name" />
+              <span className="skeleton sk-sm" />
+              <span className="skeleton sk-sm" />
+              <span className="skeleton sk-sm" />
+            </div>
+          ))
+        ) : sorted.length === 0 ? (
           <div className="empty">
             <span aria-hidden="true">▤</span>
             <h3>
@@ -148,9 +167,20 @@ export function JobList({
             </h3>
             <p>
               {jobs.length
-                ? "검색 조건을 바꿔보세요."
+                ? "다른 검색어나 상태로 다시 찾아보세요."
                 : "위에서 첫 자료를 선택해 주세요."}
             </p>
+            {jobs.length > 0 && (
+              <button
+                className="secondary"
+                onClick={() => {
+                  setSearch("");
+                  setFilter("all");
+                }}
+              >
+                검색·필터 초기화
+              </button>
+            )}
           </div>
         ) : (
           sorted.map((job) => (
