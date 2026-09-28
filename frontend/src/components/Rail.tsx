@@ -29,19 +29,9 @@ export function Rail({
             LMS<span className="brand-sub">강의 작업실</span>
           </span>
         </a>
-        <button
-          type="button"
-          className="rail-toggle"
-          aria-label={collapsed ? "메뉴 펼치기" : "메뉴 접기"}
-          aria-expanded={!collapsed}
-          title={collapsed ? "메뉴 펼치기" : "메뉴 접기"}
-          onClick={onToggle}
-        >
-          {collapsed ? "»" : "«"}
-        </button>
       </div>
       <div className="rail-caption">YOUR LEARNING, IN ORDER</div>
-      <nav aria-label="메뉴">
+      <nav id="rail-nav" aria-label="메뉴">
         {items.map((item) => (
           <button
             key={item.key}
@@ -58,10 +48,23 @@ export function Rail({
           </button>
         ))}
       </nav>
-      <div className="rail-bottom">
-        <span className="connection-dot" aria-hidden="true" />
-        <span className="rail-conn">{connection}</span>
-        <p>개인 서버 · 로컬 사용자</p>
+      <div className="rail-footer">
+        <button
+          type="button"
+          className="rail-toggle"
+          aria-label={collapsed ? "메뉴 펼치기" : "메뉴 접기"}
+          aria-expanded={!collapsed}
+          aria-controls="rail-nav"
+          title={collapsed ? "메뉴 펼치기" : "메뉴 접기"}
+          onClick={onToggle}
+        >
+          {collapsed ? "»" : "«"}
+        </button>
+        <div className="rail-bottom">
+          <span className="connection-dot" aria-hidden="true" />
+          <span className="rail-conn">{connection}</span>
+          <p>개인 서버 · 로컬 사용자</p>
+        </div>
       </div>
     </aside>
   );
