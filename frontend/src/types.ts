@@ -55,6 +55,8 @@ export interface Job {
   settings_revision_id: string;
   id: string;
   display_name: string;
+  course_name?: string | null;
+  week_title?: string | null;
   status: string;
   revision: number;
   created_at: string;

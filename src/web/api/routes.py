@@ -80,8 +80,11 @@ async def upload_content(upload_id: UUID, request: Request):
 @router.post('/jobs', status_code=202)
 def submit(body: JobCreate, request: Request, idempotency_key: str = Header(min_length=1, max_length=200)):
     state = request.app.state
-    sources = [Source.file(state.uploads.source(source.reference)) if source.kind == 'file'
-               else Source.url(source.reference) for source in body.sources]
+    sources = [Source.file(state.uploads.source(source.reference), display_name=source.display_name,
+                           course_name=source.course_name, week_title=source.week_title) if source.kind == 'file'
+               else Source.url(source.reference, display_name=source.display_name,
+                               course_name=source.course_name, week_title=source.week_title)
+               for source in body.sources]
     revision = state.settings.snapshot(body.settings_revision)
     ids = state.service.submit(OWNER, sources, revision, end_stage=PipelineStage(body.end_stage), idempotency_key=idempotency_key)
     return {'job_ids': ids}

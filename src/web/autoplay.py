@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from src.core.models.jobs import ServiceError
 from src.core.models.settings import UserContext
 from src.core.repositories.json_store import JsonStore
-from src.core.services.detection import flatten_lectures, mark_seen, select_playback_videos
+from src.core.services.detection import mark_seen, select_playback_videos
 
 OWNER = UserContext()
 DEFAULT_INTERVAL_MINUTES = 30
@@ -112,6 +112,7 @@ class AutoDetect:
             self._refresh(None, revision)
             return {'status': 'refreshing_courses'}
         known = {course.get('id') for course in data}
+        course_names = {course.get('id'): course.get('long_name') for course in data}
         selected = [course_id for course_id in courses if course_id in known] or courses
         # Refresh course details one at a time before detecting.
         for course_id in selected:
@@ -124,18 +125,21 @@ class AutoDetect:
         for course_id in selected:
             with self.service.lock:
                 cache = self.service.courses.cached(revision, course_id)
-            lectures = flatten_lectures((cache.get('data') or {}).get('weeks'))
-            for lecture in select_playback_videos(state['seen'], lectures):
-                key = lecture.get('url') or lecture.get('title')
-                try:
-                    record = self.service.playback.submit(
-                        OWNER, revision, lecture['url'], lecture.get('title', ''),
-                        config.get('auto_save_scope') or 'download')
-                except ServiceError as error:
-                    return self._record(state, error.code, queued)
-                mark_seen(state['seen'], [lecture])
-                state['submitted'][key] = [record['id']]
-                queued.append(record['id'])
+            detail = cache.get('data') or {}
+            course_name = detail.get('course_name') or course_names.get(course_id)
+            for week in detail.get('weeks') or []:
+                for lecture in select_playback_videos(state['seen'], week.get('lectures', [])):
+                    key = lecture.get('url') or lecture.get('title')
+                    try:
+                        record = self.service.playback.submit(
+                            OWNER, revision, lecture['url'], lecture.get('title', ''),
+                            config.get('auto_save_scope') or 'download',
+                            course_name=course_name, week_title=week.get('title'))
+                    except ServiceError as error:
+                        return self._record(state, error.code, queued)
+                    mark_seen(state['seen'], [lecture])
+                    state['submitted'][key] = [record['id']]
+                    queued.append(record['id'])
         return self._record(state, None, queued, completed=True)
 
     def _record(self, state, error, submitted=None, completed=False) -> dict:

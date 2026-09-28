@@ -78,6 +78,16 @@ export function ResultPanel({
         <div>
           <span className="eyebrow">WORK &amp; RESULTS</span>
           <h2>{job.display_name}</h2>
+          {(job.course_name || job.week_title) && (
+            <p
+              className="result-subtitle"
+              title={[job.course_name, job.week_title]
+                .filter(Boolean)
+                .join(" · ")}
+            >
+              {[job.course_name, job.week_title].filter(Boolean).join(" · ")}
+            </p>
+          )}
         </div>
         <StatusBadge job={job} />
       </div>

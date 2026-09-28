@@ -33,17 +33,19 @@ class PlaybackQueue:
     @staticmethod
     def public(record):
         return {key: record.get(key) for key in (
-            'id', 'lecture_url', 'title', 'status', 'attended', 'scope',
-            'popup_repeats', 'created_at', 'ended_at', 'error_code', 'job_ids')}
+            'id', 'lecture_url', 'title', 'course_name', 'week_title', 'status', 'attended',
+            'scope', 'popup_repeats', 'created_at', 'ended_at', 'error_code', 'job_ids')}
 
-    def submit(self, context, revision, lecture_url, title, scope='download'):
+    def submit(self, context, revision, lecture_url, title, scope='download',
+               course_name=None, week_title=None):
         state = self.store.read()
         for record in state['records'].values():
             if (record['owner_id'] == context.owner_id and record['lecture_url'] == lecture_url
                     and record['status'] in ('queued', 'running', 'completed')):
                 return self.public(record)
         record = {'id': str(uuid4()), 'owner_id': context.owner_id, 'lecture_url': lecture_url,
-                  'title': title, 'scope': scope, 'end_stage': int(END_STAGE.get(scope, PipelineStage.DOWNLOAD)),
+                  'title': title, 'course_name': course_name, 'week_title': week_title,
+                  'scope': scope, 'end_stage': int(END_STAGE.get(scope, PipelineStage.DOWNLOAD)),
                   'revision': asdict(revision), 'status': 'queued', 'attended': False,
                   'popup_repeats': 0, 'created_at': utcnow(), 'ended_at': None, 'error_code': None,
                   'job_ids': []}
@@ -114,8 +116,9 @@ class PlaybackQueue:
     def _auto_save(self, record):
         revision = SettingsRevision(**record['revision'])
         try:
-            ids = self.service.submit(UserContext(record['owner_id']),
-                                      [Source.url(record['lecture_url'])], revision,
+            source = Source.url(record['lecture_url'], display_name=record.get('title'),
+                                course_name=record.get('course_name'), week_title=record.get('week_title'))
+            ids = self.service.submit(UserContext(record['owner_id']), [source], revision,
                                       end_stage=PipelineStage(record['end_stage']),
                                       idempotency_key='autosave:' + record['lecture_url'])
         except ServiceError as exc:

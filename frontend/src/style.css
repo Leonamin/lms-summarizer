@@ -1112,6 +1112,16 @@ label.check input,
   word-break: break-word;
 }
 
+.result-subtitle {
+  max-width: 460px;
+  margin-top: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--t-sm);
+  color: var(--muted);
+}
+
 /* Connected 4-step track */
 .stage-track {
   display: flex;

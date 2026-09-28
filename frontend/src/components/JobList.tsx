@@ -218,7 +218,9 @@ export function JobList({
               onClick={() => onSelect(job.id)}
             >
               <span className={"status " + job.status}>{statusText(job)}</span>
-              <span className="job-name">{job.display_name}</span>
+              <span className="job-name" title={job.display_name}>
+                {job.display_name}
+              </span>
               <span className="job-stage">{stages[job.initial_stage - 1]}</span>
               <span className="job-attempts">{job.attempts.length}</span>
               <span className="job-time">{formatDate(job.created_at)}</span>
