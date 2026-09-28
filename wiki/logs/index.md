@@ -12,6 +12,8 @@ okf_version: "0.1"
 
 ## 로그
 
+- [2026-09-28-continue-processing.md](2026-09-28-continue-processing.md) — 완료된 초기 단계 작업을 산출물 재사용으로 뒤 단계까지 이어서 실행
+
 - [2026-09-28-autoplay-worker.md](2026-09-28-autoplay-worker.md) — 자동 재생 큐·팝업 처리·출석 확인 워커 구현과 실제 LMS 끝까지 재생 검증
 
 - [2026-09-28-autoplay-dom-investigation.md](2026-09-28-autoplay-dom-investigation.md) — 실제 LMS 재생 시작·인트로·이어보기/재생 중 팝업 DOM 선택자와 텍스트 구분 확인

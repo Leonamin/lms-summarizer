@@ -29,6 +29,7 @@ MESSAGES = {
     'upload_not_ready': '업로드 완료 후 작업을 제출해 주세요.', 'disk_full': '서버 저장 공간이 부족합니다.',
     'input_too_large': '파일 또는 요청 크기 한도를 초과했습니다.',
     'input_in_use': '작업이 참조하는 입력은 삭제할 수 없습니다.',
+    'invalid_stage': '이 작업에서 진행할 수 없는 단계입니다.',
     'secret_in_use': '기존 작업에서 사용하는 자격 증명은 삭제할 수 없습니다.',
     'content_too_large': '열람 한도를 초과했습니다. 파일을 다운로드해 주세요.',
 }

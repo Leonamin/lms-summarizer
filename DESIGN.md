@@ -328,6 +328,11 @@ Pretendard 가변 폰트 자체 호스팅(`frontend/public/fonts/PretendardVaria
 - 모달 대신 `<details>`(`.server-panel`, `.attempt-history`, 설정 섹션).
 - 로그 `.job-logs`(타임스탬프+메시지, 3초 폴링, 최근 200개). 마크다운 리더 `.markdown`.
 
+### 이어서 처리 (Continue)
+- 작업 상세의 `.continue-row`: 완료(`completed`)이고 `end_stage < 4`인 작업에 `Dropdown`(오디오 변환까지/
+  음성 인식까지/요약까지) + `.secondary` `이어서 처리` 버튼을 노출한다. **끝난 단계 다음부터** 실행하며
+  이미 만든 산출물을 재사용한다(`retry`는 원래 시작 단계부터 재실행).
+
 ### States (로딩 · 오류 · 빈 결과)
 - **초기 로딩**: `.skeleton`(배경 #eceef4, radius 8px) + `prefers-reduced-motion`에서만 shimmer. 통계 카드는
   `.skeleton-num`/`.skeleton-label`, 작업 목록은 `.skeleton-row` 6행, 상세 패널은 `.result-skeleton`.

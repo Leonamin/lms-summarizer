@@ -108,11 +108,16 @@ class JobService:
         return run
 
     def _new_attempt(self, job, number):
+        return self._new_attempt_from(
+            job, number, job['initial_stage'],
+            job['source_reference'] if job['source_kind'] == 'file' else None)
+
+    def _new_attempt_from(self, job, number, start_stage, input_id):
         attempt = {'id': str(uuid4()), 'job_id':job['id'], 'number':number, 'status':'queued',
-                   'current_stage':job['initial_stage'], 'generation':str(uuid4()), 'cancel_requested_at':None,
+                   'current_stage':int(start_stage), 'generation':str(uuid4()), 'cancel_requested_at':None,
                    'started_at':None, 'ended_at':None, 'error_code':None, 'safe_message':None}
         self.db.insert('attempts', attempt, job_id=job['id'], number=number, status='queued')
-        self._new_run(attempt, job['initial_stage'], job['source_reference'] if job['source_kind'] == 'file' else None)
+        self._new_run(attempt, start_stage, input_id)
         return attempt
 
     def import_file(self, context: UserContext, path: Path) -> str:
@@ -316,6 +321,49 @@ class JobService:
                 job['result_kind'] = None
                 self._write_job(job, attempt)
                 self._remember(context, operation, idempotency_key, attempt_id, attempt['id'])
+            self.changed.notify_all()
+            return attempt['id']
+
+    def continue_job(self, context: UserContext, job_id: str, attempt_id: str, end_stage: int, *,
+                     idempotency_key: str):
+        """Extend a completed job to a later stage, reusing the last artifact."""
+        with self.lock:
+            self._ensure_open()
+            job = self._job(context, job_id)
+            target = int(end_stage)
+            operation = f'continue:{job_id}'
+            fingerprint = json.dumps([attempt_id, target], sort_keys=True)
+            prior = self._dedup(context, operation, idempotency_key, fingerprint)
+            if prior is not None:
+                return prior
+            if job['current_attempt_id'] != attempt_id or job['status'] != 'completed':
+                raise ServiceError('attempt_conflict')
+            if target not in (int(PipelineStage.CONVERT_AUDIO), int(PipelineStage.STT),
+                              int(PipelineStage.SUMMARIZE)):
+                raise ServiceError('invalid_stage')
+            runs = self.db.records('SELECT payload FROM stage_runs WHERE attempt_id=?', (attempt_id,))
+            completed = [run for run in runs if run['status'] == 'completed' and run['output_id']]
+            if not completed:
+                raise ServiceError('input_missing')
+            last = max(completed, key=lambda run: run['stage'])
+            if target <= last['stage']:
+                raise ServiceError('invalid_stage')
+            artifact = self.db.get('artifacts', last['output_id'])
+            if not artifact or artifact['state'] != 'complete' or not self.paths.file(artifact['path']).is_file():
+                raise ServiceError('input_missing')
+            active = self.db.execute("SELECT count(*) FROM jobs WHERE status IN ('queued','running','cancelling')").fetchone()[0]
+            if active >= self.max_active:
+                raise ServiceError('queue_full')
+            revision = self.db.get('settings_revisions', job['settings_revision_id'])
+            self._credentials(revision)
+            with self.db.transaction():
+                number = self.db.execute('SELECT max(number) FROM attempts WHERE job_id=?', (job_id,)).fetchone()[0] + 1
+                attempt = self._new_attempt_from(job, number, last['stage'] + 1, last['output_id'])
+                job['end_stage'] = target
+                job['current_attempt_id'] = attempt['id']
+                job['result_kind'] = None
+                self._write_job(job, attempt)
+                self._remember(context, operation, idempotency_key, fingerprint, attempt['id'])
             self.changed.notify_all()
             return attempt['id']
 

@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import type { Artifact, Job } from "../types";
 import {
   chatbotUrls,
@@ -7,6 +8,7 @@ import {
   statusLabels,
 } from "../lib/format";
 import { ArtifactReader } from "./ArtifactReader";
+import { Dropdown } from "./Dropdown";
 import { JobLogs } from "./JobLogs";
 import { StageTrack } from "./StageTrack";
 import { StatusBadge } from "./StatusBadge";
@@ -21,6 +23,7 @@ export function ResultPanel({
   jobModel,
   onOpenArtifact,
   onCommand,
+  onContinue,
   onNotice,
   loadingFallback = false,
 }: {
@@ -33,9 +36,14 @@ export function ResultPanel({
   jobModel: string;
   onOpenArtifact: (artifact: Artifact) => void;
   onCommand: (job: Job, action: "cancel" | "retry") => void;
+  onContinue: (job: Job, endStage: number) => void;
   onNotice: (message: string) => void;
   loadingFallback?: boolean;
 }) {
+  const [continueStage, setContinueStage] = useState<number | null>(null);
+  useEffect(() => {
+    setContinueStage(null);
+  }, [job?.id]);
   if (!job) {
     return (
       <section className="result-panel panel" aria-label="작업 상세">
@@ -99,6 +107,30 @@ export function ResultPanel({
           )}
         </div>
       </div>
+      {job.status === "completed" && job.end_stage < 4 && (
+        <div className="continue-row">
+          <span className="muted">이어서 처리</span>
+          <Dropdown
+            value={String(continueStage ?? Math.min(job.end_stage + 1, 4))}
+            onChange={(value) => setContinueStage(Number(value))}
+            ariaLabel="이어서 처리할 단계"
+            options={[
+              { value: "2", label: "오디오 변환까지" },
+              { value: "3", label: "음성 인식까지" },
+              { value: "4", label: "요약까지" },
+            ].filter((option) => Number(option.value) > job.end_stage)}
+          />
+          <button
+            className="secondary"
+            disabled={pending === job.id}
+            onClick={() =>
+              onContinue(job, continueStage ?? Math.min(job.end_stage + 1, 4))
+            }
+          >
+            이어서 처리
+          </button>
+        </div>
+      )}
       {latest?.safe_message && (
         <p className="inline-error">{latest.safe_message}</p>
       )}
