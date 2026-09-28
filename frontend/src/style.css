@@ -178,6 +178,7 @@ small,
   display: grid;
   grid-template-columns: 264px minmax(0, 1fr);
   min-height: 100vh;
+  transition: grid-template-columns 240ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .rail {
@@ -185,7 +186,8 @@ small,
   top: 0;
   align-self: start;
   height: 100vh;
-  padding: 30px 22px;
+  /* Same horizontal padding in both states so the rail contents never shift. */
+  padding: 30px 12px;
   color: #d9d7ea;
   background: var(--rail);
   border-right: 1px solid var(--rail-line);
@@ -197,21 +199,16 @@ small,
 .rail-head {
   display: flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: space-between;
   min-height: 53px; /* reserve the brand row so nav icons keep their position when collapsed */
 }
 
-.rail-footer {
-  margin-top: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
 .rail-toggle {
+  position: absolute;
+  top: 41px;
+  right: 12px;
   display: grid;
   place-items: center;
-  align-self: flex-start;
   width: 30px;
   height: 30px;
   min-height: 0;
@@ -219,6 +216,10 @@ small,
   color: #c7c4e0;
   font-size: 16px;
   line-height: 1;
+  transition:
+    right 240ms cubic-bezier(0.4, 0, 0.2, 1),
+    background var(--speed),
+    color var(--speed);
 }
 
 .rail-toggle:hover {
@@ -231,29 +232,29 @@ small,
   .app-shell.rail-collapsed {
     grid-template-columns: 78px minmax(0, 1fr);
   }
-  .rail.collapsed {
-    /* Same vertical padding as expanded so the rhythm stays put. */
-    padding: 30px 12px;
+  .rail.collapsed .brand {
+    display: none;
   }
-  .rail.collapsed .rail-head {
-    justify-content: center;
+  /* Slide the toggle from the right edge to the centre as the rail narrows. */
+  .rail.collapsed .rail-toggle {
+    right: 24px;
   }
   .rail.collapsed .nav-item {
     justify-content: center;
     width: 100%;
     padding: 12px 0;
   }
-  .rail.collapsed .rail-toggle {
-    align-self: center;
-  }
   .rail.collapsed .rail-bottom {
     text-align: center;
-    white-space: nowrap;
-    overflow: hidden;
+  }
+  .rail.collapsed .connection-dot {
+    margin-right: 0;
   }
   .rail.collapsed .brand-text,
   .rail.collapsed .nav-label,
-  .rail.collapsed .nav-count {
+  .rail.collapsed .nav-count,
+  .rail.collapsed .rail-conn,
+  .rail.collapsed .rail-bottom p {
     display: none;
   }
   /* Hide the caption but keep its space so `nav` does not shift up. */
@@ -261,11 +262,6 @@ small,
     visibility: hidden;
     white-space: nowrap;
     overflow: hidden;
-  }
-  /* Keep the connection text boxes so the footer (and its toggle) does not move. */
-  .rail.collapsed .rail-conn,
-  .rail.collapsed .rail-bottom p {
-    visibility: hidden;
   }
 }
 
@@ -356,6 +352,7 @@ small,
 }
 
 .rail-bottom {
+  margin-top: auto;
   font-size: var(--t-sm);
   color: #c2bfe0;
 }
@@ -2129,8 +2126,7 @@ fieldset details {
     display: none;
   }
   /* The rail collapses to a horizontal bar on mobile: ignore the toggle state. */
-  .rail-toggle,
-  .rail-footer {
+  .rail-toggle {
     display: none;
   }
   .rail-head {
