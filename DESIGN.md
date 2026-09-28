@@ -293,6 +293,9 @@ Pretendard 가변 폰트 자체 호스팅(`frontend/public/fonts/PretendardVaria
 - `{components.rail}` — 단색 `--rail`, `border-right: 1px solid rgba(255,255,255,.08)`.
   `{components.nav-item}` hover는 `rgba(255,255,255,.06)`, `{components.nav-item-selected}`는 `rgba(255,255,255,.1)`(좌측 바 없음).
   `.nav-count` 알약. ≤680px에서 상단 가로 바로 전환.
+- **접기/펼치기**: `.rail-toggle` 버튼으로 레일을 접는다. 접으면 `.app-shell.rail-collapsed`가 `78px`로 줄고
+  브랜드 텍스트·캡션·라벨·개수·연결 텍스트를 숨기며 아이콘만 남긴다(연결 점은 유지). 상태는 `localStorage`에 저장한다.
+  모바일(≤680px)에서는 토글을 숨기고 가로 바를 유지한다.
 
 ### Badges / Status
 - `{components.badge}` — `.status` 알약(12px/650). 변형: `.completed`(positive-soft), `.running`(brand 배경+흰 글자),

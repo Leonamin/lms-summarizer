@@ -194,6 +194,63 @@ small,
   gap: 8px;
 }
 
+.rail-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.rail-toggle {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  min-height: 0;
+  border-radius: var(--radius-xs);
+  color: #c7c4e0;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.rail-toggle:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.app-shell.rail-collapsed {
+  grid-template-columns: 78px minmax(0, 1fr);
+}
+
+.rail.collapsed {
+  padding: 26px 12px;
+  align-items: center;
+}
+
+.rail.collapsed .rail-head {
+  flex-direction: column;
+  gap: 14px;
+}
+
+.rail.collapsed .nav-item {
+  justify-content: center;
+  width: 100%;
+  padding: 12px 0;
+}
+
+.rail.collapsed .rail-bottom {
+  text-align: center;
+}
+
+.rail.collapsed .brand-text,
+.rail.collapsed .rail-caption,
+.rail.collapsed .nav-label,
+.rail.collapsed .nav-count,
+.rail.collapsed .rail-conn,
+.rail.collapsed .rail-bottom p {
+  display: none;
+}
+
 .brand {
   display: flex;
   gap: 12px;
@@ -905,7 +962,7 @@ label.check input,
 /* ------------------------------------------------------------ workspace -- */
 .workspace-grid {
   display: grid;
-  grid-template-columns: minmax(320px, 0.84fr) minmax(0, 1.16fr);
+  grid-template-columns: minmax(360px, 1fr) minmax(0, 1.2fr);
   gap: 24px;
   align-items: start;
 }
@@ -931,8 +988,6 @@ label.check input,
 
 .job-list {
   border-top: 1px solid var(--line);
-  max-height: 640px;
-  overflow: auto;
 }
 
 .job-table-head {
@@ -940,9 +995,9 @@ label.check input,
   top: 0;
   z-index: 1;
   display: grid;
-  grid-template-columns: 96px minmax(0, 1fr) 78px 46px 86px;
-  gap: 12px;
-  padding: 11px 28px;
+  grid-template-columns: 88px minmax(0, 1fr) 72px 44px 80px;
+  gap: 10px;
+  padding: 11px 24px;
   border-bottom: 1px solid var(--line);
   background: var(--paper-2);
   font-size: var(--t-2xs);
@@ -953,6 +1008,8 @@ label.check input,
 
 .job-table-head [role="columnheader"] {
   min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -977,11 +1034,11 @@ label.check input,
 .job-row {
   position: relative;
   display: grid;
-  grid-template-columns: 96px minmax(0, 1fr) 78px 46px 86px;
+  grid-template-columns: 88px minmax(0, 1fr) 72px 44px 80px;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   width: 100%;
-  padding: 12px 28px;
+  padding: 12px 24px;
   border-bottom: 1px solid var(--line);
   text-align: left;
   transition: background var(--speed);
@@ -1967,6 +2024,18 @@ fieldset details {
   }
 }
 
+@media (max-width: 1400px) {
+  /* Narrow two-column layout: drop the "시도" column so the name keeps room. */
+  .job-table-head,
+  .job-row {
+    grid-template-columns: 88px minmax(0, 1fr) 72px 80px;
+  }
+  .job-table-head [role="columnheader"]:nth-child(4),
+  .job-attempts {
+    display: none;
+  }
+}
+
 @media (max-width: 1180px) {
   .app-shell {
     grid-template-columns: 216px minmax(0, 1fr);
@@ -1976,9 +2045,6 @@ fieldset details {
   }
   .workspace-grid {
     grid-template-columns: minmax(0, 1fr);
-  }
-  .job-list {
-    max-height: 400px;
   }
 }
 
@@ -2044,6 +2110,17 @@ fieldset details {
   .nav-count,
   .nav-item > span:first-child {
     display: none;
+  }
+  /* The rail collapses to a horizontal bar on mobile: ignore the toggle state. */
+  .rail-toggle {
+    display: none;
+  }
+  .rail.collapsed {
+    padding: 16px 20px;
+  }
+  .rail.collapsed .brand-text,
+  .rail.collapsed .nav-label {
+    display: block;
   }
   main {
     padding: 24px 16px 12px;
