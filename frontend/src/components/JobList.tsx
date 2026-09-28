@@ -1,6 +1,14 @@
 import { useState } from "react";
 import type { Job } from "../types";
 import { formatDate, isActive, stages, statusText } from "../lib/format";
+import { Dropdown } from "./Dropdown";
+
+const filterOptions = [
+  { value: "all", label: "전체 작업" },
+  { value: "active", label: "처리 중" },
+  { value: "completed", label: "완료" },
+  { value: "retryable", label: "실패·취소·중단" },
+];
 
 export function JobList({
   jobs,
@@ -52,18 +60,21 @@ export function JobList({
           value={search}
           onChange={(event) => setSearch(event.target.value)}
         />
-        <select
-          aria-label="상태 필터"
+        <Dropdown
           value={filter}
-          onChange={(event) => setFilter(event.target.value)}
-        >
-          <option value="all">전체 작업</option>
-          <option value="active">처리 중</option>
-          <option value="completed">완료</option>
-          <option value="retryable">실패·취소·중단</option>
-        </select>
+          onChange={setFilter}
+          options={filterOptions}
+          ariaLabel="상태 필터"
+          className="job-filter"
+        />
       </div>
       <div className="job-list">
+        <div className="job-table-head" aria-hidden="true">
+          <span>상태</span>
+          <span>이름</span>
+          <span>시작</span>
+          <span>만든 시각</span>
+        </div>
         {filtered.length === 0 ? (
           <div className="empty">
             <span aria-hidden="true">▤</span>
@@ -86,22 +97,10 @@ export function JobList({
               aria-current={selected === job.id}
               onClick={() => onSelect(job.id)}
             >
-              <span
-                className={
-                  "file-glyph" + (job.status === "completed" ? " finished" : "")
-                }
-                aria-hidden="true"
-              >
-                {job.status === "completed" ? "✓" : "▤"}
-              </span>
-              <span className="job-row-body">
-                <strong>{job.display_name}</strong>
-                <small>
-                  {formatDate(job.created_at)} · {stages[job.initial_stage - 1]}
-                  부터
-                </small>
-              </span>
               <span className={"status " + job.status}>{statusText(job)}</span>
+              <span className="job-name">{job.display_name}</span>
+              <span className="job-stage">{stages[job.initial_stage - 1]}</span>
+              <span className="job-time">{formatDate(job.created_at)}</span>
             </button>
           ))
         )}

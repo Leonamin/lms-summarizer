@@ -6,6 +6,14 @@ import {
   completionLabels,
   requestId,
 } from "../lib/format";
+import { Dropdown } from "./Dropdown";
+
+const endStageOptions = [
+  { value: "4", label: "요약 / 프롬프트 준비" },
+  { value: "3", label: "음성 인식까지만" },
+  { value: "2", label: "오디오 변환까지만" },
+  { value: "1", label: "다운로드까지만" },
+];
 
 type Course = {
   id: string;
@@ -245,16 +253,13 @@ export function LmsImportPanel({
         </p>
         <label>
           LMS 마지막 처리 단계
-          <select
-            value={endStage}
+          <Dropdown
+            value={String(endStage)}
+            onChange={(value) => setEndStage(Number(value))}
+            options={endStageOptions}
+            ariaLabel="LMS 마지막 처리 단계"
             disabled={busy || uncertain}
-            onChange={(event) => setEndStage(Number(event.target.value))}
-          >
-            <option value={4}>요약 / 프롬프트 준비</option>
-            <option value={3}>음성 인식까지만</option>
-            <option value={2}>오디오 변환까지만</option>
-            <option value={1}>다운로드까지만</option>
-          </select>
+          />
         </label>
       </div>
       {message && (
@@ -315,14 +320,17 @@ export function LmsImportPanel({
             </button>
             <label>
               학기
-              <select value={term} onChange={(e) => setTerm(e.target.value)}>
-                <option value="all">전체 학기</option>
-                {[...new Set(courses?.data.map((c) => c.term) ?? [])].map(
-                  (value) => (
-                    <option key={value}>{value}</option>
+              <Dropdown
+                value={term}
+                onChange={setTerm}
+                ariaLabel="학기"
+                options={[
+                  { value: "all", label: "전체 학기" },
+                  ...[...new Set(courses?.data.map((c) => c.term) ?? [])].map(
+                    (value) => ({ value, label: value }),
                   ),
-                )}
-              </select>
+                ]}
+              />
             </label>
             <label className="check">
               <input
@@ -343,21 +351,28 @@ export function LmsImportPanel({
           </p>
           <label>
             과목 선택
-            <select value={course} onChange={(e) => setCourse(e.target.value)}>
-              <option value="">과목을 선택하세요</option>
-              {courses?.data
-                .filter(
-                  (item) =>
-                    (term === "all" || item.term === term) &&
-                    (!favorites || item.is_favorited),
-                )
-                .map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.is_favorited ? "★ " : ""}
-                    {item.long_name} · {item.term}
-                  </option>
-                ))}
-            </select>
+            <Dropdown
+              value={course}
+              onChange={setCourse}
+              ariaLabel="과목 선택"
+              options={[
+                { value: "", label: "과목을 선택하세요" },
+                ...(courses?.data ?? [])
+                  .filter(
+                    (item) =>
+                      (term === "all" || item.term === term) &&
+                      (!favorites || item.is_favorited),
+                  )
+                  .map((item) => ({
+                    value: item.id,
+                    label:
+                      (item.is_favorited ? "★ " : "") +
+                      item.long_name +
+                      " · " +
+                      item.term,
+                  })),
+              ]}
+            />
           </label>
           {course && (
             <>

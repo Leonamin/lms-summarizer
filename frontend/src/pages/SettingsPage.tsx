@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api } from "../api";
 import type { Settings, SettingsResponse } from "../types";
 import { SecretField } from "../components/SecretField";
+import { Dropdown } from "../components/Dropdown";
 
 type Model = { id: string; label: string };
 type Provider = { default_model: string; models: Model[] };
@@ -116,23 +117,21 @@ export function SettingsPage({
         <div className="settings-grid">
           <label>
             요약 방식
-            <select
+            <Dropdown
               value={draft.ai_engine}
-              onChange={(event) =>
+              onChange={(value) =>
                 setDraft({
                   ...draft,
-                  ai_engine: event.target.value,
-                  ai_model:
-                    catalog?.summary[event.target.value]?.default_model ?? "",
+                  ai_engine: value,
+                  ai_model: catalog?.summary[value]?.default_model ?? "",
                 })
               }
-            >
-              {Object.entries(summaryLabels).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
+              ariaLabel="요약 방식"
+              options={Object.entries(summaryLabels).map(([value, label]) => ({
+                value,
+                label,
+              }))}
+            />
           </label>
           <label>
             요약 모델
@@ -171,22 +170,21 @@ export function SettingsPage({
         <div className="settings-grid">
           <label>
             음성 인식 방식
-            <select
+            <Dropdown
               value={draft.stt_engine}
-              onChange={(event) =>
+              onChange={(value) =>
                 setDraft({
                   ...draft,
-                  stt_engine: event.target.value,
-                  stt_model: catalog?.stt[event.target.value]?.default_model ?? "",
+                  stt_engine: value,
+                  stt_model: catalog?.stt[value]?.default_model ?? "",
                 })
               }
-            >
-              {Object.entries(sttLabels).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
+              ariaLabel="음성 인식 방식"
+              options={Object.entries(sttLabels).map(([value, label]) => ({
+                value,
+                label,
+              }))}
+            />
           </label>
           {draft.stt_engine !== "returnzero" && (
             <label>
@@ -243,14 +241,15 @@ export function SettingsPage({
               <>
                 <label>
                   장치
-                  <select
+                  <Dropdown
                     value={String(draft.stt_params.device ?? "cpu")}
-                    onChange={(event) => param("device", event.target.value)}
-                  >
-                    {["cpu", "auto", "cuda"].map((value) => (
-                      <option key={value}>{value}</option>
-                    ))}
-                  </select>
+                    onChange={(value) => param("device", value)}
+                    ariaLabel="장치"
+                    options={["cpu", "auto", "cuda"].map((value) => ({
+                      value,
+                      label: value,
+                    }))}
+                  />
                   <small>
                     기본 Docker 구성은 CPU입니다. CUDA는 호스트·컨테이너 설정이
                     필요합니다.
@@ -258,18 +257,18 @@ export function SettingsPage({
                 </label>
                 <label>
                   연산 정밀도
-                  <select
+                  <Dropdown
                     value={String(draft.stt_params.compute_type ?? "int8")}
-                    onChange={(event) =>
-                      param("compute_type", event.target.value)
-                    }
-                  >
-                    {["auto", "int8", "float16", "float32", "int8_float16"].map(
-                      (value) => (
-                        <option key={value}>{value}</option>
-                      ),
-                    )}
-                  </select>
+                    onChange={(value) => param("compute_type", value)}
+                    ariaLabel="연산 정밀도"
+                    options={[
+                      "auto",
+                      "int8",
+                      "float16",
+                      "float32",
+                      "int8_float16",
+                    ].map((value) => ({ value, label: value }))}
+                  />
                 </label>
                 <label>
                   언어 코드
@@ -323,47 +322,43 @@ export function SettingsPage({
         <div className="settings-grid">
           <label>
             프롬프트 방식
-            <select
+            <Dropdown
               value={draft.prompt_mode}
-              onChange={(event) => change("prompt_mode", event.target.value)}
-            >
-              <option value="structured">기본 강의 요약</option>
-              <option value="custom">직접 작성</option>
-            </select>
+              onChange={(value) => change("prompt_mode", value)}
+              ariaLabel="프롬프트 방식"
+              options={[
+                { value: "structured", label: "기본 강의 요약" },
+                { value: "custom", label: "직접 작성" },
+              ]}
+            />
           </label>
           {draft.prompt_mode === "structured" && (
             <>
               <label>
                 요약 모드
-                <select
+                <Dropdown
                   value={draft.summary_mode}
-                  onChange={(event) => change("summary_mode", event.target.value)}
-                >
-                  {Object.entries(
+                  onChange={(value) => change("summary_mode", value)}
+                  ariaLabel="요약 모드"
+                  options={Object.entries(
                     catalog?.summary_modes ?? {
                       quick: "빠른 요약",
                       normal: "일반 요약",
                       detailed: "상세 요약",
                     },
-                  ).map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
+                  ).map(([value, label]) => ({ value, label }))}
+                />
               </label>
               <label>
                 과목 분야
-                <select
+                <Dropdown
                   value={draft.subject_category}
-                  onChange={(event) =>
-                    change("subject_category", event.target.value)
-                  }
-                >
-                  {(catalog?.subject_categories ?? ["자동 감지"]).map((value) => (
-                    <option key={value}>{value}</option>
-                  ))}
-                </select>
+                  onChange={(value) => change("subject_category", value)}
+                  ariaLabel="과목 분야"
+                  options={(catalog?.subject_categories ?? ["자동 감지"]).map(
+                    (value) => ({ value, label: value }),
+                  )}
+                />
               </label>
               <label>
                 과목명·분야 직접 입력

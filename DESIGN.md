@@ -166,6 +166,33 @@ components:
     typography: "{typography.body-sm}"
     rounded: "{rounded.pill}"
     padding: "8px 16px"
+  dropdown-trigger:
+    backgroundColor: "{colors.paper-soft}"
+    textColor: "{colors.ink}"
+    typography: "{typography.body}"
+    rounded: "{rounded.input}"
+    padding: "10px 12px"
+    height: 44px
+  dropdown-item:
+    backgroundColor: "{colors.paper}"
+    textColor: "{colors.ink-soft}"
+    typography: "{typography.body}"
+    rounded: "{rounded.input}"
+    padding: "10px 12px"
+    height: 42px
+  dropdown-item-selected:
+    backgroundColor: "{colors.brand-soft}"
+    textColor: "{colors.brand-strong}"
+    typography: "{typography.body}"
+    rounded: "{rounded.input}"
+    padding: "10px 12px"
+    height: 42px
+  table-row:
+    backgroundColor: "{colors.paper}"
+    textColor: "{colors.ink}"
+    typography: "{typography.body-sm}"
+    rounded: "{rounded.panel}"
+    padding: "10px 24px"
 ---
 
 # LMS 강의 작업실 — Web Dashboard Design System
@@ -189,6 +216,8 @@ components:
 - **Pretendard + 조밀한 음수 자간의 제목.** 본문/제목 모두 `"Pretendard Variable"` 자체 호스팅. 제목은
   `letter-spacing` 음수(-0.2~-0.5px)로 조밀하게 조판한다.
 - **상태는 알약 배지.** 작업 상태·개수·라벨은 `rounded.pill` 배지로 표현하고, 색으로 의미를 구분한다.
+- **커스텀 드롭다운 + 컴팩트 표.** 네이티브 `<select>` 없이 커스텀 listbox `Dropdown`을 쓰고, 작업 목록은
+  헤더가 있는 조밀한 표(`.job-table-head`/`.job-row`)로 표현해 세로 스크롤 누적을 줄인다.
 - **모달 없음.** 웹 UI에는 dialog/modal 시스템이 없다. 부가 정보는 페이지 전환 또는 네이티브 `<details>`
   접기로 처리한다(`ServerPanel`, `JobLogs`, `attempt-history`, 설정의 `details`). 파괴적 전체 동작만
   `window.confirm`을 쓴다(`App.tsx`의 `stopAll`).
@@ -233,7 +262,9 @@ components:
 - **제목**: `h1` 32px / 1.24 / 760 / -0.5px(모바일 680px 이하 25px), `h2` 20px / 700 / -0.2px, `h3` 17px / 650.
 - **스케일 토큰**: `--t-xs` 12px, `--t-sm` 13px, `--t-md` 15px, `--t-lg` 17px. 이 4개가 대부분의 UI 텍스트를 담당한다.
 - **eyebrow**: 11px / 750 / `letter-spacing: 1.6px`, `--brand` 색, TSX에서 대문자 문자열(LECTURE WORKSPACE 등)로 사용.
-- **폴백/예외**: 제목과 브랜드 마크 등 일부 크기는 토큰이 아니라 리터럴 px(32/34/25/24/22/20/18/16/11/0.92em)를 쓴다. 아래 Known Inconsistencies 참고.
+- **폴백/예외**: 제목(`h1` `--t-2xl`, `h2` `--t-xl`, `h3` `--t-lg`)·eyebrow(`--t-2xs`)·지표 숫자(`--t-display`)는
+  토큰을 쓰지만, 브랜드 마크(22px)·업로드 심볼(22px)·빈 상태 아이콘(24px)·모바일 `h1`(25px)·모바일 입력(16px)·
+  인라인 코드(`0.92em`)는 리터럴 px다. 아래 Known Inconsistencies 참고.
 
 ## Layout
 
@@ -281,8 +312,10 @@ components:
 - `.quiet`(텍스트형)와 `.danger`(색상만) 클래스가 CSS에 정의되어 있으나 현재 TSX에서 사용되지 않는다(Known Inconsistencies).
 
 ### Inputs / Forms
-- `{components.input}` — `input, select, textarea` 공통: `--paper-2` 배경, `--line-strong` 1px 테두리,
+- `{components.input}` — `input, textarea` 공통: `--paper-2` 배경, `--line-strong` 1px 테두리,
   `--radius-xs`, 패딩 `11px 12px`, `--ink` 텍스트. hover 시 브랜드 테두리, disabled 시 `--bg`/`--faint`.
+  선택 입력은 네이티브 `<select>` 대신 `Dropdown`(위 항목)을 쓴다. 모델 ID 입력만 예외적으로
+  `input` + `<datalist>`(자유 입력 콤보박스)를 유지한다.
 - 라벨은 `label`에 `display:flex; flex-direction:column; gap:8px`, `--muted` 13px. 체크박스는 `.check`(행 정렬,
   `accent-color: var(--brand)`).
 - 비밀 입력은 `SecretField`(`.secret-field` + `.secret-actions`)로 저장/교체/삭제 버튼과 "입력 값 보기" 체크를 묶는다.
@@ -309,6 +342,21 @@ components:
 - 산출물 탭 `.artifact-tabs` — 알약 버튼, 기본 `--bg`/`--muted`, 활성은 `--brand` 배경 + 흰 글자.
   두 탭 패턴의 스타일이 서로 다르다(Known Inconsistencies).
 
+### Dropdown (listbox)
+- `components/Dropdown.tsx`의 `Dropdown`. **네이티브 `<select>`를 쓰지 않는다**(앱 전체에 `<select>` 없음).
+  버튼 트리거(`{components.dropdown-trigger}`, 최소 높이 44px) + `role="listbox"` 팝업 메뉴
+  (`role="option"` 항목, `{components.dropdown-item}`, 최소 높이 42px)로 구성한다.
+- 선택 항목은 `{components.dropdown-item-selected}`(brand-soft 배경 + brand-strong 텍스트 + ✓), 활성/호버는 brand-50.
+- 키보드: 트리거 ArrowUp/Down/Enter/Space로 열고, 메뉴 ArrowUp/Down/Home/End/Enter/Escape/Tab과 첫 글자 type-ahead를
+  지원한다. 메뉴는 트리거 폭에 맞춰 아래로 열리고 `--shadow`, 최대 높이 300px(모바일 50vh)로 스크롤된다.
+- 용도: LMS 마지막 처리 단계, 학기, 과목, 상태 필터, 요약/음성 방식, 장치·정밀도, 프롬프트 방식, 요약 모드, 과목 분야.
+
+### Data table
+- 작업 목록(`JobList`)은 컴팩트 표다. `.job-table-head`(sticky 헤더, 11px 대문자)와 `.job-row`가
+  `grid-template-columns: 92px minmax(0,1fr) 76px 84px`(상태·이름·시작·만든 시각)을 공유한다.
+- 각 행은 선택 가능한 `<button>`(`{components.table-row}`)이며 선택 시 `.selected`(brand-50 + 좌측 3px 브랜드 바).
+  이름은 한 줄 말줄임, 시각은 `tabular-nums`. ≤680px에서 시작·시각 열과 헤더를 숨기고 상태·이름만 남긴다.
+
 ### Stage track
 - `.stage-track` 4열 그리드, 각 단계는 `--paper-2` 배경 + `--line` 테두리 카드, 26px 원형 마커.
   `li.completed`(positive-soft, 채워진 마커), `li.running`(brand-soft, 브랜드 마커 + 4px 광), 그 외 기본.
@@ -323,6 +371,7 @@ components:
 - 색·라디우스·타이포·모션 속도·포커스 링은 `style.css` `:root` 토큰을 참조한다. 새 원시 hex를 하드코딩하지 않는다.
 - 새 상태/강조는 "진한 전경 + `-100`/`-soft` 배경" 쌍을 따른다. 브랜드 채도 배경에 흰 글자를 쓰는 것은 주요 액션/실행 상태에 한정한다.
 - 새 카드는 `.panel`(16px, `--line`, `--shadow-sm`)을, 새 컨트롤은 10px 라디우스와 위 버튼 변형을 재사용한다.
+- 선택 입력은 네이티브 `<select>`를 새로 쓰지 말고 `Dropdown` 컴포넌트를 쓴다. 작업 목록형 정보는 표(`.job-row`)로 표현한다.
 - 새 부가 정보는 모달을 만들지 말고 페이지 전환 또는 `<details>`로 표현한다(현재 UI에 모달 시스템이 없다).
 - 포커스는 `:focus-visible` + `--ring`을 유지한다. 기본 outline을 되살리지 않는다.
 - 진입 애니메이션을 추가할 때는 `prefers-reduced-motion: no-preference` 게이트 안에 둔다.
@@ -382,13 +431,14 @@ components:
 
 근거와 함께 현재 구현이 서로 다른 관행을 쓰는 지점을 기록한다(정규화하지 않음).
 
-1. **사용되지 않는 토큰/클래스.** `--violet-100`, `--accent-cream`, `--shadow`(큰 그림자)는 정의만 있고 사용처가 없다.
-   `.quiet`, `.danger`, `.field-hint` 클래스도 CSS에 있으나 TSX에서 쓰이지 않는다.
+1. **사용되지 않는 토큰/클래스.** `--violet-100`, `--accent-cream`은 정의만 있고 사용처가 없다.
+   `.quiet`, `.danger`, `.field-hint` 클래스도 CSS에 있으나 TSX에서 쓰이지 않는다. (`--shadow`는 드롭다운 메뉴에서 사용된다.)
 2. **토큰을 우회하는 원시 색.** 레일 그라디언트(#2a1e6e/#1b1442/#161029)와 그 위 텍스트(#ded9f6/#b9b1e6/#8b83c4/
    #cdc7ee/#cbc6ee/#948cce), hover·테두리 틴트(#ddd7f6/#e3dffb/#cfc7f2/#c6e3d3/#f2f9f5), 오류/경고/위험 텍스트
    (#8f2340/#7a5c06/#a32749)는 `:root` 토큰이 아니라 리터럴 hex다.
-3. **타이포 스케일 불완전.** 본문 4단계(`--t-xs`~`--t-lg`)는 토큰이나, 제목과 일부 요소는 리터럴 px(32/34/25/24/22/20/18/16/11,
-   `0.92em`)를 직접 쓴다. `h1`은 `--t-*` 밖의 32px다.
+3. **타이포 스케일 불완전(축소됨).** `h1`/`h2`/eyebrow/지표 숫자는 `--t-2xs`~`--t-display` 토큰으로 옮겼으나,
+   브랜드 마크·업로드 심볼(22px), 빈 상태 아이콘(24px), 모바일 `h1`(25px), 모바일 입력(16px), 인라인 코드(`0.92em`)는
+   여전히 리터럴 px다.
 4. **라디우스 예외.** 대부분 토큰이나 브랜드 마크 13px, 일부 5px, 모바일 레일 20px, 원형 50%가 리터럴이다.
 5. **인라인 스타일 3곳.** `ResultPanel.tsx`(manual-note margin), `LmsImportPanel.tsx`(flex:1),
    `IntakePanel.tsx`(inline-error margin)가 클래스 대신 `style={{}}`를 쓴다.

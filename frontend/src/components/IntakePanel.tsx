@@ -2,6 +2,14 @@ import { useRef, useState } from "react";
 import { api, ApiError } from "../api";
 import type { SettingsResponse, Upload } from "../types";
 import { bytes, requestId } from "../lib/format";
+import { Dropdown } from "./Dropdown";
+
+const intakeStageOptions = [
+  { value: "4", label: "요약 / 프롬프트 준비" },
+  { value: "3", label: "음성 인식까지만" },
+  { value: "2", label: "오디오 변환까지만" },
+  { value: "1", label: "다운로드까지만 (LMS URL)" },
+];
 
 const allowed = /\.(mp4|ts|wav|mp3|txt)$/i;
 
@@ -204,17 +212,13 @@ export function IntakePanel({
         <div className="intake-footer">
           <label className="inline-label">
             마지막 처리 단계
-            <select
-              aria-label="마지막 처리 단계"
+            <Dropdown
+              value={String(endStage)}
+              onChange={(value) => setEndStage(Number(value))}
+              options={intakeStageOptions}
+              ariaLabel="마지막 처리 단계"
               disabled={busy || uncertain}
-              value={endStage}
-              onChange={(e) => setEndStage(Number(e.target.value))}
-            >
-              <option value={4}>요약 / 프롬프트 준비</option>
-              <option value={3}>음성 인식까지만</option>
-              <option value={2}>오디오 변환까지만</option>
-              <option value={1}>다운로드까지만 (LMS URL)</option>
-            </select>
+            />
           </label>
           <button
             className="primary"
