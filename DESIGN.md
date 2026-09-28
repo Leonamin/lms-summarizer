@@ -325,6 +325,8 @@ Pretendard 가변 폰트 자체 호스팅(`frontend/public/fonts/PretendardVaria
 ### Stage track
 - `.stage-track`는 **연결된 4단계 트랙**: 각 `li`에 `::after` 연결선, 28px 원형 마커.
   `.completed`(positive 채움, 연결선 강조), `.running`(brand 채움 + 4px 광), 그 외 기본.
+- 작업 상세 헤더의 `.result-subtitle`에 `과목 · 주차`(있을 때만)를 회색 한 줄로 표시하고, 넘치면 말줄임 +
+  `title` 툴팁. 목록에는 표시하지 않는다.
 
 ### Disclosure & Logs
 - 모달 대신 `<details>`(`.server-panel`, `.attempt-history`, 설정 섹션).
