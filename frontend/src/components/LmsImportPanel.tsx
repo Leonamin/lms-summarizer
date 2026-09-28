@@ -178,14 +178,21 @@ export function LmsImportPanel({
     }
   }
 
-  async function submit(references: string[]) {
-    if (!settings || (!references.length && !batch.current)) return;
+  async function submit(
+    items: {
+      reference: string;
+      display_name?: string;
+      course_name?: string;
+      week_title?: string;
+    }[],
+  ) {
+    if (!settings || (!items.length && !batch.current)) return;
     setBusy(true);
     setMessage("");
     let acknowledged = false;
     try {
       batch.current ??= {
-        sources: references.map((reference) => ({ kind: "url", reference })),
+        sources: items.map((item) => ({ kind: "url", ...item })),
         settings_revision: settings.settings_revision,
         end_stage: endStage,
         key: requestId(),
@@ -217,6 +224,27 @@ export function LmsImportPanel({
     } finally {
       setBusy(false);
     }
+  }
+
+  function courseSources() {
+    const weeks = detail?.data?.weeks ?? [];
+    const courseName = detail?.data?.course_name ?? "";
+    const map = new Map(
+      weeks.flatMap((week) =>
+        week.lectures.map(
+          (lecture) =>
+            [
+              lecture.url,
+              {
+                display_name: lecture.title,
+                course_name: courseName,
+                week_title: week.title,
+              },
+            ] as const,
+        ),
+      ),
+    );
+    return selected.map((url) => ({ reference: url, ...(map.get(url) ?? {}) }));
   }
 
   const available =
@@ -295,7 +323,7 @@ export function LmsImportPanel({
                 urlLines.length > 50 ||
                 !settings
               }
-              onClick={() => void submit(urlLines)}
+              onClick={() => void submit(urlLines.map((reference) => ({ reference })))}
             >
               {busy
                 ? "제출 중…"
@@ -461,7 +489,7 @@ export function LmsImportPanel({
                     (!selected.length && !uncertain) ||
                     selected.length > 50
                   }
-                  onClick={() => void submit(selected)}
+                  onClick={() => void submit(courseSources())}
                 >
                   {uncertain
                     ? "제출 결과 다시 확인"

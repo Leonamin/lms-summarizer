@@ -72,6 +72,9 @@ class UploadCreate(DTO):
 class SourceDTO(DTO):
     kind: Literal['file', 'url']
     reference: str = Field(min_length=1, max_length=4000)
+    display_name: str | None = Field(default=None, max_length=300)
+    course_name: str | None = Field(default=None, max_length=300)
+    week_title: str | None = Field(default=None, max_length=200)
 
 class JobCreate(DTO):
     sources: list[SourceDTO] = Field(min_length=1, max_length=50)

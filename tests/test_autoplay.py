@@ -43,8 +43,9 @@ class FakePlayback:
         self.records = []
         self.popup_failed = False
 
-    def submit(self, context, revision, url, title, scope):
-        record = {"id": "pb-%d" % (len(self.records) + 1), "url": url, "scope": scope, "title": title}
+    def submit(self, context, revision, url, title, scope, course_name=None, week_title=None):
+        record = {"id": "pb-%d" % (len(self.records) + 1), "url": url, "scope": scope,
+                  "title": title, "course_name": course_name, "week_title": week_title}
         self.records.append(record)
         return record
 

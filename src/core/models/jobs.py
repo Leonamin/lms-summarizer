@@ -24,14 +24,17 @@ from src.core.models.stages import PipelineStage
 class Source:
     kind: str
     reference: str = field(repr=False)
+    display_name: Optional[str] = field(default=None, repr=False)
+    course_name: Optional[str] = field(default=None, repr=False)
+    week_title: Optional[str] = field(default=None, repr=False)
 
     @classmethod
-    def file(cls, artifact_id: str):
-        return cls("file", artifact_id)
+    def file(cls, artifact_id: str, **meta):
+        return cls("file", artifact_id, **meta)
 
     @classmethod
-    def url(cls, url: str):
-        return cls("url", url)
+    def url(cls, url: str, **meta):
+        return cls("url", url, **meta)
 
 @dataclass(frozen=True)
 class WorkToken:

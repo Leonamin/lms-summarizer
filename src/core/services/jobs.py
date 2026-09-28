@@ -224,7 +224,7 @@ class JobService:
                     url = urlparse(source.reference)
                     if url.scheme != 'https' or url.hostname != 'canvas.ssu.ac.kr' or not url.path.startswith('/courses/') or url.username or url.password:
                         raise ServiceError('invalid_url')
-                    start, name = PipelineStage.DOWNLOAD, 'LMS lecture'
+                    start, name = PipelineStage.DOWNLOAD, source.display_name or 'LMS lecture'
                 else:
                     raise ServiceError('invalid_source')
                 validate_stage_range(start, end_stage)
@@ -240,6 +240,7 @@ class JobService:
                 for source, start, name in prepared:
                     job = {'id':str(uuid4()), 'owner_id':context.owner_id, 'source_kind':source.kind,
                            'source_reference':source.reference, 'display_name':name,
+                           'course_name':source.course_name, 'week_title':source.week_title,
                            'initial_stage':int(start), 'end_stage':int(end_stage),
                            'settings_revision_id':revision.id, 'current_attempt_id':'',
                            'status':'queued', 'revision':1, 'created_at':utcnow(), 'result_kind':None,
@@ -376,7 +377,7 @@ class JobService:
     def detail(self, context: UserContext, job_id: str):
         with self.lock:
             job = self._job(context, job_id)
-            public = {key:job[key] for key in ('id','display_name','source_kind','initial_stage','end_stage','settings_revision_id','current_attempt_id','status','revision','created_at','result_kind')}
+            public = {key:job.get(key) for key in ('id','display_name','source_kind','initial_stage','end_stage','settings_revision_id','current_attempt_id','status','revision','created_at','result_kind','course_name','week_title')}
             attempts = self.db.records('SELECT payload FROM attempts WHERE job_id=? ORDER BY number', (job_id,))
             public['attempts'] = []
             artifact_ids = {job['source_reference']} if job['source_kind'] == 'file' else set()
@@ -648,6 +649,12 @@ class JobService:
             self.db.insert('artifacts', artifact, owner_id=job['owner_id'], state='complete')
             run.update(status='completed', output_id=artifact['id'], ended_at=utcnow())
             self.db.update('stage_runs', run, status='completed', output_id=artifact['id'])
+            # Name a URL job after the downloaded lecture instead of "LMS lecture".
+            if (run['stage'] == 1 and job['source_kind'] == 'url'
+                    and job.get('display_name') in (None, '', 'LMS lecture')):
+                stem = Path(artifact['display_name']).stem
+                if stem:
+                    job['display_name'] = stem
             if run['stage'] == job['end_stage']:
                 attempt.update(status='completed', ended_at=utcnow())
                 job['result_kind'] = 'manual_ready' if result.kind == 'prompt' else 'summary' if result.kind == 'summary' else 'stage_artifact'
