@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { Job } from "../types";
+import type { Job, Playback } from "../types";
 import { formatDate, isActive, stages, statusText } from "../lib/format";
 import { Dropdown } from "./Dropdown";
 
@@ -37,12 +37,14 @@ const compare = (a: Job, b: Job, key: SortKey) => {
 
 export function JobList({
   jobs,
+  playbacks = [],
   selected,
   onSelect,
   onStopAll,
   loading = false,
 }: {
   jobs: Job[];
+  playbacks?: Playback[];
   selected: string | null;
   onSelect: (id: string) => void;
   onStopAll: () => void;
@@ -143,6 +145,31 @@ export function JobList({
             </span>
           ))}
         </div>
+        {playbacks.length > 0 && (
+          <div className="playback-group">
+            <div className="playback-group-head">
+              <span className="eyebrow">AUTO PLAY</span>
+              <small>자동 감지 재생 · 단일 슬롯에서 순차 실행</small>
+            </div>
+            {playbacks.map((item) => (
+              <div className="job-row playback-row" key={item.id}>
+                <span
+                  className={
+                    "status " + (item.status === "running" ? "running" : "queued")
+                  }
+                >
+                  {item.status === "running" ? "재생 중" : "재생 대기"}
+                </span>
+                <span className="job-name">
+                  {item.title || item.lecture_url}
+                </span>
+                <span className="job-stage">재생</span>
+                <span className="job-attempts">-</span>
+                <span className="job-time">{formatDate(item.created_at)}</span>
+              </div>
+            ))}
+          </div>
+        )}
         {loading ? (
           Array.from({ length: 6 }).map((_, index) => (
             <div
