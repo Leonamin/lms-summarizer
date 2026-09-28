@@ -42,6 +42,18 @@ type AutoStatus = {
   playing: number;
 };
 
+type MiniCourse = { id: string; long_name: string; term: string };
+
+type Playback = {
+  id: string;
+  title: string;
+  status: string;
+  attended: boolean;
+  error_code: string | null;
+  lecture_url: string;
+  created_at: string;
+};
+
 export function SettingsPage({
   draft,
   setDraft,
@@ -64,12 +76,37 @@ export function SettingsPage({
   const [preview, setPreview] = useState("");
   const [auto, setAuto] = useState<AutoStatus | null>(null);
   const [checking, setChecking] = useState(false);
+  const [courses, setCourses] = useState<MiniCourse[]>([]);
+  const [playbacks, setPlaybacks] = useState<Playback[]>([]);
+  const [chromeMode, setChromeMode] = useState("");
   useEffect(() => {
     api<Catalog>("/catalog").then(setCatalog).catch(report);
   }, []);
   useEffect(() => {
     api<AutoStatus>("/auto-detect").then(setAuto).catch(() => {});
+    api<{ data: MiniCourse[] }>("/courses")
+      .then((result) => setCourses(result.data ?? []))
+      .catch(() => {});
+    api<{ runtime: { chrome_mode: string } }>("/system")
+      .then((result) => setChromeMode(result.runtime.chrome_mode))
+      .catch(() => {});
   }, []);
+  const loadPlaybacks = () =>
+    api<{ records: Playback[] }>("/playback")
+      .then((result) => setPlaybacks([...result.records].reverse().slice(0, 5)))
+      .catch(() => {});
+  useEffect(() => {
+    void loadPlaybacks();
+  }, []);
+  const selectedCourses = draft.auto_detect_courses.split(/[\s,]+/).filter(Boolean);
+  const toggleCourse = (id: string) =>
+    change(
+      "auto_detect_courses",
+      (selectedCourses.includes(id)
+        ? selectedCourses.filter((value) => value !== id)
+        : [...selectedCourses, id]
+      ).join(","),
+    );
   async function checkAutoDetect() {
     setChecking(true);
     try {
@@ -79,6 +116,7 @@ export function SettingsPage({
           body: "{}",
         }),
       );
+      void loadPlaybacks();
     } catch (cause) {
       report(cause);
     } finally {
@@ -93,6 +131,7 @@ export function SettingsPage({
           body: "{}",
         }),
       );
+      void loadPlaybacks();
     } catch (cause) {
       report(cause);
     }
@@ -504,17 +543,6 @@ export function SettingsPage({
             />
           </label>
           <label>
-            감지할 과목 ID
-            <input
-              value={draft.auto_detect_courses}
-              onChange={(event) =>
-                change("auto_detect_courses", event.target.value)
-              }
-              placeholder="예: 12345, 67890"
-            />
-            <small>과목·주차 화면의 과목 ID를 쉼표로 구분합니다.</small>
-          </label>
-          <label>
             자동 저장 범위
             <Dropdown
               value={draft.auto_save_scope}
@@ -527,6 +555,55 @@ export function SettingsPage({
             />
           </label>
         </div>
+        <div className="auto-courses">
+          <span className="auto-courses-title">감지할 과목</span>
+          {courses.length === 0 ? (
+            <small>과목 캐시가 없습니다. 과목·주차에서 목록을 새로고침하세요.</small>
+          ) : (
+            <div className="course-checks">
+              {courses.map((course) => (
+                <label key={course.id} className="check">
+                  <input
+                    type="checkbox"
+                    checked={selectedCourses.includes(course.id)}
+                    disabled={saving}
+                    onChange={() => toggleCourse(course.id)}
+                  />
+                  <span>
+                    {course.long_name} · {course.term}
+                  </span>
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
+        {chromeMode === "headless" && draft.auto_detect_enabled && (
+          <p className="manual-note">
+            자동 재생은 영상 재생 때문에 headed(Xvfb)가 필요합니다. 서버를
+            <code> LMS_CHROME_HEADLESS=false</code>로 실행하세요.
+          </p>
+        )}
+        {playbacks.length > 0 && (
+          <ul className="playback-list">
+            {playbacks.map((item) => (
+              <li key={item.id}>
+                <span
+                  className={
+                    "status " + (item.attended ? "completed" : item.status)
+                  }
+                >
+                  {item.attended ? "출석 완료" : item.status}
+                </span>
+                <span className="playback-title">
+                  {item.title || item.lecture_url}
+                </span>
+                {item.error_code && (
+                  <small className="muted">{item.error_code}</small>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
         <div className="auto-status">
           <button
             type="button"

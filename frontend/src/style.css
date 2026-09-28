@@ -1426,6 +1426,59 @@ fieldset details {
   margin-top: 4px;
 }
 
+.auto-courses {
+  margin-top: 8px;
+}
+
+.auto-courses-title {
+  display: block;
+  margin-bottom: 8px;
+  font-size: var(--t-sm);
+  font-weight: 650;
+  color: var(--ink);
+}
+
+.course-checks {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 16px;
+  max-height: 220px;
+  padding: 12px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--paper-2);
+}
+
+.playback-list {
+  list-style: none;
+  padding: 12px 0 0;
+  margin: 4px 0 0;
+  border-top: 1px solid var(--line);
+}
+
+.playback-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 0;
+  font-size: var(--t-sm);
+}
+
+.playback-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink-2);
+}
+
+@media (max-width: 900px) {
+  .course-checks {
+    grid-template-columns: 1fr;
+  }
+}
+
 .form-footer {
   display: flex;
   justify-content: space-between;
