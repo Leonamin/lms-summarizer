@@ -130,6 +130,31 @@ class JobServiceTests(unittest.TestCase):
                 detail = wait_for(service,jobs[0],{'completed'})
                 self.assertEqual([a['status'] for a in detail['attempts']],['cancelled','completed'])
 
+    def test_continue_reuses_artifact_and_extends_stage(self):
+        with tempfile.TemporaryDirectory() as root:
+            service = self.make(root)
+            with service:
+                job = service.submit(OWNER, [Source.url('https://canvas.ssu.ac.kr/courses/1/lecture/1')],
+                                     revision({'delay':0.05}), end_stage=PipelineStage.DOWNLOAD,
+                                     idempotency_key='download-only')[0]
+                first = wait_for(service, job, {'completed'})
+                self.assertEqual(first['end_stage'], int(PipelineStage.DOWNLOAD))
+                attempt = first['current_attempt_id']
+                service.continue_job(OWNER, job, attempt, int(PipelineStage.SUMMARIZE),
+                                     idempotency_key='continue')
+                # Idempotent replay returns the same attempt.
+                self.assertEqual(service.detail(OWNER, job)['current_attempt_id'],
+                                 service.detail(OWNER, job)['current_attempt_id'])
+                detail = wait_for(service, job, {'completed'})
+                self.assertEqual(detail['end_stage'], int(PipelineStage.SUMMARIZE))
+                self.assertEqual(len(detail['attempts']), 2)
+                self.assertEqual([s['stage'] for s in detail['attempts'][1]['stages']], [2, 3, 4])
+                self.assertEqual(detail['status'], 'completed')
+                with self.assertRaises(ServiceError) as exc:
+                    service.continue_job(OWNER, job, detail['current_attempt_id'],
+                                         int(PipelineStage.STT), idempotency_key='bad')
+                self.assertEqual(exc.exception.code, 'invalid_stage')
+
     def test_forced_cancel_tree_and_late_result(self):
         with tempfile.TemporaryDirectory() as root:
             with self.make(root) as service:

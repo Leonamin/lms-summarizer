@@ -17,6 +17,7 @@ export function WorkspacePage({
   loading = false,
   onNotice,
   onCommand,
+  onContinue,
   onStopAll,
 }: {
   jobs: Job[];
@@ -27,6 +28,7 @@ export function WorkspacePage({
   loading?: boolean;
   onNotice: (message: string) => void;
   onCommand: (job: Job, action: "cancel" | "retry") => void;
+  onContinue: (job: Job, endStage: number) => void;
   onStopAll: () => void;
 }) {
   const [selected, setSelected] = useState<string | null>(null);
@@ -181,6 +183,7 @@ export function WorkspacePage({
           jobModel={jobModel}
           onOpenArtifact={(item) => void openArtifact(item)}
           onCommand={onCommand}
+          onContinue={onContinue}
           onNotice={onNotice}
           loadingFallback={loading}
         />

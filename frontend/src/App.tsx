@@ -145,6 +145,27 @@ export function App() {
     }
   };
 
+  const continueJob = async (job: Job, endStage: number) => {
+    setPending(job.id);
+    setError("");
+    try {
+      const updated = await api<Job>("/jobs/" + job.id + "/continue", {
+        method: "POST",
+        headers: { "Idempotency-Key": requestId() },
+        body: JSON.stringify({
+          attempt_id: job.current_attempt_id,
+          end_stage: endStage,
+        }),
+      });
+      merge([updated]);
+      setNotice("이어서 처리를 시작했습니다. 남은 단계를 실행합니다.");
+    } catch (cause) {
+      report(cause);
+    } finally {
+      setPending(null);
+    }
+  };
+
   const stopAll = async () => {
     if (!window.confirm("현재 대기·실행 중인 작업을 모두 중지할까요?")) return;
     try {
@@ -213,6 +234,7 @@ export function App() {
             loading={!ready}
             onNotice={setNotice}
             onCommand={(job, action) => void command(job, action)}
+            onContinue={(job, stage) => void continueJob(job, stage)}
             onStopAll={() => void stopAll()}
           />
         </div>

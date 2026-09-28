@@ -1205,6 +1205,23 @@ label.check input,
   gap: 8px;
 }
 
+/* Continue a completed early-stage job to a later stage. */
+.continue-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 0 28px 18px;
+}
+
+.continue-row .muted {
+  font-size: var(--t-sm);
+}
+
+.continue-row .dropdown {
+  min-width: 180px;
+}
+
 .artifact-tabs {
   display: flex;
   gap: 8px;
@@ -2060,6 +2077,7 @@ fieldset details {
   .job-tools,
   .playback-group-head,
   .detail-actions,
+  .continue-row,
   .reader,
   .file-downloads,
   .artifact-tabs {

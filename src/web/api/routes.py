@@ -11,7 +11,7 @@ from starlette.concurrency import run_in_threadpool
 from src.core.models.jobs import Source, ServiceError
 from src.core.models.settings import UserContext
 from src.core.models.stages import PipelineStage
-from src.web.schemas import AttemptCommand, JobCreate, SecretPut, SettingsPatch, UploadCreate, CourseRefresh, Settings
+from src.web.schemas import AttemptCommand, JobCreate, SecretPut, SettingsPatch, UploadCreate, CourseRefresh, Settings, ContinueCommand
 
 router = APIRouter(prefix='/api/v1')
 OWNER = UserContext()
@@ -117,6 +117,12 @@ def cancel(job_id: UUID, body: AttemptCommand, request: Request):
 def retry(job_id: UUID, body: AttemptCommand, request: Request, idempotency_key: str = Header(min_length=1, max_length=200)):
     service = request.app.state.service
     service.retry(OWNER, str(job_id), str(body.attempt_id), idempotency_key=idempotency_key)
+    return service.detail(OWNER, str(job_id))
+
+@router.post('/jobs/{job_id}/continue', status_code=202)
+def continue_job(job_id: UUID, body: ContinueCommand, request: Request, idempotency_key: str = Header(min_length=1, max_length=200)):
+    service = request.app.state.service
+    service.continue_job(OWNER, str(job_id), str(body.attempt_id), body.end_stage, idempotency_key=idempotency_key)
     return service.detail(OWNER, str(job_id))
 
 @router.get('/artifacts/{artifact_id}/content')

@@ -81,5 +81,9 @@ class JobCreate(DTO):
 class AttemptCommand(DTO):
     attempt_id: UUID
 
+class ContinueCommand(DTO):
+    attempt_id: UUID
+    end_stage: int = Field(ge=2, le=4)
+
 class CourseRefresh(DTO):
     course_id: str | None = Field(default=None, pattern=r'^\d+$', max_length=30)
