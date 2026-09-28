@@ -293,9 +293,11 @@ Pretendard 가변 폰트 자체 호스팅(`frontend/public/fonts/PretendardVaria
 - `{components.rail}` — 단색 `--rail`, `border-right: 1px solid rgba(255,255,255,.08)`.
   `{components.nav-item}` hover는 `rgba(255,255,255,.06)`, `{components.nav-item-selected}`는 `rgba(255,255,255,.1)`(좌측 바 없음).
   `.nav-count` 알약. ≤680px에서 상단 가로 바로 전환.
-- **접기/펼치기**: `.rail-toggle` 버튼으로 레일을 접는다. 접으면 `.app-shell.rail-collapsed`가 `78px`로 줄고
-  브랜드 텍스트·캡션·라벨·개수·연결 텍스트를 숨기며 아이콘만 남긴다(연결 점은 유지). 상태는 `localStorage`에 저장한다.
-  모바일(≤680px)에서는 토글을 숨기고 가로 바를 유지한다.
+- **접기/펼치기**: `.rail-toggle`(하단 `.rail-footer`)로 레일을 접는다. 접으면 `.app-shell.rail-collapsed`가 `78px`로 줄고
+  브랜드 텍스트·라벨·개수·연결 텍스트를 숨기며(연결 점은 유지) 아이콘만 남긴다. 상태는 `localStorage`에 저장한다.
+  펼침/접힘의 **상하 패딩(30px)과 `nav` 위치가 동일**하도록 접힘에서도 `.rail-caption`의 공간을
+  `visibility: hidden; white-space: nowrap`으로 예약하고 `.rail-head`에 `min-height: 53px`를 둔다.
+  아이콘은 중앙 정렬한 전체 폭 알약(`.rail.collapsed .nav-item`)으로 그린다. 모바일(≤680px)에서는 토글·푸터를 숨기고 가로 바를 유지한다.
 
 ### Badges / Status
 - `{components.badge}` — `.status` 알약(12px/650). 변형: `.completed`(positive-soft), `.running`(brand 배경+흰 글자),
