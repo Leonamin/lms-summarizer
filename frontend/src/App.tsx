@@ -20,6 +20,23 @@ export function App() {
   const [connection, setConnection] = useState("연결 중");
   const [ready, setReady] = useState(false);
   const [retryKey, setRetryKey] = useState(0);
+  const [railCollapsed, setRailCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem("lms-rail") === "collapsed";
+    } catch {
+      return false;
+    }
+  });
+  const toggleRail = () =>
+    setRailCollapsed((collapsed) => {
+      const next = !collapsed;
+      try {
+        localStorage.setItem("lms-rail", next ? "collapsed" : "expanded");
+      } catch {
+        /* storage may be unavailable */
+      }
+      return next;
+    });
   const seenCursor = useRef(0);
   const bootRef = useRef(false);
 
@@ -177,12 +194,14 @@ export function App() {
   };
 
   return (
-    <div className="app-shell">
+    <div className={"app-shell" + (railCollapsed ? " rail-collapsed" : "")}>
       <Rail
         view={view}
         setView={setView}
         jobCount={jobs.length}
         connection={connection}
+        collapsed={railCollapsed}
+        onToggle={toggleRail}
       />
       <main>
         <header className="page-header">
