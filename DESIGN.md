@@ -313,6 +313,9 @@ Pretendard 가변 폰트 자체 호스팅(`frontend/public/fonts/PretendardVaria
 ### Data table (작업 목록)
 - `.job-table-head`(sticky, 11px, `white-space:nowrap`) + `.job-row`가
   `grid-template-columns: 96px minmax(0,1fr) 78px 46px 86px`(상태·이름·시작·시도·만든 시각) 공유.
+- **자동 재생 그룹**: 재생 큐가 비어 있지 않으면 표의 머리글 아래에 `.playback-group`(brand-50 배경)으로
+  `AUTO PLAY` 행을 표시한다. 행은 `재생 중`/`재생 대기` 배지 + 제목 + `재생` + `-` + 만든 시각이며
+  `.playback-row`로 비인터랙티브다. 자동 재생이 작업과 같은 단일 슬롯을 쓰는 것을 화면에서 구분한다.
 - **선택 행 표시 = 좌측 인디케이터**: `.job-row.selected::before`가 왼쪽에서 **8px(모바일 6px) 떨어진 위치**에
   **너비 3px·세로 중앙(상하 9px 제외)·완전 라운드** 사각형 pill을 그린다. 좌측 보더/그림자를 쓰지 않는다.
 - ≤680px에서 시작·시도·시각과 헤더를 숨기고 상태·이름만 남긴다.

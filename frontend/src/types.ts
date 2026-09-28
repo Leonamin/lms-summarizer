@@ -72,3 +72,13 @@ export interface Upload {
   status: string;
   artifact_id: string | null;
 }
+
+export interface Playback {
+  id: string;
+  title: string;
+  status: string;
+  attended: boolean;
+  error_code: string | null;
+  lecture_url: string;
+  created_at: string;
+}

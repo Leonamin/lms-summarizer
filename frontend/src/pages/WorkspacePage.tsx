@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../api";
-import type { Artifact, Job, SettingsResponse } from "../types";
+import type { Artifact, Job, Playback, SettingsResponse } from "../types";
 import { isActive } from "../lib/format";
 import { IntakePanel } from "../components/IntakePanel";
 import { JobList } from "../components/JobList";
@@ -35,7 +35,30 @@ export function WorkspacePage({
   const [text, setText] = useState("");
   const [loadingText, setLoadingText] = useState(false);
   const [jobModel, setJobModel] = useState("chatgpt");
+  const [playbacks, setPlaybacks] = useState<Playback[]>([]);
   const contentRequest = useRef(0);
+
+  // Auto-play runs in the same single slot as jobs; surface it in the list.
+  useEffect(() => {
+    let alive = true;
+    const load = () =>
+      api<{ records: Playback[] }>("/playback")
+        .then((result) => {
+          if (alive)
+            setPlaybacks(
+              result.records.filter(
+                (item) => item.status === "queued" || item.status === "running",
+              ),
+            );
+        })
+        .catch(() => {});
+    void load();
+    const timer = setInterval(load, 5000);
+    return () => {
+      alive = false;
+      clearInterval(timer);
+    };
+  }, []);
 
   // Keep a valid selection as jobs stream in and out.
   useEffect(() => {
@@ -142,6 +165,7 @@ export function WorkspacePage({
       <div className="workspace-grid">
         <JobList
           jobs={jobs}
+          playbacks={playbacks}
           selected={selected}
           onSelect={setSelected}
           onStopAll={onStopAll}

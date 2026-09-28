@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
-import type { Settings, SettingsResponse } from "../types";
+import type { Playback, Settings, SettingsResponse } from "../types";
 import { SecretField } from "../components/SecretField";
 import { Dropdown } from "../components/Dropdown";
 import { Combobox } from "../components/Combobox";
@@ -43,16 +43,6 @@ type AutoStatus = {
 };
 
 type MiniCourse = { id: string; long_name: string; term: string };
-
-type Playback = {
-  id: string;
-  title: string;
-  status: string;
-  attended: boolean;
-  error_code: string | null;
-  lecture_url: string;
-  created_at: string;
-};
 
 export function SettingsPage({
   draft,

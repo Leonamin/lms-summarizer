@@ -1009,6 +1009,33 @@ label.check input,
   background: var(--brand);
 }
 
+/* Auto-play rows share the job table columns but are non-interactive. */
+.playback-group {
+  background: var(--brand-50);
+  border-bottom: 1px solid var(--line);
+}
+
+.playback-group-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 12px 28px 4px;
+}
+
+.playback-group-head .eyebrow {
+  margin-bottom: 0;
+}
+
+.playback-group-head small {
+  font-size: var(--t-xs);
+  color: var(--muted);
+}
+
+.playback-row {
+  pointer-events: none;
+  background: transparent;
+}
+
 .job-name {
   min-width: 0;
   overflow: hidden;
@@ -2032,6 +2059,7 @@ fieldset details {
   }
   .section-heading,
   .job-tools,
+  .playback-group-head,
   .detail-actions,
   .reader,
   .file-downloads,
