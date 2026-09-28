@@ -39,6 +39,7 @@ class FakeCourses:
 class FakePlayback:
     def __init__(self):
         self.records = []
+        self.popup_failed = False
 
     def submit(self, context, revision, url, title, scope):
         record = {"id": "pb-%d" % (len(self.records) + 1), "url": url, "scope": scope, "title": title}
@@ -49,7 +50,7 @@ class FakePlayback:
         return []
 
     def popup_repeat_failed(self, context):
-        return False
+        return self.popup_failed
 
 
 class FakeService:
@@ -181,6 +182,15 @@ class AutoDetectTests(unittest.TestCase):
             service.courses.detail["123"] = {"weeks": [{"lectures": [lecture("u1")]}]}
             engine.tick(force=True)
             self.assertEqual(service.playback.records[0]["scope"], "full")
+
+    def test_popup_repeat_pauses_detection(self):
+        with tempfile.TemporaryDirectory() as directory:
+            engine, service = self.engine(directory)
+            service.playback.popup_failed = True
+            result = engine.tick()
+            self.assertEqual(result["status"], "paused")
+            self.assertEqual(result["reason"], "popup_repeat")
+            self.assertTrue(engine.status()["paused"])
 
     def test_pause_blocks_until_resumed(self):
         with tempfile.TemporaryDirectory() as directory:
