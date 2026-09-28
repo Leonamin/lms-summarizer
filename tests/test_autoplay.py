@@ -8,8 +8,10 @@ from src.core.models.stages import PipelineStage
 from src.core.services.detection import (
     flatten_lectures,
     is_selectable,
+    is_watched,
     mark_seen,
     select_new_videos,
+    select_playback_videos,
 )
 from src.web.autoplay import AutoDetect, parse_courses
 
@@ -123,6 +125,19 @@ class DetectionHelpersTests(unittest.TestCase):
         self.assertEqual(len(flatten_lectures([{"lectures": lectures}])), 4)
 
 
+    def test_select_playback_skips_already_watched(self):
+        seen = {}
+        lectures = [
+            {**lecture("u1"), "completion": "completed"},
+            {**lecture("u2"), "attendance": "attendance", "completion": "incomplete"},
+            {**lecture("u3"), "attendance": "none", "completion": "incomplete"},
+        ]
+        self.assertTrue(is_watched(lectures[0]))
+        self.assertTrue(is_watched(lectures[1]))
+        self.assertFalse(is_watched(lectures[2]))
+        self.assertEqual([row["url"] for row in select_playback_videos(seen, lectures)], ["u3"])
+
+
 class AutoDetectTests(unittest.TestCase):
     def engine(self, root, **overrides):
         service = FakeService(root)
@@ -182,6 +197,20 @@ class AutoDetectTests(unittest.TestCase):
             service.courses.detail["123"] = {"weeks": [{"lectures": [lecture("u1")]}]}
             engine.tick(force=True)
             self.assertEqual(service.playback.records[0]["scope"], "full")
+
+    def test_engine_skips_already_watched_lectures(self):
+        with tempfile.TemporaryDirectory() as directory:
+            engine, service = self.engine(directory)
+            service.courses.list_expired = False
+            service.courses.list_data = [{"id": "123"}]
+            service.courses.detail["123"] = {
+                "weeks": [{"lectures": [
+                    {**lecture("u1"), "completion": "completed"},
+                    {**lecture("u2"), "attendance": "none", "completion": "incomplete"},
+                ]}]
+            }
+            engine.tick(force=True)
+            self.assertEqual([row["url"] for row in service.playback.records], ["u2"])
 
     def test_popup_repeat_pauses_detection(self):
         with tempfile.TemporaryDirectory() as directory:

@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from src.core.models.jobs import ServiceError
 from src.core.models.settings import UserContext
 from src.core.repositories.json_store import JsonStore
-from src.core.services.detection import flatten_lectures, mark_seen, select_new_videos
+from src.core.services.detection import flatten_lectures, mark_seen, select_playback_videos
 
 OWNER = UserContext()
 DEFAULT_INTERVAL_MINUTES = 30
@@ -125,7 +125,7 @@ class AutoDetect:
             with self.service.lock:
                 cache = self.service.courses.cached(revision, course_id)
             lectures = flatten_lectures((cache.get('data') or {}).get('weeks'))
-            for lecture in select_new_videos(state['seen'], lectures):
+            for lecture in select_playback_videos(state['seen'], lectures):
                 key = lecture.get('url') or lecture.get('title')
                 try:
                     record = self.service.playback.submit(
