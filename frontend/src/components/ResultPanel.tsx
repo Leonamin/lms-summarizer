@@ -22,6 +22,7 @@ export function ResultPanel({
   onOpenArtifact,
   onCommand,
   onNotice,
+  loadingFallback = false,
 }: {
   job: Job | null;
   available: Artifact[];
@@ -33,19 +34,31 @@ export function ResultPanel({
   onOpenArtifact: (artifact: Artifact) => void;
   onCommand: (job: Job, action: "cancel" | "retry") => void;
   onNotice: (message: string) => void;
+  loadingFallback?: boolean;
 }) {
   if (!job) {
     return (
       <section className="result-panel panel" aria-label="작업 상세">
-        <div className="empty result-empty">
-          <span aria-hidden="true">↗</span>
-          <h3>결과를 읽는 공간</h3>
-          <p>
-            작업을 선택하면 처리 단계와
-            <br />
-            원문·요약을 함께 확인할 수 있습니다.
-          </p>
-        </div>
+        {loadingFallback ? (
+          <div className="result-skeleton" aria-hidden="true">
+            <div className="skeleton sk-title" />
+            <div className="skeleton sk-track" />
+            <div className="skeleton sk-line" />
+            <div className="skeleton sk-line" />
+            <div className="skeleton sk-line short" />
+            <div className="skeleton sk-block" />
+          </div>
+        ) : (
+          <div className="empty result-empty">
+            <span aria-hidden="true">↗</span>
+            <h3>결과를 읽는 공간</h3>
+            <p>
+              작업을 선택하면 처리 단계와
+              <br />
+              원문·요약을 함께 확인할 수 있습니다.
+            </p>
+          </div>
+        )}
       </section>
     );
   }

@@ -325,6 +325,16 @@ Pretendard 가변 폰트 자체 호스팅(`frontend/public/fonts/PretendardVaria
 - 모달 대신 `<details>`(`.server-panel`, `.attempt-history`, 설정 섹션).
 - 로그 `.job-logs`(타임스탬프+메시지, 3초 폴링, 최근 200개). 마크다운 리더 `.markdown`.
 
+### States (로딩 · 오류 · 빈 결과)
+- **초기 로딩**: `.skeleton`(배경 #eceef4, radius 8px) + `prefers-reduced-motion`에서만 shimmer. 통계 카드는
+  `.skeleton-num`/`.skeleton-label`, 작업 목록은 `.skeleton-row` 6행, 상세 패널은 `.result-skeleton`.
+  헤더·파이프라인·입력 카드는 그대로 렌더해 레이아웃이 흔들리지 않는다.
+- **서버 오류**: `.server-banner`(danger-soft 배경, 라운드, `!` 아이콘, "서버에 연결하지 못했습니다." +
+  "다시 연결" 버튼)를 헤더 아래에 표시한다. 자동 재연결을 시도하고 버튼은 즉시 재시도한다.
+- **검색·필터 빈 결과**: 작업 목록 `.empty`에 "조건에 맞는 작업이 없습니다." + `.secondary` "검색·필터 초기화" 버튼.
+  작업 자체가 없을 때는 초기화 버튼 없이 안내만 표시한다.
+- 그 외 권한·결제·부분 실패 등은 이 제품에 없는 상태라 제외한다.
+
 ## Do's and Don'ts
 
 - 색·라디우스·타이포·모션 속도·**컨트롤 높이(`--control-h`)**·포커스 링은 `:root` 토큰을 참조한다. 원시 hex 하드코딩을 피한다.

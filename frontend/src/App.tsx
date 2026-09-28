@@ -18,6 +18,8 @@ export function App() {
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [connection, setConnection] = useState("연결 중");
+  const [ready, setReady] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
   const seenCursor = useRef(0);
   const bootRef = useRef(false);
 
@@ -56,6 +58,7 @@ export function App() {
         setSettings(config);
         setDraft((old) => old ?? config.settings);
         bootRef.current = true;
+        setReady(true);
         events?.close();
         events = new EventSource("/api/v1/events?cursor=" + snapshot.cursor);
         events.onopen = () => alive && setConnection("실시간 연결");
@@ -94,7 +97,7 @@ export function App() {
       clearTimeout(timer);
       clearInterval(reconcile);
     };
-  }, [merge, report]);
+  }, [merge, report, retryKey]);
 
   const saveSettings = async () => {
     if (!settings || !draft) return;
@@ -180,6 +183,26 @@ export function App() {
           notice={notice}
           onDismiss={(kind) => (kind === "error" ? setError("") : setNotice(""))}
         />
+        {connection === "연결 끊김" && (
+          <div className="server-banner" role="alert">
+            <span className="server-banner-icon" aria-hidden="true">
+              !
+            </span>
+            <div className="server-banner-body">
+              <strong>서버에 연결하지 못했습니다.</strong>
+              <small>자동으로 다시 연결을 시도합니다.</small>
+            </div>
+            <button
+              className="ghost"
+              onClick={() => {
+                setConnection("연결 중");
+                setRetryKey((count) => count + 1);
+              }}
+            >
+              다시 연결
+            </button>
+          </div>
+        )}
         <div hidden={view === "settings"}>
           <WorkspacePage
             jobs={jobs}
@@ -187,6 +210,7 @@ export function App() {
             merge={merge}
             report={report}
             pending={pending}
+            loading={!ready}
             onNotice={setNotice}
             onCommand={(job, action) => void command(job, action)}
             onStopAll={() => void stopAll()}

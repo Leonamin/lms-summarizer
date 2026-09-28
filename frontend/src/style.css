@@ -1757,6 +1757,155 @@ fieldset details {
   color: var(--faint);
 }
 
+/* -------------------------------------------------- states: skeleton --- */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: #eceef4;
+  border-radius: 8px;
+}
+
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.6),
+    transparent
+  );
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .skeleton::after {
+    animation: shimmer 1.4s ease-in-out infinite;
+  }
+  @keyframes shimmer {
+    to {
+      transform: translateX(100%);
+    }
+  }
+}
+
+.skeleton-num {
+  display: block;
+  width: 62px;
+  height: 30px;
+  border-radius: 10px;
+}
+
+.skeleton-label {
+  display: block;
+  width: 84px;
+  height: 12px;
+  margin-top: 12px;
+}
+
+.skeleton-row {
+  pointer-events: none;
+}
+
+.skeleton-row .sk-badge {
+  height: 24px;
+  width: 64px;
+  border-radius: var(--pill);
+}
+
+.skeleton-row .sk-name {
+  height: 14px;
+  width: 72%;
+}
+
+.skeleton-row .sk-sm {
+  height: 12px;
+  width: 64%;
+}
+
+.result-skeleton {
+  padding: 28px;
+}
+
+.result-skeleton .sk-title {
+  height: 22px;
+  width: 55%;
+  margin-bottom: 18px;
+}
+
+.result-skeleton .sk-track {
+  height: 28px;
+  width: 100%;
+  margin-bottom: 22px;
+  border-radius: var(--pill);
+}
+
+.result-skeleton .sk-line {
+  height: 14px;
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+.result-skeleton .sk-line.short {
+  width: 60%;
+  margin-bottom: 22px;
+}
+
+.result-skeleton .sk-block {
+  height: 180px;
+  width: 100%;
+  border-radius: var(--radius-sm);
+}
+
+/* ------------------------------------------------- states: server error -- */
+.server-banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 20px;
+  margin-bottom: 24px;
+  border-radius: var(--radius);
+  border: 1px solid #f2c9d2;
+  background: var(--danger-100);
+  color: #8f2340;
+}
+
+.server-banner-icon {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #f7d6dd;
+  color: #a32749;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.server-banner-body strong {
+  display: block;
+  font-size: var(--t-md);
+  color: #8f2340;
+}
+
+.server-banner-body small {
+  display: block;
+  margin-top: 3px;
+  font-size: var(--t-sm);
+  color: #a32749;
+}
+
+.server-banner .ghost {
+  margin-left: auto;
+  background: var(--paper);
+  border-color: #f2c9d2;
+  color: #8f2340;
+}
+
+.empty .secondary {
+  margin-top: 16px;
+}
+
 /* ---------------------------------------------------------- responsive -- */
 @media (min-width: 1500px) {
   main {
