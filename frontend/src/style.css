@@ -611,12 +611,11 @@ label.check input,
   gap: 14px;
 }
 
-/* No left accent bar: quiet card with a top hairline only. */
+/* Same 1px hairline border as every other card (no top accent). */
 .pipeline-step {
   padding: 18px 18px 16px;
   border-radius: var(--radius);
   border: 1px solid var(--line);
-  border-top: 2px solid var(--line-strong);
   background: var(--paper);
   box-shadow: var(--shadow-sm);
 }
