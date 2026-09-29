@@ -4,10 +4,16 @@ import { stages } from "../lib/format";
 export function OverviewStats({
   working,
   completed,
+  incompletePlaybacks = 0,
+  incompleteActive = false,
+  onIncomplete,
   loading = false,
 }: {
   working: Job[];
   completed: Job[];
+  incompletePlaybacks?: number;
+  incompleteActive?: boolean;
+  onIncomplete?: () => void;
   loading?: boolean;
 }) {
   const runs = working.flatMap((job) => job.attempts.at(-1)?.stages ?? []);
@@ -43,6 +49,29 @@ export function OverviewStats({
           </>
         )}
       </div>
+      <button
+        type="button"
+        className={
+          "stat-card is-warn" + (incompleteActive ? " is-active" : "")
+        }
+        onClick={onIncomplete}
+        disabled={loading || !onIncomplete || incompletePlaybacks === 0}
+        aria-pressed={incompleteActive}
+      >
+        {loading ? (
+          <>
+            <span className="skeleton skeleton-num" />
+            <span className="skeleton skeleton-label" />
+          </>
+        ) : (
+          <>
+            <span className="stat-number">
+              {String(incompletePlaybacks).padStart(2, "0")}
+            </span>
+            <span className="stat-label">미완료 재생</span>
+          </>
+        )}
+      </button>
       <div className="pipeline-summary">
         {stages.map((stage, index) => {
           const rows = runs.filter((run) => run.stage === index + 1);

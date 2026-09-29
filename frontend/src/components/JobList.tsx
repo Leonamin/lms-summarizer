@@ -1,6 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Job, Playback } from "../types";
-import { formatDate, isActive, stages, statusText } from "../lib/format";
+import {
+  formatDate,
+  isActive,
+  isPlaybackActive,
+  isPlaybackIncomplete,
+  playbackStatusLabels,
+  stages,
+  statusText,
+} from "../lib/format";
 import { stageIcons, stageRunLabels, stageSlotClass } from "../lib/stageIcons";
 import { Dropdown } from "./Dropdown";
 
@@ -16,20 +24,17 @@ const sortOptions = [
   { value: "asc", label: "과거순" },
 ];
 
+const playbackFilterOptions = [
+  { value: "all", label: "전체" },
+  { value: "unattended", label: "미출석" },
+  { value: "incomplete", label: "중단·실패" },
+] as const;
+
 const pageSizes = [10, 20];
 
-const playbackStatusLabels: Record<string, string> = {
-  queued: "재생 대기",
-  running: "재생 중",
-  completed: "재생 완료",
-  failed: "재생 실패",
-  interrupted: "재생 중단",
-};
-
-const isPlaybackActive = (status: string) =>
-  status === "queued" || status === "running";
-
 type SortKey = "status" | "name" | "attempts" | "created";
+
+type PlaybackFilter = "all" | "unattended" | "incomplete";
 
 const columns: { key: SortKey | null; label: string }[] = [
   { key: "status", label: "상태" },
@@ -93,6 +98,10 @@ export function JobList({
   onSelect,
   onStopAll,
   loading = false,
+  playbackOpen = false,
+  setPlaybackOpen,
+  playbackFilter = "all",
+  setPlaybackFilter,
 }: {
   jobs: Job[];
   playbacks?: Playback[];
@@ -100,6 +109,10 @@ export function JobList({
   onSelect: (id: string) => void;
   onStopAll: () => void;
   loading?: boolean;
+  playbackOpen?: boolean;
+  setPlaybackOpen?: (open: boolean) => void;
+  playbackFilter?: PlaybackFilter;
+  setPlaybackFilter?: (filter: PlaybackFilter) => void;
 }) {
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
@@ -109,7 +122,7 @@ export function JobList({
   });
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-  const [historyOpen, setHistoryOpen] = useState(false);
+  const revealRef = useRef<string | null>(null);
   const working = jobs.filter(isActive);
   const filtered = jobs.filter(
     (job) =>
@@ -138,13 +151,46 @@ export function JobList({
     setPage(Math.min(Math.max(next, 1), pageCount));
   const rangeStart = sorted.length === 0 ? 0 : start + 1;
   const rangeEnd = Math.min(start + pageSize, sorted.length);
+
   const activePlaybacks = playbacks.filter((item) =>
     isPlaybackActive(item.status),
   );
   const playbackHistory = playbacks
     .filter((item) => !isPlaybackActive(item.status))
     .sort((a, b) => b.created_at.localeCompare(a.created_at));
-  const visibleHistory = playbackHistory.slice(0, 20);
+  const playbackFiltered = playbackHistory.filter((item) =>
+    playbackFilter === "unattended"
+      ? !item.attended
+      : playbackFilter === "incomplete"
+        ? isPlaybackIncomplete(item.status)
+        : true,
+  );
+  const visibleHistory = playbackFiltered.slice(0, 20);
+
+  // Bring a job linked from the auto-play history into view and select it.
+  const revealJob = (id: string) => {
+    setFilter("all");
+    setSearch("");
+    const ordered = [...jobs].sort(
+      (a, b) => compare(a, b, sort.key) * (sort.dir === "asc" ? 1 : -1),
+    );
+    const index = ordered.findIndex((job) => job.id === id);
+    if (index >= 0) setPage(Math.floor(index / pageSize) + 1);
+    revealRef.current = id;
+    onSelect(id);
+  };
+
+  useEffect(() => {
+    const target = revealRef.current;
+    if (!target) return;
+    const row = document.querySelector<HTMLElement>(
+      '.job-row[data-job-id="' + target + '"]',
+    );
+    if (row) {
+      row.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      revealRef.current = null;
+    }
+  }, [currentPage, selected, sorted.length]);
 
   const toggle = (key: SortKey) =>
     setSort((current) =>
@@ -190,14 +236,14 @@ export function JobList({
         />
         <div className="job-sortby" role="group" aria-label="정렬 순서">
           {sortOptions.map((option) => {
-            const active =
+            const isActiveSort =
               sort.key === "created" && sort.dir === option.value;
             return (
               <button
                 key={option.value}
                 type="button"
-                className={"segment" + (active ? " active" : "")}
-                aria-pressed={active}
+                className={"segment" + (isActiveSort ? " active" : "")}
+                aria-pressed={isActiveSort}
                 disabled={loading}
                 onClick={() =>
                   setSort({
@@ -248,7 +294,7 @@ export function JobList({
           ))}
         </div>
         {playbacks.length > 0 && (
-          <div className="playback-group">
+          <div className="playback-group" id="playback-group">
             <div className="playback-group-head">
               <span className="eyebrow">AUTO PLAY</span>
               <small>자동 감지 재생 · 학습 완료용 별도 큐</small>
@@ -256,14 +302,35 @@ export function JobList({
                 <button
                   type="button"
                   className="playback-toggle"
-                  aria-expanded={historyOpen}
-                  onClick={() => setHistoryOpen((open) => !open)}
+                  aria-expanded={playbackOpen}
+                  onClick={() => setPlaybackOpen?.(!playbackOpen)}
                 >
                   지난 재생 {playbackHistory.length}건
-                  <span aria-hidden="true">{historyOpen ? "▴" : "▾"}</span>
+                  <span aria-hidden="true">{playbackOpen ? "▴" : "▾"}</span>
                 </button>
               )}
             </div>
+            {playbackOpen && playbackHistory.length > 0 && (
+              <div className="playback-filters">
+                <div className="job-sortby" role="group" aria-label="재생 이력 필터">
+                  {playbackFilterOptions.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      className={
+                        "segment" +
+                        (playbackFilter === option.value ? " active" : "")
+                      }
+                      aria-pressed={playbackFilter === option.value}
+                      onClick={() => setPlaybackFilter?.(option.value)}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+                <span className="playback-count">{playbackFiltered.length}건</span>
+              </div>
+            )}
             {activePlaybacks.map((item) => (
               <div className="playback-row" key={item.id}>
                 <span className={"status " + item.status}>
@@ -277,7 +344,7 @@ export function JobList({
                 </span>
               </div>
             ))}
-            {historyOpen &&
+            {playbackOpen &&
               visibleHistory.map((item) => (
                 <div className="playback-row playback-history" key={item.id}>
                   <span className={"status " + item.status}>
@@ -297,12 +364,14 @@ export function JobList({
                     {item.attended ? "출석" : "미출석"}
                   </span>
                   {item.job_ids && item.job_ids.length > 0 && (
-                    <span
+                    <button
+                      type="button"
                       className="playback-link"
-                      title={`연결된 작업 ${item.job_ids.length}건`}
+                      onClick={() => revealJob(item.job_ids![0])}
+                      title={`연결된 작업 ${item.job_ids.length}건 · 클릭하면 해당 작업으로 이동`}
                     >
                       작업 {item.job_ids.length}
-                    </span>
+                    </button>
                   )}
                   <span className="playback-time">
                     {formatDate(item.created_at)}
@@ -354,6 +423,7 @@ export function JobList({
           visible.map((job) => (
             <button
               key={job.id}
+              data-job-id={job.id}
               className={"job-row" + (selected === job.id ? " selected" : "")}
               aria-current={selected === job.id}
               onClick={() => onSelect(job.id)}
