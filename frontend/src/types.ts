@@ -39,6 +39,7 @@ export interface Stage {
   status: string;
   started_at: string | null;
   ended_at: string | null;
+  output_id?: string | null;
 }
 export interface Attempt {
   id: string;

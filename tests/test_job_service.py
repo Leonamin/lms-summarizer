@@ -171,6 +171,36 @@ class JobServiceTests(unittest.TestCase):
                                          int(PipelineStage.STT), idempotency_key='bad')
                 self.assertEqual(exc.exception.code, 'invalid_stage')
 
+    def test_resume_continues_from_last_completed_stage(self):
+        with tempfile.TemporaryDirectory() as root:
+            service = self.make(root)
+            with service:
+                job = service.submit(OWNER, [Source.url('https://canvas.ssu.ac.kr/courses/1/lecture/1')],
+                                     revision({'delay':0.02, 'fail_stage':4}),
+                                     end_stage=PipelineStage.SUMMARIZE, idempotency_key='resume')[0]
+                failed = wait_for(service, job, {'failed'})
+                first = failed['attempts'][0]
+                self.assertEqual([s['stage'] for s in first['stages'] if s['status'] == 'completed'], [1, 2, 3])
+                attempt = service.resume(OWNER, job, failed['current_attempt_id'], idempotency_key='resume-1')
+                # Idempotent replay returns the same attempt.
+                self.assertEqual(service.resume(OWNER, job, failed['current_attempt_id'], idempotency_key='resume-1'), attempt)
+                again = wait_for(service, job, {'failed'})
+                self.assertEqual(len(again['attempts']), 2)
+                # Resumes at stage 4 without re-running the earlier stages.
+                self.assertEqual([s['stage'] for s in again['attempts'][1]['stages']], [4])
+
+    def test_resume_without_completed_stage_is_rejected(self):
+        with tempfile.TemporaryDirectory() as root:
+            service = self.make(root)
+            with service:
+                job = service.submit(OWNER, [Source.url('https://canvas.ssu.ac.kr/courses/1/lecture/1')],
+                                     revision({'delay':0.02, 'fail_stage':1}),
+                                     end_stage=PipelineStage.SUMMARIZE, idempotency_key='resume-none')[0]
+                failed = wait_for(service, job, {'failed'})
+                with self.assertRaises(ServiceError) as exc:
+                    service.resume(OWNER, job, failed['current_attempt_id'], idempotency_key='resume-none-1')
+                self.assertEqual(exc.exception.code, 'no_resume_point')
+
     def test_forced_cancel_tree_and_late_result(self):
         with tempfile.TemporaryDirectory() as root:
             with self.make(root) as service:

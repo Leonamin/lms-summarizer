@@ -32,6 +32,7 @@ MESSAGES = {
     'invalid_stage': '이 작업에서 진행할 수 없는 단계입니다.',
     'secret_in_use': '기존 작업에서 사용하는 자격 증명은 삭제할 수 없습니다.',
     'content_too_large': '열람 한도를 초과했습니다. 파일을 다운로드해 주세요.',
+    'no_resume_point': '이어서 재개할 완료 단계가 없습니다. 처음부터 다시 시도해 주세요.',
 }
 
 def error(code, status, field=None):

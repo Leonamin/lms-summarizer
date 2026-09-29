@@ -363,6 +363,12 @@ Pretendard 가변 폰트 자체 호스팅(`frontend/public/fonts/PretendardVaria
   음성 인식까지/요약까지) + `.secondary` `이어서 처리` 버튼을 노출한다. **끝난 단계 다음부터** 실행하며
   이미 만든 산출물을 재사용한다(`retry`는 원래 시작 단계부터 재실행).
 
+### 이어서 재개 (Resume)
+- 실패·취소·중단(`retryable`) 작업에서 **마지막 완료 단계의 산출물이 남아 있으면** `.secondary` `이어서 재개`
+  버튼과 `.quiet` `처음부터` 버튼을 함께 노출한다. 이어서 재개는 `continue_job`처럼 마지막 완료 단계+1부터
+  실행해 재다운로드를 피한다(`POST /jobs/{id}/resume`). 산출물이 없으면 `no_resume_point`로 거부하고
+  `다시 시도`(retry)만 노출한다. 서버 재시작으로 중단된 작업을 값싸게 복구하는 용도다.
+
 ### States (로딩 · 오류 · 빈 결과)
 - **초기 로딩**: `.skeleton`(배경 #eceef4, radius 8px) + `prefers-reduced-motion`에서만 shimmer. 통계 카드는
   `.skeleton-num`/`.skeleton-label`, 작업 목록은 `.skeleton-row` 6행, 상세 패널은 `.result-skeleton`.
