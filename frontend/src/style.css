@@ -1257,9 +1257,9 @@ label.check input,
 
 .playback-group-head {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 10px;
-  padding: 12px 28px 4px;
+  padding: 12px 28px 6px;
 }
 
 .playback-group-head .eyebrow {
@@ -1271,14 +1271,70 @@ label.check input,
   color: var(--muted);
 }
 
-.playback-row {
-  pointer-events: none;
-  background: transparent;
+.playback-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  min-height: 0;
+  padding: 5px 9px;
+  border-radius: var(--radius-xs);
+  font-size: var(--t-xs);
+  font-weight: 650;
+  color: var(--brand-700);
 }
 
-.playback-mini {
+.playback-toggle:hover {
+  background: rgba(79, 70, 184, 0.1);
+}
+
+.playback-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 28px;
+  border-bottom: 1px solid var(--line);
+  pointer-events: none;
+}
+
+.playback-row:last-child {
+  border-bottom: 0;
+}
+
+.playback-row .job-name {
+  flex: 1;
+  min-width: 0;
+}
+
+.playback-time {
   font-size: var(--t-xs);
   color: var(--muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.playback-attend {
+  flex: 0 0 auto;
+  padding: 2px 8px;
+  border-radius: var(--pill);
+  font-size: var(--t-xs);
+  font-weight: 650;
+}
+
+.playback-attend.yes {
+  color: var(--positive);
+  background: var(--positive-100);
+}
+
+.playback-attend.no {
+  color: var(--muted);
+  background: var(--bg);
+}
+
+.playback-link {
+  flex: 0 0 auto;
+  font-size: var(--t-xs);
+  color: var(--brand-700);
 }
 
 .job-name {

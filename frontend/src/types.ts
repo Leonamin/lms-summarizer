@@ -83,4 +83,6 @@ export interface Playback {
   error_code: string | null;
   lecture_url: string;
   created_at: string;
+  scope?: string;
+  job_ids?: string[];
 }

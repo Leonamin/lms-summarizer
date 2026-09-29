@@ -46,12 +46,7 @@ export function WorkspacePage({
     const load = () =>
       api<{ records: Playback[] }>("/playback")
         .then((result) => {
-          if (alive)
-            setPlaybacks(
-              result.records.filter(
-                (item) => item.status === "queued" || item.status === "running",
-              ),
-            );
+          if (alive) setPlaybacks(result.records);
         })
         .catch(() => {});
     void load();
