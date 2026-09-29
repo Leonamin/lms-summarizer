@@ -322,17 +322,20 @@ Pretendard 가변 폰트 자체 호스팅(`frontend/public/fonts/PretendardVaria
 
 ### Data table (작업 목록)
 - `.job-table-head`(sticky, 11px, `white-space:nowrap`) + `.job-row`가
-  `grid-template-columns: 88px minmax(0,1fr) 72px 44px 80px`(상태·이름·시작·시도·만든 시각) 공유.
+  `grid-template-columns: 28px 84px minmax(0,1fr) 70px 40px 72px`
+  (단계 아이콘·상태·이름·단계 트랙·시도·만든 시각) 공유.
 - **자동 재생 그룹**: 재생 큐가 비어 있지 않으면 표의 머리글 아래에 `.playback-group`(brand-50 배경)으로
-  `AUTO PLAY` 행을 표시한다. 행은 `재생 중`/`재생 대기` 배지 + 제목 + `재생` + `-` + 만든 시각이며
+  `AUTO PLAY` 행을 표시한다. 행은 재생 아이콘 + `재생 중`/`재생 대기` 배지 + 제목 + 빈 트랙 + `-` + 만든 시각이며
   `.playback-row`로 비인터랙티브다. 자동 재생이 작업과 같은 단일 슬롯을 쓰는 것을 화면에서 구분한다.
-- **선택 행 표시 = 좌측 인디케이터**: `.job-row.selected::before`가 왼쪽에서 **8px(모바일 6px) 떨어진 위치**에
-  **너비 3px·세로 중앙(상하 9px 제외)·완전 라운드** 사각형 pill을 그린다. 좌측 보더/그림자를 쓰지 않는다.
+- **선택 행 표시 = 현재 단계 아이콘**: 행 맨 앞 `.job-lead`가 현재 단계 아이콘(`stageIcons`)을 26px 라운드 칩에
+  담는다. 선택되면 칩이 `--brand`로 채워지고 행 배경은 `--brand-50`이 된다. 별도 좌측 pill(`::before`)은 쓰지 않는다.
+- **단계 트랙**: `.stage-mini`가 4개 단계 아이콘(14px)을 나란히 그린다. 슬롯 색 = 단계 상태
+  (완료 `--positive`, 진행 `--brand`+pulse, 대기 `--brand-500` 50%, 실패 `--danger`, 미도달 `--line-strong`).
+  각 슬롯 `title`은 `n. 단계명 · 상태`. `current_stage` 기준 현재 단계가 `.job-lead`에 표시된다.
 - **이름 표시**: 목록은 `display_name`(강의 제목)을 **한 줄 말줄임** + `title` 툴팁으로 보여준다. URL 작업은
   다운로드 완료 시 아티팩트 파일명(강의 제목)으로 이름이 바뀐다. `과목·주차`는 목록에 넣지 않는다.
 - **내부 스크롤 없음**: `.job-list`는 자체 스크롤바 없이 페이지 흐름으로 늘어난다. 좁은 화면(≤1400px)에서는
-  `시도` 열을 숨겨 이름 열 공간을 확보하고, ≤680px에서 시작·시각도 숨긴다.
-- ≤680px에서 시작·시도·시각과 헤더를 숨기고 상태·이름만 남긴다.
+  `시도` 열을 숨겨 이름 열 공간을 확보하고, ≤680px에서 트랙·시도·시각과 머리글을 숨겨 아이콘·상태·이름만 남긴다.
 - **페이지네이션**: `.job-pager`가 목록 하단(`12px 28px`)에 `1–20 / 24` 범위와 `‹ 현재/전체 ›` 이동을 보여주고,
   오른쪽에 페이지당 개수 세그먼트(`10`/`20`)를 둔다. 기본 20개/페이지, 10/20 선택. 필터·검색·정렬·개수 변경 시
   1페이지로 돌아간다(`useEffect` 의존성).
@@ -396,13 +399,15 @@ Pretendard 가변 폰트 자체 호스팅(`frontend/public/fonts/PretendardVaria
 
 ## Icons & Imagery
 
-- 아이콘 라이브러리 없음. 유니코드 글리프만 사용. 이미지 자산 없음(폰트만).
+- 아이콘은 **lucide-react**(shadcn 기본 셋, MIT·트리셰이킹)를 쓴다. 이모지는 쓰지 않는다.
+  단계 아이콘 = 다운로드 `ArrowDownToLine`, 오디오 변환 `AudioLines`, 음성 인식 `Mic`, 요약 `Sparkles` (`lib/stageIcons.ts`).
+  상세 `StageTrack`과 목록 `.job-lead`/`.stage-mini`가 같은 아이콘을 공유한다.
 - 마크다운 요약은 `react-markdown`, raw HTML 비활성화. 코드는 `--bg` 칩.
 
 ## Motion & Interaction
 
 - 대부분 `transition: … var(--speed)`(0.16s). hover 배경/테두리/색, `:focus-visible` 링, `:active` 1px 하강.
-- 선택 상태: 작업 행은 인디케이터, 내비는 밝은 오버레이, 탭은 배경/색 반전, 단계는 completed/running.
+- 선택 상태: 작업 행은 현재 단계 아이콘 칩(`--brand` 채움) + `--brand-50` 배경, 내비는 밝은 오버레이, 탭은 배경/색 반전, 단계는 completed/running.
 - disabled: `opacity:.5`. 로딩 스피너/스켈레톤 없음(텍스트 상태·SSE 라벨로 표현).
 - 진입 애니메이션 `rise`(opacity+translateY(8px))는 `prefers-reduced-motion: no-preference`에서만.
 

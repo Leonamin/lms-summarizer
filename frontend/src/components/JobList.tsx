@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
+import { Play } from "lucide-react";
 import type { Job, Playback } from "../types";
 import { formatDate, isActive, stages, statusText } from "../lib/format";
+import { stageIcons, stageRunLabels, stageSlotClass } from "../lib/stageIcons";
 import { Dropdown } from "./Dropdown";
 
 const filterOptions = [
@@ -17,12 +19,12 @@ const sortOptions = [
 
 const pageSizes = [10, 20];
 
-type SortKey = "status" | "name" | "stage" | "attempts" | "created";
+type SortKey = "status" | "name" | "attempts" | "created";
 
-const columns: { key: SortKey; label: string }[] = [
+const columns: { key: SortKey | null; label: string }[] = [
   { key: "status", label: "상태" },
   { key: "name", label: "이름" },
-  { key: "stage", label: "시작" },
+  { key: null, label: "단계" },
   { key: "attempts", label: "시도" },
   { key: "created", label: "만든 시각" },
 ];
@@ -33,14 +35,56 @@ const compare = (a: Job, b: Job, key: SortKey) => {
       return a.display_name.localeCompare(b.display_name);
     case "status":
       return a.status.localeCompare(b.status);
-    case "stage":
-      return a.initial_stage - b.initial_stage;
     case "attempts":
       return a.attempts.length - b.attempts.length;
     default:
       return a.created_at.localeCompare(b.created_at);
   }
 };
+
+const stageRunText = (status?: string) =>
+  status ? (stageRunLabels[status] ?? status) : "대기";
+
+/** Compact 4-step pipeline: icon per stage, coloured by that stage's status. */
+function StageMini({ job }: { job: Job }) {
+  const latest = job.attempts.at(-1);
+  return (
+    <span className="stage-mini">
+      {stages.map((label, index) => {
+        const run = latest?.stages.find((stage) => stage.stage === index + 1);
+        const Icon = stageIcons[index];
+        return (
+          <span
+            key={label}
+            className={"stage-mini-slot " + stageSlotClass(run?.status)}
+            title={`${index + 1}. ${label} · ${stageRunText(run?.status)}`}
+          >
+            <Icon size={14} strokeWidth={2} aria-hidden="true" />
+          </span>
+        );
+      })}
+    </span>
+  );
+}
+
+/** Current stage icon. Serves as the row's selection indicator too. */
+function StageLead({ job }: { job: Job }) {
+  const latest = job.attempts.at(-1);
+  const current = Math.min(
+    Math.max(latest?.current_stage ?? job.initial_stage, 1),
+    stages.length,
+  );
+  const Icon = stageIcons[current - 1];
+  return (
+    <span
+      className="job-lead"
+      title={`${current}. ${stages[current - 1]} · ${statusText(job)}`}
+      aria-hidden="true"
+    >
+      <Icon size={15} strokeWidth={2} />
+    </span>
+  );
+}
 
 export function JobList({
   jobs,
@@ -162,32 +206,41 @@ export function JobList({
       </div>
       <div className="job-list">
         <div className="job-table-head" role="row">
+          <span
+            className="job-lead-head"
+            role="columnheader"
+            aria-hidden="true"
+          />
           {columns.map((column) => (
             <span
-              key={column.key}
+              key={column.label}
               role="columnheader"
               aria-sort={
-                sort.key === column.key
+                column.key && sort.key === column.key
                   ? sort.dir === "asc"
                     ? "ascending"
                     : "descending"
                   : "none"
               }
             >
-              <button
-                type="button"
-                className="job-sort"
-                onClick={() => toggle(column.key)}
-              >
-                {column.label}
-                <span className="job-sort-caret" aria-hidden="true">
-                  {sort.key === column.key
-                    ? sort.dir === "asc"
-                      ? "▲"
-                      : "▼"
-                    : ""}
-                </span>
-              </button>
+              {column.key ? (
+                <button
+                  type="button"
+                  className="job-sort"
+                  onClick={() => toggle(column.key!)}
+                >
+                  {column.label}
+                  <span className="job-sort-caret" aria-hidden="true">
+                    {sort.key === column.key
+                      ? sort.dir === "asc"
+                        ? "▲"
+                        : "▼"
+                      : ""}
+                  </span>
+                </button>
+              ) : (
+                column.label
+              )}
             </span>
           ))}
         </div>
@@ -199,6 +252,9 @@ export function JobList({
             </div>
             {playbacks.map((item) => (
               <div className="job-row playback-row" key={item.id}>
+                <span className="job-lead static" aria-hidden="true">
+                  <Play size={14} strokeWidth={2} />
+                </span>
                 <span
                   className={
                     "status " + (item.status === "running" ? "running" : "queued")
@@ -209,7 +265,7 @@ export function JobList({
                 <span className="job-name">
                   {item.title || item.lecture_url}
                 </span>
-                <span className="job-stage">재생</span>
+                <span className="stage-mini" aria-hidden="true" />
                 <span className="job-attempts">-</span>
                 <span className="job-time">{formatDate(item.created_at)}</span>
               </div>
@@ -223,6 +279,7 @@ export function JobList({
               key={"skeleton-" + index}
               aria-hidden="true"
             >
+              <span className="skeleton sk-lead" />
               <span className="skeleton sk-badge" />
               <span className="skeleton sk-name" />
               <span className="skeleton sk-sm" />
@@ -263,11 +320,12 @@ export function JobList({
               aria-current={selected === job.id}
               onClick={() => onSelect(job.id)}
             >
+              <StageLead job={job} />
               <span className={"status " + job.status}>{statusText(job)}</span>
               <span className="job-name" title={job.display_name}>
                 {job.display_name}
               </span>
-              <span className="job-stage">{stages[job.initial_stage - 1]}</span>
+              <StageMini job={job} />
               <span className="job-attempts">{job.attempts.length}</span>
               <span className="job-time">{formatDate(job.created_at)}</span>
             </button>
