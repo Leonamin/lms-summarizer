@@ -1125,8 +1125,8 @@ label.check input,
   top: 0;
   z-index: 1;
   display: grid;
-  grid-template-columns: 88px minmax(0, 1fr) 72px 44px 80px;
-  gap: 10px;
+  grid-template-columns: 28px 84px minmax(0, 1fr) 70px 40px 72px;
+  gap: 8px;
   padding: 11px 24px;
   border-bottom: 1px solid var(--line);
   background: var(--paper-2);
@@ -1164,9 +1164,9 @@ label.check input,
 .job-row {
   position: relative;
   display: grid;
-  grid-template-columns: 88px minmax(0, 1fr) 72px 44px 80px;
+  grid-template-columns: 28px 84px minmax(0, 1fr) 70px 40px 72px;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   width: 100%;
   padding: 12px 24px;
   border-bottom: 1px solid var(--line);
@@ -1182,17 +1182,87 @@ label.check input,
   background: var(--paper-2);
 }
 
-/* Selected row: a short rounded indicator inset from the left edge,
-   not a border. */
-.job-row.selected::before {
-  content: "";
-  position: absolute;
-  left: 8px;
-  top: 9px;
-  bottom: 9px;
-  width: 3px;
-  border-radius: var(--pill);
+/* The current-stage icon doubles as the row's selection indicator,
+   so no separate pill is needed. */
+.job-lead {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--paper-2);
+  color: var(--faint);
+  transition:
+    background var(--speed),
+    color var(--speed),
+    border-color var(--speed);
+}
+
+.job-row:hover .job-lead {
+  border-color: var(--line-strong);
+  color: var(--ink-2);
+}
+
+.job-row.selected {
+  background: var(--brand-50);
+}
+
+.job-row.selected .job-lead {
+  border-color: transparent;
   background: var(--brand);
+  color: #fff;
+  box-shadow: 0 4px 10px -3px rgba(79, 70, 184, 0.5);
+}
+
+.job-lead.static {
+  color: var(--brand);
+}
+
+/* Compact 4-step pipeline indicator; each icon is coloured by its stage status. */
+.stage-mini {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.stage-mini-slot {
+  display: inline-flex;
+  color: var(--line-strong);
+}
+
+.stage-mini-slot.completed {
+  color: var(--positive);
+}
+
+.stage-mini-slot.running {
+  color: var(--brand);
+  animation: stage-pulse 1.4s ease-in-out infinite;
+}
+
+.stage-mini-slot.failed {
+  color: var(--danger);
+}
+
+.stage-mini-slot.queued {
+  color: var(--brand-500);
+  opacity: 0.5;
+}
+
+@keyframes stage-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stage-mini-slot.running {
+    animation: none;
+  }
 }
 
 /* Auto-play rows share the job table columns but are non-interactive. */
@@ -1232,16 +1302,11 @@ label.check input,
   color: var(--ink);
 }
 
-.job-stage,
 .job-attempts,
 .job-time {
   font-size: var(--t-xs);
   color: var(--muted);
   white-space: nowrap;
-}
-
-.job-attempts,
-.job-time {
   font-variant-numeric: tabular-nums;
 }
 
@@ -2047,6 +2112,12 @@ fieldset details {
   pointer-events: none;
 }
 
+.skeleton-row .sk-lead {
+  height: 26px;
+  width: 26px;
+  border-radius: 9px;
+}
+
 .skeleton-row .sk-badge {
   height: 24px;
   width: 64px;
@@ -2158,9 +2229,9 @@ fieldset details {
   /* Narrow two-column layout: drop the "시도" column so the name keeps room. */
   .job-table-head,
   .job-row {
-    grid-template-columns: 88px minmax(0, 1fr) 72px 80px;
+    grid-template-columns: 28px 84px minmax(0, 1fr) 70px 72px;
   }
-  .job-table-head [role="columnheader"]:nth-child(4),
+  .job-table-head [role="columnheader"]:nth-child(5),
   .job-attempts {
     display: none;
   }
@@ -2317,14 +2388,11 @@ fieldset details {
     display: none;
   }
   .job-row {
-    grid-template-columns: 88px minmax(0, 1fr);
-    gap: 10px;
+    grid-template-columns: 26px 84px minmax(0, 1fr);
+    gap: 8px;
     padding: 12px 20px;
   }
-  .job-row.selected::before {
-    left: 6px;
-  }
-  .job-stage,
+  .stage-mini,
   .job-attempts,
   .job-time {
     display: none;
