@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../api";
 import type { Artifact, Job, Playback, SettingsResponse } from "../types";
-import { isActive } from "../lib/format";
+import { isActive, isPlaybackActive, isPlaybackIncomplete } from "../lib/format";
 import { IntakePanel } from "../components/IntakePanel";
 import { JobList } from "../components/JobList";
 import { LmsImportPanel } from "../components/LmsImportPanel";
@@ -38,6 +38,10 @@ export function WorkspacePage({
   const [loadingText, setLoadingText] = useState(false);
   const [jobModel, setJobModel] = useState("chatgpt");
   const [playbacks, setPlaybacks] = useState<Playback[]>([]);
+  const [playbackOpen, setPlaybackOpen] = useState(false);
+  const [playbackFilter, setPlaybackFilter] = useState<
+    "all" | "unattended" | "incomplete"
+  >("all");
   const contentRequest = useRef(0);
 
   // Auto-play runs in the same single slot as jobs; surface it in the list.
@@ -138,11 +142,28 @@ export function WorkspacePage({
           item.attempt_id === null),
     ) ?? [];
 
+  const incompletePlaybacks = playbacks.filter((item) =>
+    isPlaybackIncomplete(item.status),
+  ).length;
+
+  const showIncompletePlaybacks = useCallback(() => {
+    setPlaybackFilter("incomplete");
+    setPlaybackOpen(true);
+    requestAnimationFrame(() =>
+      document
+        .getElementById("playback-group")
+        ?.scrollIntoView({ block: "start", behavior: "smooth" }),
+    );
+  }, []);
+
   return (
     <>
       <OverviewStats
         working={jobs.filter(isActive)}
         completed={jobs.filter((job) => job.status === "completed")}
+        incompletePlaybacks={incompletePlaybacks}
+        incompleteActive={playbackFilter === "incomplete"}
+        onIncomplete={showIncompletePlaybacks}
         loading={loading}
       />
       <LmsImportPanel
@@ -167,6 +188,10 @@ export function WorkspacePage({
           onSelect={setSelected}
           onStopAll={onStopAll}
           loading={loading}
+          playbackOpen={playbackOpen}
+          setPlaybackOpen={setPlaybackOpen}
+          playbackFilter={playbackFilter}
+          setPlaybackFilter={setPlaybackFilter}
         />
         <ResultPanel
           job={current}

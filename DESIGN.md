@@ -250,7 +250,7 @@ Pretendard 가변 폰트 자체 호스팅(`frontend/public/fonts/PretendardVaria
 - `.app-shell` = `264px + minmax(0,1fr)`. `.rail`은 `sticky`, `height:100vh`, 단색 배경, 세로 flex.
 - `main` 최대 1480px, 패딩 `44px clamp(24px,4vw,64px) 28px`(≥1500px 좌우 72px).
 - 작업실 흐름: `.overview` → `.lms-panel` → `.intake` → `.workspace-grid`.
-- `.overview` = 지표 카드 2개 + `.pipeline-summary`(4열).
+- `.overview` = 지표 카드 3개(처리 중·완료·미완료 재생) + `.pipeline-summary`(4열). 1180px 이하 카드 3열 + 파이프라인 전폭.
 - `.workspace-grid` = `minmax(360px,1fr) minmax(0,1.2fr)` 2열(작업 목록 / 작업 상세). 1180px 이하 1열(`minmax(0,1fr)`), 자식 `min-width:0`.
 - `.settings-sheet` 단일 카드(최대 960px), 섹션 `fieldset`/`legend`, 필드 `.settings-grid` 2열(900px 이하 1열).
 - 섹션 헤딩은 `.section-heading`(space-between).
@@ -327,6 +327,10 @@ Pretendard 가변 폰트 자체 호스팅(`frontend/public/fonts/PretendardVaria
   재생 큐는 4단계 작업이 아니라 **별도 큐(PlaybackQueue)** 이며, 활성(대기/재생 중) 행은 배지 + 제목 + 시각으로
   보여준다. `지난 재생 N건` 토글을 펼치면 완료/실패/중단 이력을 상태 배지 + 제목 + 출석(출석/미출석) +
   연결 작업 수 + 시각으로 최근 20건까지 보여준다(`/playback`는 전체 상태를 반환). `.playback-row`는 flex(비인터랙티브).
+  개요의 **`미완료 재생` 카드**(`button.stat-card.is-warn`, 중단·실패 합계)를 누르면 이력을 펼치고
+  `중단·실패` 필터를 켠 뒤 그룹으로 스크롤한다. 이력 필터는 `전체 / 미출석 / 중단·실패` 세그먼트(`.playback-filters`).
+  `작업 N` 칩(`.playback-link`)을 누르면 연결된 작업으로 이동한다(필터·검색 초기화 → 해당 페이지로 이동 →
+  선택 → 행 스크롤).
 - **선택 행 표시 = 행 배경 + 현재 단계 슬롯 칩**: 별도 좌측 pill이나 대표 아이콘을 두지 않는다.
   `.job-row.selected`는 `--brand-50` 배경 + 이름 `--brand-700`, 그리고 `.stage-mini-slot.current`가
   `--brand`로 채워진 칩이 된다.

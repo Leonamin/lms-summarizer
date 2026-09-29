@@ -643,7 +643,7 @@ label.check input,
 /* ------------------------------------------------------------- overview -- */
 .overview {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 158px)) minmax(0, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 150px)) minmax(0, 1fr);
   gap: 20px;
   margin-bottom: 28px;
 }
@@ -667,6 +667,33 @@ label.check input,
 
 .stat-card.is-done .stat-number {
   color: var(--positive);
+}
+
+button.stat-card {
+  width: 100%;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color var(--speed),
+    box-shadow var(--speed);
+}
+
+button.stat-card:hover:not(:disabled) {
+  border-color: var(--line-strong);
+}
+
+button.stat-card:disabled {
+  cursor: default;
+}
+
+.stat-card.is-warn .stat-number {
+  color: var(--warning);
+}
+
+.stat-card.is-active {
+  border-color: var(--brand-500);
+  box-shadow: 0 0 0 3px var(--brand-100);
 }
 
 .stat-label {
@@ -1333,8 +1360,36 @@ label.check input,
 
 .playback-link {
   flex: 0 0 auto;
+  pointer-events: auto;
+  padding: 3px 9px;
+  border-radius: var(--pill);
   font-size: var(--t-xs);
+  font-weight: 650;
   color: var(--brand-700);
+  background: var(--brand-100);
+}
+
+.playback-link:hover {
+  text-decoration: underline;
+}
+
+.playback-filters {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 28px 8px;
+}
+
+.playback-filters .segment {
+  height: 30px;
+  padding: 0 10px;
+  font-size: var(--t-xs);
+}
+
+.playback-count {
+  font-size: var(--t-xs);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .job-name {
@@ -2281,7 +2336,10 @@ fieldset details {
     grid-template-columns: 216px minmax(0, 1fr);
   }
   .overview {
-    grid-template-columns: repeat(2, minmax(0, 148px)) minmax(0, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .pipeline-summary {
+    grid-column: 1 / -1;
   }
   .workspace-grid {
     grid-template-columns: minmax(0, 1fr);
@@ -2400,6 +2458,7 @@ fieldset details {
   .job-tools,
   .job-pager,
   .playback-group-head,
+  .playback-filters,
   .detail-actions,
   .continue-row,
   .reader,
