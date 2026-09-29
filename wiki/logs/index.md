@@ -12,6 +12,8 @@ okf_version: "0.1"
 
 ## 로그
 
+- [2026-09-29-retry-current-settings.md](2026-09-29-retry-current-settings.md) — 재개·재시도 '현재 설정 사용' 옵션과 리뷰 반영
+
 - [2026-09-29-ai-provider-retention-and-resume-fix.md](2026-09-29-ai-provider-retention-and-resume-fix.md) — OpenAI 호환 호출 방식·OpenCode Go 세션 헤더, 영상/오디오 보관 토글, 설정 미저장 표시, 재개 지점·단계 표시 수정
 
 - [2026-09-29-ai-error-retry.md](2026-09-29-ai-error-retry.md) — 요약 AI 실패(Gemini 503) 진단과 provider 재시도·백오프·안전 오류 코드
