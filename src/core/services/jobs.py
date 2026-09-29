@@ -325,6 +325,52 @@ class JobService:
             self.changed.notify_all()
             return attempt['id']
 
+    def resume(self, context: UserContext, job_id: str, attempt_id: str, *, idempotency_key: str):
+        """Retry a failed/interrupted job from its last completed stage, reusing artifacts."""
+        with self.lock:
+            self._ensure_open()
+            job = self._job(context, job_id)
+            operation = f'resume:{job_id}'
+            prior = self._dedup(context, operation, idempotency_key, attempt_id)
+            if prior is not None:
+                return prior
+            if job['current_attempt_id'] != attempt_id or job['status'] not in RETRYABLE:
+                raise ServiceError('attempt_conflict')
+            point = self._resume_point(attempt_id, job['end_stage'])
+            if point is None:
+                raise ServiceError('no_resume_point')
+            start_stage, input_id = point
+            active = self.db.execute("SELECT count(*) FROM jobs WHERE status IN ('queued','running','cancelling')").fetchone()[0]
+            if active >= self.max_active:
+                raise ServiceError('queue_full')
+            revision = self.db.get('settings_revisions', job['settings_revision_id'])
+            self._credentials(revision)
+            with self.db.transaction():
+                number = self.db.execute('SELECT max(number) FROM attempts WHERE job_id=?', (job_id,)).fetchone()[0] + 1
+                attempt = self._new_attempt_from(job, number, start_stage, input_id)
+                job['current_attempt_id'] = attempt['id']
+                job['result_kind'] = None
+                self._write_job(job, attempt)
+                self._remember(context, operation, idempotency_key, attempt_id, attempt['id'])
+            self.changed.notify_all()
+            return attempt['id']
+
+    def _resume_point(self, attempt_id, end_stage):
+        """Return (stage, artifact_id) to resume from, or None when nothing is resumable."""
+        runs = self.db.records('SELECT payload FROM stage_runs WHERE attempt_id=?', (attempt_id,))
+        completed = [run for run in runs if run['status'] == 'completed' and run['output_id']]
+        if not completed:
+            return None
+        last = max(completed, key=lambda run: run['stage'])
+        if last['stage'] + 1 > int(end_stage):
+            return None
+        artifact = self.db.get('artifacts', last['output_id'])
+        if not artifact or artifact['state'] != 'complete':
+            return None
+        if not self.paths.file(artifact['path']).is_file():
+            return None
+        return last['stage'] + 1, last['output_id']
+
     def continue_job(self, context: UserContext, job_id: str, attempt_id: str, end_stage: int, *,
                      idempotency_key: str):
         """Extend a completed job to a later stage, reusing the last artifact."""

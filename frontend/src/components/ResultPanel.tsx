@@ -35,7 +35,7 @@ export function ResultPanel({
   pending: string | null;
   jobModel: string;
   onOpenArtifact: (artifact: Artifact) => void;
-  onCommand: (job: Job, action: "cancel" | "retry") => void;
+  onCommand: (job: Job, action: "cancel" | "retry" | "resume") => void;
   onContinue: (job: Job, endStage: number) => void;
   onNotice: (message: string) => void;
   loadingFallback?: boolean;
@@ -72,6 +72,26 @@ export function ResultPanel({
   }
 
   const latest = job.attempts.at(-1);
+  const completeArtifacts = new Set(
+    job.artifacts
+      .filter((item) => item.state === "complete")
+      .map((item) => item.id),
+  );
+  // Resume from the last completed stage whose artifact is still on disk.
+  const resumableStage = (() => {
+    if (!job.retryable || !latest) return null;
+    const points = latest.stages
+      .filter(
+        (stage) =>
+          stage.status === "completed" &&
+          stage.output_id &&
+          completeArtifacts.has(stage.output_id),
+      )
+      .map((stage) => stage.stage);
+    if (points.length === 0) return null;
+    const stage = Math.max(...points) + 1;
+    return stage <= job.end_stage ? stage : null;
+  })();
   return (
     <section className="result-panel panel" aria-label="작업 상세">
       <div className="section-heading">
@@ -107,13 +127,26 @@ export function ResultPanel({
             </button>
           )}
           {job.retryable && (
-            <button
-              disabled={pending === job.id}
-              className="secondary"
-              onClick={() => onCommand(job, "retry")}
-            >
-              다시 시도
-            </button>
+            <>
+              {resumableStage !== null && (
+                <button
+                  disabled={pending === job.id}
+                  className="secondary"
+                  title={`${resumableStage}단계부터 이어서 처리합니다. 이전 단계 결과를 재사용합니다.`}
+                  onClick={() => onCommand(job, "resume")}
+                >
+                  이어서 재개
+                </button>
+              )}
+              <button
+                disabled={pending === job.id}
+                className={resumableStage !== null ? "quiet" : "secondary"}
+                title={`${job.initial_stage}단계부터 처음부터 다시 시도합니다.`}
+                onClick={() => onCommand(job, "retry")}
+              >
+                {resumableStage !== null ? "처음부터" : "다시 시도"}
+              </button>
+            </>
           )}
         </div>
       </div>

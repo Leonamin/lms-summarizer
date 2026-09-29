@@ -144,17 +144,20 @@ export function App() {
     }
   };
 
-  const command = async (job: Job, action: "cancel" | "retry") => {
+  const command = async (job: Job, action: "cancel" | "retry" | "resume") => {
     setPending(job.id);
     setError("");
     try {
       const updated = await api<Job>("/jobs/" + job.id + "/" + action, {
         method: "POST",
         headers:
-          action === "retry" ? { "Idempotency-Key": requestId() } : undefined,
+          action === "cancel"
+            ? undefined
+            : { "Idempotency-Key": requestId() },
         body: JSON.stringify({ attempt_id: job.current_attempt_id }),
       });
       merge([updated]);
+      if (action === "resume") setNotice("끊긴 단계부터 이어서 처리합니다.");
     } catch (cause) {
       report(cause);
     } finally {

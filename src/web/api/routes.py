@@ -122,6 +122,12 @@ def retry(job_id: UUID, body: AttemptCommand, request: Request, idempotency_key:
     service.retry(OWNER, str(job_id), str(body.attempt_id), idempotency_key=idempotency_key)
     return service.detail(OWNER, str(job_id))
 
+@router.post('/jobs/{job_id}/resume', status_code=202)
+def resume(job_id: UUID, body: AttemptCommand, request: Request, idempotency_key: str = Header(min_length=1, max_length=200)):
+    service = request.app.state.service
+    service.resume(OWNER, str(job_id), str(body.attempt_id), idempotency_key=idempotency_key)
+    return service.detail(OWNER, str(job_id))
+
 @router.post('/jobs/{job_id}/continue', status_code=202)
 def continue_job(job_id: UUID, body: ContinueCommand, request: Request, idempotency_key: str = Header(min_length=1, max_length=200)):
     service = request.app.state.service
