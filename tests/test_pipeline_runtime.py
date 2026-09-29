@@ -66,6 +66,7 @@ class PipelineRuntimeTests(unittest.TestCase):
         from src.summarize_pipeline.providers.custom_provider import CustomProvider
         provider = CustomProvider.__new__(CustomProvider)
         provider._use_responses = None
+        provider.api_mode = 'auto'
         calls = []
         def fail():
             calls.append('responses')

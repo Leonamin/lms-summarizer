@@ -12,4 +12,4 @@ okf_version: "0.1"
 
 ## 문서
 
-(아직 등록된 문서가 없습니다. 새 문서는 이 index에 등록합니다.)
+- [ai-summary-providers.md](ai-summary-providers.md) — 요약 엔진 레지스트리, OpenAI 호환(custom)·호출 방식·오류 코드 (2026-09-29)

@@ -208,7 +208,7 @@ class ProviderBoundaryTests(unittest.TestCase):
         for engine in ('gemini','openai','claude','grok','custom'):
             with self.subTest(engine=engine),tempfile.TemporaryDirectory() as directory:
                 root=Path(directory)
-                command=self.command(root,4,{'ai_engine':engine,'ai_model':'fixed-model','base_url':'https://api.example/v1','request_timeout':45},{'summary_api_key':'secret-fixture'})
+                command=self.command(root,4,{'ai_engine':engine,'ai_model':'fixed-model','base_url':'https://api.example/v1','custom_api_mode':'chat','request_timeout':45},{'summary_api_key':'secret-fixture'})
                 provider=MagicMock();provider.summarize.return_value='fixture summary'
                 with patch('src.summarize_pipeline.providers.create_provider',return_value=provider) as create:
                     result=PipelineExecutor().execute(command,threading.Event())
@@ -216,7 +216,60 @@ class ProviderBoundaryTests(unittest.TestCase):
                 self.assertEqual(create.call_args.kwargs['model_name'],'fixed-model')
                 self.assertEqual(create.call_args.kwargs['request_timeout'],45)
                 self.assertEqual(create.call_args.args,(engine,))
+                self.assertEqual(create.call_args.kwargs['api_mode'],'chat')
                 provider.summarize.assert_called_once_with('lecture fixture','fixed prompt')
+
+    def test_create_provider_forwards_api_mode_only_to_custom(self):
+        from unittest.mock import MagicMock
+        import src.summarize_pipeline.providers as providers
+        gemini, custom = MagicMock(), MagicMock()
+        with patch.dict(providers.ENGINE_REGISTRY, {'gemini': gemini, 'custom': custom}):
+            providers.create_provider('gemini',api_key='k',model_name='m',base_url='https://x/v1',api_mode='chat')
+            self.assertNotIn('api_mode',gemini.call_args.kwargs)
+            self.assertNotIn('base_url',gemini.call_args.kwargs)
+            providers.create_provider('custom',api_key='k',model_name='m',base_url='https://x/v1',api_mode='responses')
+            self.assertEqual(custom.call_args.kwargs['api_mode'],'responses')
+            self.assertEqual(custom.call_args.kwargs['base_url'],'https://x/v1')
+
+    def test_custom_provider_api_mode_selects_route(self):
+        from unittest.mock import MagicMock
+        from src.summarize_pipeline.providers.custom_provider import CustomProvider
+        def build(mode):
+            fake=MagicMock()
+            fake.chat.completions.create.return_value=MagicMock(choices=[MagicMock(message=MagicMock(content='chat-result'))])
+            fake.responses.create.return_value=MagicMock(output_text='responses-result')
+            with patch('openai.OpenAI',return_value=fake):
+                provider=CustomProvider(api_key='k',model_name='m',base_url='https://x/v1',api_mode=mode)
+            return provider,fake
+        for mode,expected in (('chat','chat-result'),('responses','responses-result')):
+            with self.subTest(mode=mode):
+                provider,fake=build(mode)
+                self.assertEqual(provider.summarize('t','p'),expected)
+                if mode=='chat':
+                    fake.responses.create.assert_not_called()
+                else:
+                    fake.chat.completions.create.assert_not_called()
+        # auto: 미지원 라우트(404)면 chat으로 폴백한다.
+        provider,fake=build('auto')
+        unsupported=Exception('no route');unsupported.status_code=404
+        fake.responses.create.side_effect=unsupported
+        self.assertEqual(provider.summarize('t','p'),'chat-result')
+        # auto: 인증/서버 오류는 폴백하지 않고 그대로 올린다.
+        provider,fake=build('auto')
+        denied=Exception('bad key');denied.status_code=401
+        fake.responses.create.side_effect=denied
+        with self.assertRaises(Exception):
+            provider.summarize('t','p')
+
+    def test_custom_provider_injects_opencode_session_header(self):
+        from src.summarize_pipeline.providers.custom_provider import CustomProvider
+        headers=CustomProvider._default_headers('https://opencode.ai/zen/go/v1')
+        self.assertIn('x-opencode-session',headers)
+        self.assertTrue(headers['x-opencode-session'])
+        self.assertEqual(CustomProvider._default_headers('https://api.example.com/v1'),{})
+        override=CustomProvider._default_headers('https://opencode.ai/zen/go/v1',{'x-opencode-session':'fixed','X-Extra':'1'})
+        self.assertEqual(override['x-opencode-session'],'fixed')
+        self.assertEqual(override['X-Extra'],'1')
     def test_each_stt_engine_explicit_credentials_and_endpoint(self):
         import threading
         from src.core.runtime.executor import PipelineExecutor

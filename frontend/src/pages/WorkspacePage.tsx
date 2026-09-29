@@ -103,20 +103,35 @@ export function WorkspacePage({
     [report],
   );
 
+  // Keep one live artifact per kind across every attempt, preferring the
+  // current attempt, so resuming/extending never hides earlier results.
+  const available: Artifact[] = (() => {
+    if (!current) return [];
+    const currentId = current.current_attempt_id;
+    const byKind = new Map<string, Artifact>();
+    for (const item of current.artifacts) {
+      if (item.state !== "complete") continue;
+      const existing = byKind.get(item.kind);
+      if (!existing) {
+        byKind.set(item.kind, item);
+        continue;
+      }
+      const itemPreferred = item.attempt_id === currentId;
+      const existingPreferred = existing.attempt_id === currentId;
+      if (itemPreferred || !existingPreferred) byKind.set(item.kind, item);
+    }
+    return [...byKind.values()];
+  })();
+
   useEffect(() => {
     contentRequest.current++;
     setArtifact(null);
     setText("");
     setLoadingText(false);
-    const latest = current?.artifacts.filter(
-      (item) =>
-        item.state === "complete" &&
-        item.attempt_id === current.current_attempt_id,
-    );
     const preferred =
-      latest?.find((item) => item.kind === "summary") ??
-      latest?.find((item) => item.kind === "prompt") ??
-      latest?.find((item) => item.kind === "transcript");
+      available.find((item) => item.kind === "summary") ??
+      available.find((item) => item.kind === "prompt") ??
+      available.find((item) => item.kind === "transcript");
     if (preferred) void openArtifact(preferred);
   }, [current?.id, current?.current_attempt_id, current?.status, openArtifact]);
 
@@ -133,14 +148,6 @@ export function WorkspacePage({
     },
     [merge, onNotice],
   );
-
-  const available =
-    current?.artifacts.filter(
-      (item) =>
-        item.state === "complete" &&
-        (item.attempt_id === current.current_attempt_id ||
-          item.attempt_id === null),
-    ) ?? [];
 
   const incompletePlaybacks = playbacks.filter((item) =>
     isPlaybackIncomplete(item.status),

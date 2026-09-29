@@ -77,17 +77,22 @@ export function ResultPanel({
       .filter((item) => item.state === "complete")
       .map((item) => item.id),
   );
-  // Resume from the last completed stage whose artifact is still on disk.
+  // Resume from the highest completed stage across all attempts whose artifact
+  // is still on disk, so a failed resume attempt can still be resumed again.
   const resumableStage = (() => {
-    if (!job.retryable || !latest) return null;
-    const points = latest.stages
-      .filter(
-        (stage) =>
+    if (!job.retryable) return null;
+    const points: number[] = [];
+    for (const attempt of job.attempts) {
+      for (const stage of attempt.stages) {
+        if (
           stage.status === "completed" &&
           stage.output_id &&
-          completeArtifacts.has(stage.output_id),
-      )
-      .map((stage) => stage.stage);
+          completeArtifacts.has(stage.output_id)
+        ) {
+          points.push(stage.stage);
+        }
+      }
+    }
     if (points.length === 0) return null;
     const stage = Math.max(...points) + 1;
     return stage <= job.end_stage ? stage : null;

@@ -11,6 +11,7 @@ class Settings(DTO):
     ai_engine: Literal['clipboard', 'gemini', 'openai', 'claude', 'grok', 'custom'] = 'clipboard'
     ai_model: str = Field(default='chatgpt', max_length=200)
     base_url: str = Field(default='', max_length=2000)
+    custom_api_mode: Literal['auto', 'chat', 'responses'] = 'auto'
     stt_engine: Literal['faster-whisper', 'openai-whisper', 'openai-compatible', 'returnzero'] = 'faster-whisper'
     stt_model: str = Field(default='large-v3-turbo', max_length=200)
     stt_base_url: str = Field(default='', max_length=2000)
@@ -53,6 +54,7 @@ class Settings(DTO):
     subject_custom: str = Field(default='', max_length=500)
     custom_prompt: str = Field(default=DEFAULT_PROMPT, min_length=1, max_length=100000)
     keep_source: bool = False
+    keep_audio: bool = False
     auto_detect_enabled: bool = False
     auto_detect_interval_minutes: int = Field(default=30, ge=5, le=1440)
     auto_detect_courses: str = Field(default='', max_length=2000)

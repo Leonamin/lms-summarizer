@@ -2,6 +2,7 @@ export interface Settings {
   ai_engine: string;
   ai_model: string;
   base_url: string;
+  custom_api_mode: string;
   stt_engine: string;
   stt_model: string;
   stt_base_url: string;
@@ -14,6 +15,7 @@ export interface Settings {
   subject_custom: string;
   custom_prompt: string;
   keep_source: boolean;
+  keep_audio: boolean;
   request_timeout: number;
   auto_detect_enabled: boolean;
   auto_detect_interval_minutes: number;
