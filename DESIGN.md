@@ -323,9 +323,10 @@ Pretendard 가변 폰트 자체 호스팅(`frontend/public/fonts/PretendardVaria
 ### Data table (작업 목록)
 - `.job-table-head`(sticky, 11px, `white-space:nowrap`) + `.job-row`가
   `grid-template-columns: 84px minmax(0,1fr) 70px 40px 72px`(상태·이름·단계 트랙·시도·만든 시각) 공유.
-- **자동 재생 그룹**: 재생 큐가 비어 있지 않으면 표의 머리글 아래에 `.playback-group`(brand-50 배경)으로
-  `AUTO PLAY` 행을 표시한다. 행은 `재생 중`/`재생 대기` 배지 + 제목 + `재생` + `-` + 만든 시각이며
-  `.playback-row`로 비인터랙티브다. 자동 재생은 4단계 작업이 아니라 **별도 큐(PlaybackQueue)** 임을 화면에서 구분한다.
+- **자동 재생 그룹**: 표 머리글 아래 `.playback-group`(brand-50 배경)으로 `AUTO PLAY` 섹션을 표시한다.
+  재생 큐는 4단계 작업이 아니라 **별도 큐(PlaybackQueue)** 이며, 활성(대기/재생 중) 행은 배지 + 제목 + 시각으로
+  보여준다. `지난 재생 N건` 토글을 펼치면 완료/실패/중단 이력을 상태 배지 + 제목 + 출석(출석/미출석) +
+  연결 작업 수 + 시각으로 최근 20건까지 보여준다(`/playback`는 전체 상태를 반환). `.playback-row`는 flex(비인터랙티브).
 - **선택 행 표시 = 행 배경 + 현재 단계 슬롯 칩**: 별도 좌측 pill이나 대표 아이콘을 두지 않는다.
   `.job-row.selected`는 `--brand-50` 배경 + 이름 `--brand-700`, 그리고 `.stage-mini-slot.current`가
   `--brand`로 채워진 칩이 된다.

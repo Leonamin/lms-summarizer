@@ -18,6 +18,17 @@ const sortOptions = [
 
 const pageSizes = [10, 20];
 
+const playbackStatusLabels: Record<string, string> = {
+  queued: "재생 대기",
+  running: "재생 중",
+  completed: "재생 완료",
+  failed: "재생 실패",
+  interrupted: "재생 중단",
+};
+
+const isPlaybackActive = (status: string) =>
+  status === "queued" || status === "running";
+
 type SortKey = "status" | "name" | "attempts" | "created";
 
 const columns: { key: SortKey | null; label: string }[] = [
@@ -98,6 +109,7 @@ export function JobList({
   });
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const working = jobs.filter(isActive);
   const filtered = jobs.filter(
     (job) =>
@@ -126,6 +138,13 @@ export function JobList({
     setPage(Math.min(Math.max(next, 1), pageCount));
   const rangeStart = sorted.length === 0 ? 0 : start + 1;
   const rangeEnd = Math.min(start + pageSize, sorted.length);
+  const activePlaybacks = playbacks.filter((item) =>
+    isPlaybackActive(item.status),
+  );
+  const playbackHistory = playbacks
+    .filter((item) => !isPlaybackActive(item.status))
+    .sort((a, b) => b.created_at.localeCompare(a.created_at));
+  const visibleHistory = playbackHistory.slice(0, 20);
 
   const toggle = (key: SortKey) =>
     setSort((current) =>
@@ -233,26 +252,63 @@ export function JobList({
             <div className="playback-group-head">
               <span className="eyebrow">AUTO PLAY</span>
               <small>자동 감지 재생 · 학습 완료용 별도 큐</small>
-            </div>
-            {playbacks.map((item) => (
-              <div className="job-row playback-row" key={item.id}>
-                <span
-                  className={
-                    "status " + (item.status === "running" ? "running" : "queued")
-                  }
+              {playbackHistory.length > 0 && (
+                <button
+                  type="button"
+                  className="playback-toggle"
+                  aria-expanded={historyOpen}
+                  onClick={() => setHistoryOpen((open) => !open)}
                 >
-                  {item.status === "running" ? "재생 중" : "재생 대기"}
+                  지난 재생 {playbackHistory.length}건
+                  <span aria-hidden="true">{historyOpen ? "▴" : "▾"}</span>
+                </button>
+              )}
+            </div>
+            {activePlaybacks.map((item) => (
+              <div className="playback-row" key={item.id}>
+                <span className={"status " + item.status}>
+                  {playbackStatusLabels[item.status] ?? item.status}
                 </span>
-                <span className="job-name">
+                <span className="job-name" title={item.title || item.lecture_url}>
                   {item.title || item.lecture_url}
                 </span>
-                <span className="stage-mini playback-mini" aria-hidden="true">
-                  재생
+                <span className="playback-time">
+                  {formatDate(item.created_at)}
                 </span>
-                <span className="job-attempts">-</span>
-                <span className="job-time">{formatDate(item.created_at)}</span>
               </div>
             ))}
+            {historyOpen &&
+              visibleHistory.map((item) => (
+                <div className="playback-row playback-history" key={item.id}>
+                  <span className={"status " + item.status}>
+                    {playbackStatusLabels[item.status] ?? item.status}
+                  </span>
+                  <span
+                    className="job-name"
+                    title={item.title || item.lecture_url}
+                  >
+                    {item.title || item.lecture_url}
+                  </span>
+                  <span
+                    className={
+                      "playback-attend " + (item.attended ? "yes" : "no")
+                    }
+                  >
+                    {item.attended ? "출석" : "미출석"}
+                  </span>
+                  {item.job_ids && item.job_ids.length > 0 && (
+                    <span
+                      className="playback-link"
+                      title={`연결된 작업 ${item.job_ids.length}건`}
+                    >
+                      작업 {item.job_ids.length}
+                    </span>
+                  )}
+                  <span className="playback-time">
+                    {formatDate(item.created_at)}
+                  </span>
+                </div>
+              ))}
           </div>
         )}
         {loading ? (
