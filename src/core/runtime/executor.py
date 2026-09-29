@@ -7,6 +7,31 @@ from pathlib import Path
 from src.core.models.jobs import StageResult, ServiceError
 from src.core.models.stages import PipelineStage
 
+
+def ai_error_code(exc):
+    """Map a provider/network exception to a safe, user-facing error code.
+
+    The worker discards raw adapter output (it can contain keys/URLs), so the
+    reason must be reduced to one of the safe codes here.
+    """
+    status = getattr(exc, 'status_code', None)
+    if not isinstance(status, int):
+        code = getattr(exc, 'code', None)
+        status = code if isinstance(code, int) else None
+    status_name = str(getattr(exc, 'status', '') or '')
+    if status == 429 or 'RESOURCE_EXHAUSTED' in status_name:
+        return 'ai_quota'
+    if status in (401, 403) or status_name in ('UNAUTHENTICATED', 'PERMISSION_DENIED'):
+        return 'ai_auth'
+    if (status is not None and status >= 500) or status_name == 'UNAVAILABLE':
+        return 'ai_unavailable'
+    if status == 408 or 'timeout' in type(exc).__name__.lower():
+        return 'ai_timeout'
+    if status is None and 'connection' in type(exc).__name__.lower():
+        return 'ai_unavailable'
+    return 'stage_failed'
+
+
 class PipelineExecutor:
     def __init__(self):
         self._transcriber = None
@@ -94,6 +119,10 @@ class PipelineExecutor:
                                        request_timeout=settings.get('request_timeout',120))
             try:
                 result = provider.summarize(text, command.resolved_prompt)
+            except ServiceError:
+                raise
+            except Exception as exc:
+                raise ServiceError(ai_error_code(exc)) from exc
             finally:
                 client = getattr(provider, 'client', getattr(provider, '_client', None))
                 if client and hasattr(client, 'close'):

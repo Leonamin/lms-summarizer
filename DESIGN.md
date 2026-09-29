@@ -377,6 +377,9 @@ Pretendard 가변 폰트 자체 호스팅(`frontend/public/fonts/PretendardVaria
   "다시 연결" 버튼)를 헤더 아래에 표시한다. 자동 재연결을 시도하고 버튼은 즉시 재시도한다.
 - **검색·필터 빈 결과**: 작업 목록 `.empty`에 "조건에 맞는 작업이 없습니다." + `.secondary` "검색·필터 초기화" 버튼.
   작업 자체가 없을 때는 초기화 버튼 없이 안내만 표시한다.
+- **AI 오류 사유**: 요약(4단계) 실패는 워커가 원문·키를 버리고 안전 코드로만 환원한다 —
+  `ai_unavailable`(5xx/네트워크) · `ai_quota`(429) · `ai_auth`(401/403) · `ai_timeout`(408/타임아웃).
+  `_terminal`이 코드별 한국어 `safe_message`를 넣고 상세 `.inline-error`에 표시한다.
 - 그 외 권한·결제·부분 실패 등은 이 제품에 없는 상태라 제외한다.
 
 ## Do's and Don'ts

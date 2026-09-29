@@ -24,7 +24,7 @@ class CustomProvider(AIProvider):
         self.client = OpenAI(
             api_key=api_key or "not-needed",
             base_url=self._base_url,
-            max_retries=0, timeout=httpx.Timeout(request_timeout, connect=10),
+            max_retries=3, timeout=httpx.Timeout(request_timeout, connect=10),
         )
         self.model_name = model_name or self.default_model()
         self._use_responses: bool | None = None  # None = 아직 감지 안 함
