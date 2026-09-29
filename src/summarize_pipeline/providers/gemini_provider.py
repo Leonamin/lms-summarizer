@@ -12,7 +12,10 @@ class GeminiProvider(AIProvider):
         from google import genai
         from google.genai import types
         self._client = genai.Client(api_key=api_key, http_options=types.HttpOptions(
-            timeout=int(request_timeout * 1000), retry_options=types.HttpRetryOptions(attempts=1)))
+            timeout=int(request_timeout * 1000),
+            # Retry transient 429/5xx (e.g. 503 "model experiencing high demand") with backoff.
+            retry_options=types.HttpRetryOptions(
+                attempts=4, initial_delay=1.0, max_delay=15.0, exp_base=2, jitter=1)))
         self._model_name = model_name or self.default_model()
 
     def summarize(self, text: str, prompt: str) -> str:

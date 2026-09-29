@@ -30,6 +30,14 @@ from src.core.validation import initial_stage, validate_stage_range
 ACTIVE = {'queued', 'running', 'cancelling'}
 RETRYABLE = {'failed', 'cancelled', 'interrupted'}
 
+# Code-specific messages shown in the UI instead of the generic status message.
+STAGE_ERROR_MESSAGES = {
+    'ai_unavailable': '요약 AI가 일시적으로 응답하지 않습니다. 잠시 후 다시 시도해 주세요.',
+    'ai_quota': '요약 AI 사용 한도를 초과했습니다. 결제·한도를 확인해 주세요.',
+    'ai_auth': '요약 AI 인증에 실패했습니다. API 키를 확인해 주세요.',
+    'ai_timeout': '요약 AI 응답이 지연되었습니다. 잠시 후 다시 시도해 주세요.',
+}
+
 class JobService:
     def __init__(self, root: Path, *, executor_factory=PipelineExecutor, models_dir: Path = None,
                  min_free_bytes=2 * 1024**3, max_active=200, max_batch=50,
@@ -257,8 +265,9 @@ class JobService:
 
     def _terminal(self, job, attempt, status, code=None):
         attempt.update(status=status, ended_at=utcnow(), error_code=code,
-                       safe_message={'cancelled':'작업이 취소되었습니다.', 'interrupted':'실행이 중단되었습니다.',
-                                     'failed':'작업 실행에 실패했습니다.'}.get(status))
+                       safe_message=STAGE_ERROR_MESSAGES.get(code) or {
+                           'cancelled':'작업이 취소되었습니다.', 'interrupted':'실행이 중단되었습니다.',
+                           'failed':'작업 실행에 실패했습니다.'}.get(status))
         for run in self.db.records("SELECT payload FROM stage_runs WHERE attempt_id=? AND status IN ('queued','running')", (attempt['id'],)):
             run.update(status='failed', ended_at=utcnow(), error_code=code or status)
             self.db.update('stage_runs', run, status='failed')

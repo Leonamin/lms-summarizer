@@ -11,7 +11,7 @@ class OpenAIProvider(AIProvider):
     def __init__(self, api_key: str, model_name: str = None, request_timeout: float = 120):
         import httpx
         from openai import OpenAI
-        self.client = OpenAI(api_key=api_key, max_retries=0, timeout=httpx.Timeout(request_timeout, connect=10))
+        self.client = OpenAI(api_key=api_key, max_retries=3, timeout=httpx.Timeout(request_timeout, connect=10))
         self.model_name = model_name or self.default_model()
 
     def summarize(self, text: str, prompt: str) -> str:

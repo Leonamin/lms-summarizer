@@ -6,7 +6,8 @@ from src.core.models.jobs import StageResult, ServiceError
 from src.core.runtime.processes import isolate_process, watch_parent, kill_descendants
 
 SAFE_ERRORS = {'cancelled', 'credentials_missing', 'input_missing', 'output_missing',
-               'download_failed', 'disk_full', 'stage_failed'}
+               'download_failed', 'disk_full', 'stage_failed',
+               'ai_unavailable', 'ai_quota', 'ai_auth', 'ai_timeout'}
 
 def worker_main(connection, lifetime, cancelled, executor_factory):
     job_handle = isolate_process()  # Keep the Windows handle alive for the worker lifetime.

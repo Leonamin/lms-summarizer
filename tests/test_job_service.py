@@ -38,6 +38,8 @@ class FakeExecutor:
                 raise ServiceError('cancelled')
             time.sleep(0.01)
         if settings.get('fail_stage') == int(command.token.stage):
+            if settings.get('fail_code'):
+                raise ServiceError(settings['fail_code'])
             raise RuntimeError('secret-value https://sensitive.example/signed?token=secret')
         output = Path(command.output_dir)/f'stage-{int(command.token.stage)}.txt'
         output.write_text(command.resolved_prompt+' '+str(command.credentials.get('summary_api_key', '')))
@@ -200,6 +202,18 @@ class JobServiceTests(unittest.TestCase):
                 with self.assertRaises(ServiceError) as exc:
                     service.resume(OWNER, job, failed['current_attempt_id'], idempotency_key='resume-none-1')
                 self.assertEqual(exc.exception.code, 'no_resume_point')
+
+    def test_ai_error_code_is_surfaced_to_ui(self):
+        with tempfile.TemporaryDirectory() as root:
+            service = self.make(root)
+            with service:
+                job = service.submit(OWNER, [Source.url('https://canvas.ssu.ac.kr/courses/1/lecture/1')],
+                                     revision({'delay':0.02, 'fail_stage':4, 'fail_code':'ai_unavailable'}),
+                                     end_stage=PipelineStage.SUMMARIZE, idempotency_key='ai')[0]
+                detail = wait_for(service, job, {'failed'})
+                attempt = detail['attempts'][-1]
+                self.assertEqual(attempt['error_code'], 'ai_unavailable')
+                self.assertIn('일시적으로', attempt['safe_message'])
 
     def test_forced_cancel_tree_and_late_result(self):
         with tempfile.TemporaryDirectory() as root:

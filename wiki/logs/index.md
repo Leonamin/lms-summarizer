@@ -12,6 +12,8 @@ okf_version: "0.1"
 
 ## 로그
 
+- [2026-09-29-ai-error-retry.md](2026-09-29-ai-error-retry.md) — 요약 AI 실패(Gemini 503) 진단과 provider 재시도·백오프·안전 오류 코드
+
 - [2026-09-29-resume-from-stage.md](2026-09-29-resume-from-stage.md) — 실패·취소·중단 작업을 마지막 완료 단계부터 산출물 재사용으로 재개
 
 - [2026-09-29-dashboard-autoplay-and-stages.md](2026-09-29-dashboard-autoplay-and-stages.md) — 목록 페이지네이션·단계 아이콘 트랙·자동 재생 이력/필터/연결 이동·레일 접기
