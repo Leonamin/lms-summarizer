@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { Play } from "lucide-react";
 import type { Job, Playback } from "../types";
 import { formatDate, isActive, stages, statusText } from "../lib/format";
 import { stageIcons, stageRunLabels, stageSlotClass } from "../lib/stageIcons";
@@ -48,40 +47,30 @@ const stageRunText = (status?: string) =>
 /** Compact 4-step pipeline: icon per stage, coloured by that stage's status. */
 function StageMini({ job }: { job: Job }) {
   const latest = job.attempts.at(-1);
+  const current = Math.min(
+    Math.max(latest?.current_stage ?? job.initial_stage, 1),
+    stages.length,
+  );
   return (
     <span className="stage-mini">
       {stages.map((label, index) => {
-        const run = latest?.stages.find((stage) => stage.stage === index + 1);
+        const number = index + 1;
+        const run = latest?.stages.find((stage) => stage.stage === number);
         const Icon = stageIcons[index];
         return (
           <span
             key={label}
-            className={"stage-mini-slot " + stageSlotClass(run?.status)}
-            title={`${index + 1}. ${label} · ${stageRunText(run?.status)}`}
+            className={
+              "stage-mini-slot " +
+              stageSlotClass(run?.status) +
+              (number === current ? " current" : "")
+            }
+            title={`${number}. ${label} · ${stageRunText(run?.status)}`}
           >
             <Icon size={14} strokeWidth={2} aria-hidden="true" />
           </span>
         );
       })}
-    </span>
-  );
-}
-
-/** Current stage icon. Serves as the row's selection indicator too. */
-function StageLead({ job }: { job: Job }) {
-  const latest = job.attempts.at(-1);
-  const current = Math.min(
-    Math.max(latest?.current_stage ?? job.initial_stage, 1),
-    stages.length,
-  );
-  const Icon = stageIcons[current - 1];
-  return (
-    <span
-      className="job-lead"
-      title={`${current}. ${stages[current - 1]} · ${statusText(job)}`}
-      aria-hidden="true"
-    >
-      <Icon size={15} strokeWidth={2} />
     </span>
   );
 }
@@ -206,11 +195,6 @@ export function JobList({
       </div>
       <div className="job-list">
         <div className="job-table-head" role="row">
-          <span
-            className="job-lead-head"
-            role="columnheader"
-            aria-hidden="true"
-          />
           {columns.map((column) => (
             <span
               key={column.label}
@@ -248,13 +232,10 @@ export function JobList({
           <div className="playback-group">
             <div className="playback-group-head">
               <span className="eyebrow">AUTO PLAY</span>
-              <small>자동 감지 재생 · 단일 슬롯에서 순차 실행</small>
+              <small>자동 감지 재생 · 학습 완료용 별도 큐</small>
             </div>
             {playbacks.map((item) => (
               <div className="job-row playback-row" key={item.id}>
-                <span className="job-lead static" aria-hidden="true">
-                  <Play size={14} strokeWidth={2} />
-                </span>
                 <span
                   className={
                     "status " + (item.status === "running" ? "running" : "queued")
@@ -265,7 +246,9 @@ export function JobList({
                 <span className="job-name">
                   {item.title || item.lecture_url}
                 </span>
-                <span className="stage-mini" aria-hidden="true" />
+                <span className="stage-mini playback-mini" aria-hidden="true">
+                  재생
+                </span>
                 <span className="job-attempts">-</span>
                 <span className="job-time">{formatDate(item.created_at)}</span>
               </div>
@@ -279,7 +262,6 @@ export function JobList({
               key={"skeleton-" + index}
               aria-hidden="true"
             >
-              <span className="skeleton sk-lead" />
               <span className="skeleton sk-badge" />
               <span className="skeleton sk-name" />
               <span className="skeleton sk-sm" />
@@ -320,7 +302,6 @@ export function JobList({
               aria-current={selected === job.id}
               onClick={() => onSelect(job.id)}
             >
-              <StageLead job={job} />
               <span className={"status " + job.status}>{statusText(job)}</span>
               <span className="job-name" title={job.display_name}>
                 {job.display_name}
