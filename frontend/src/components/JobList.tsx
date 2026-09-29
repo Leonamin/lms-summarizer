@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Job, Playback } from "../types";
 import { formatDate, isActive, stages, statusText } from "../lib/format";
 import { Dropdown } from "./Dropdown";
@@ -9,6 +9,13 @@ const filterOptions = [
   { value: "completed", label: "완료" },
   { value: "retryable", label: "실패·취소·중단" },
 ];
+
+const sortOptions = [
+  { value: "desc", label: "최신순" },
+  { value: "asc", label: "과거순" },
+];
+
+const pageSizes = [10, 20];
 
 type SortKey = "status" | "name" | "stage" | "attempts" | "created";
 
@@ -56,6 +63,8 @@ export function JobList({
     key: "created",
     dir: "desc",
   });
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const working = jobs.filter(isActive);
   const filtered = jobs.filter(
     (job) =>
@@ -70,6 +79,20 @@ export function JobList({
   const sorted = [...filtered].sort(
     (a, b) => compare(a, b, sort.key) * (sort.dir === "asc" ? 1 : -1),
   );
+
+  // Return to the first page whenever the result set or its order changes.
+  useEffect(() => {
+    setPage(1);
+  }, [filter, search, sort.key, sort.dir, pageSize]);
+
+  const pageCount = Math.max(1, Math.ceil(sorted.length / pageSize));
+  const currentPage = Math.min(page, pageCount);
+  const start = (currentPage - 1) * pageSize;
+  const visible = sorted.slice(start, start + pageSize);
+  const goTo = (next: number) =>
+    setPage(Math.min(Math.max(next, 1), pageCount));
+  const rangeStart = sorted.length === 0 ? 0 : start + 1;
+  const rangeEnd = Math.min(start + pageSize, sorted.length);
 
   const toggle = (key: SortKey) =>
     setSort((current) =>
@@ -113,6 +136,29 @@ export function JobList({
           disabled={loading}
           className="job-filter"
         />
+        <div className="job-sortby" role="group" aria-label="정렬 순서">
+          {sortOptions.map((option) => {
+            const active =
+              sort.key === "created" && sort.dir === option.value;
+            return (
+              <button
+                key={option.value}
+                type="button"
+                className={"segment" + (active ? " active" : "")}
+                aria-pressed={active}
+                disabled={loading}
+                onClick={() =>
+                  setSort({
+                    key: "created",
+                    dir: option.value as "asc" | "desc",
+                  })
+                }
+              >
+                {option.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
       <div className="job-list">
         <div className="job-table-head" role="row">
@@ -210,7 +256,7 @@ export function JobList({
             )}
           </div>
         ) : (
-          sorted.map((job) => (
+          visible.map((job) => (
             <button
               key={job.id}
               className={"job-row" + (selected === job.id ? " selected" : "")}
@@ -226,6 +272,49 @@ export function JobList({
               <span className="job-time">{formatDate(job.created_at)}</span>
             </button>
           ))
+        )}
+        {!loading && sorted.length > 0 && (
+          <div className="job-pager">
+            <span className="job-pager-range">
+              {rangeStart}–{rangeEnd} / {sorted.length}
+            </span>
+            <div className="job-pager-nav">
+              <div className="job-pagesize" role="group" aria-label="페이지당 작업 수">
+                {pageSizes.map((size) => (
+                  <button
+                    key={size}
+                    type="button"
+                    className={"segment" + (pageSize === size ? " active" : "")}
+                    aria-pressed={pageSize === size}
+                    onClick={() => setPageSize(size)}
+                  >
+                    {size}
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                className="pager-btn"
+                onClick={() => goTo(currentPage - 1)}
+                disabled={currentPage <= 1}
+                aria-label="이전 페이지"
+              >
+                ‹
+              </button>
+              <span className="job-pager-page" aria-live="polite">
+                {currentPage} / {pageCount}
+              </span>
+              <button
+                type="button"
+                className="pager-btn"
+                onClick={() => goTo(currentPage + 1)}
+                disabled={currentPage >= pageCount}
+                aria-label="다음 페이지"
+              >
+                ›
+              </button>
+            </div>
+          </div>
         )}
       </div>
     </section>

@@ -251,7 +251,7 @@ Pretendard 가변 폰트 자체 호스팅(`frontend/public/fonts/PretendardVaria
 - `main` 최대 1480px, 패딩 `44px clamp(24px,4vw,64px) 28px`(≥1500px 좌우 72px).
 - 작업실 흐름: `.overview` → `.lms-panel` → `.intake` → `.workspace-grid`.
 - `.overview` = 지표 카드 2개 + `.pipeline-summary`(4열).
-- `.workspace-grid` = `minmax(320px,.84fr) minmax(0,1.16fr)` 2열(작업 목록 / 작업 상세). 1180px 이하 1열(`minmax(0,1fr)`), 자식 `min-width:0`.
+- `.workspace-grid` = `minmax(360px,1fr) minmax(0,1.2fr)` 2열(작업 목록 / 작업 상세). 1180px 이하 1열(`minmax(0,1fr)`), 자식 `min-width:0`.
 - `.settings-sheet` 단일 카드(최대 960px), 섹션 `fieldset`/`legend`, 필드 `.settings-grid` 2열(900px 이하 1열).
 - 섹션 헤딩은 `.section-heading`(space-between).
 
@@ -322,7 +322,7 @@ Pretendard 가변 폰트 자체 호스팅(`frontend/public/fonts/PretendardVaria
 
 ### Data table (작업 목록)
 - `.job-table-head`(sticky, 11px, `white-space:nowrap`) + `.job-row`가
-  `grid-template-columns: 96px minmax(0,1fr) 78px 46px 86px`(상태·이름·시작·시도·만든 시각) 공유.
+  `grid-template-columns: 88px minmax(0,1fr) 72px 44px 80px`(상태·이름·시작·시도·만든 시각) 공유.
 - **자동 재생 그룹**: 재생 큐가 비어 있지 않으면 표의 머리글 아래에 `.playback-group`(brand-50 배경)으로
   `AUTO PLAY` 행을 표시한다. 행은 `재생 중`/`재생 대기` 배지 + 제목 + `재생` + `-` + 만든 시각이며
   `.playback-row`로 비인터랙티브다. 자동 재생이 작업과 같은 단일 슬롯을 쓰는 것을 화면에서 구분한다.
@@ -333,6 +333,12 @@ Pretendard 가변 폰트 자체 호스팅(`frontend/public/fonts/PretendardVaria
 - **내부 스크롤 없음**: `.job-list`는 자체 스크롤바 없이 페이지 흐름으로 늘어난다. 좁은 화면(≤1400px)에서는
   `시도` 열을 숨겨 이름 열 공간을 확보하고, ≤680px에서 시작·시각도 숨긴다.
 - ≤680px에서 시작·시도·시각과 헤더를 숨기고 상태·이름만 남긴다.
+- **페이지네이션**: `.job-pager`가 목록 하단(`12px 28px`)에 `1–20 / 24` 범위와 `‹ 현재/전체 ›` 이동을 보여주고,
+  오른쪽에 페이지당 개수 세그먼트(`10`/`20`)를 둔다. 기본 20개/페이지, 10/20 선택. 필터·검색·정렬·개수 변경 시
+  1페이지로 돌아간다(`useEffect` 의존성).
+- **정렬**: `.job-sortby` 세그먼트(`최신순`/`과거순`)가 `created_at` 정렬을 제어하고, 표 머리글 클릭 정렬과
+  같은 `sort` 상태를 공유한다(현재 정렬 열이 `만든 시각`일 때만 세그먼트가 활성). `.segment` 공통 스타일은
+  도구 행 높이 `var(--control-h)`, 페이저에서는 `34px`.
 
 ### Stage track
 - `.stage-track`는 **연결된 4단계 트랙**: 각 `li`에 `::after` 연결선, 28px 원형 마커.
@@ -372,7 +378,7 @@ Pretendard 가변 폰트 자체 호스팅(`frontend/public/fonts/PretendardVaria
 ## Responsive Behavior
 
 - **≥1500px**: `main` 좌우 패딩 72px.
-- **≤1180px**: 레일 216px, `.workspace-grid` 1열(`minmax(0,1fr)`), 작업 목록 `max-height:400px`.
+- **≤1180px**: 레일 216px, `.workspace-grid` 1열(`minmax(0,1fr)`).
 - **≤900px**: `.overview` 2열(파이프라인 전폭), `.intake` 1열, `.settings-grid` 1열, `.course-checks` 1열.
 - **≤680px**: `.app-shell` block(레일 상단 가로 바), 브랜드 서브·캡션·하단·`private-label`·`file-types`·`nav-count` 숨김,
   `h1` 26px, 단계 트랙 2열 wrap, 작업 표 2열(상태·이름), 입력 16px.
@@ -383,10 +389,10 @@ Pretendard 가변 폰트 자체 호스팅(`frontend/public/fonts/PretendardVaria
 간격 토큰 스케일은 없다. 반복 리터럴 값을 관례로 쓴다.
 
 - 카드 패딩: 30px(작업실), 8px 32px 30px(설정), 20px(모바일).
-- 섹션 헤딩 `28px 28px 18px`, 작업 행 `12px 28px`, 리더 `0 28px`.
+- 섹션 헤딩 `28px 28px 18px`, 작업 행 `12px 24px`, 작업 도구·페이저 `28px`, 리더 `0 28px`.
 - 그리드 갭: 24px(작업실 2열), 20px(카드 행), 22px 26px(설정 폼), 14px(파이프라인).
 - 컨트롤: 높이 46px(모든 입력·셀렉트·드롭다운), 버튼 최소 42px, 배지 5px 12px.
-- 고정 치수: 레일 264px(≤1180 216px), `main` 최대 1480px, 설정 카드 최대 960px, 작업 목록 `max-height:640px`.
+- 고정 치수: 레일 264px(≤1180 216px), `main` 최대 1480px, 설정 카드 최대 960px.
 
 ## Icons & Imagery
 
