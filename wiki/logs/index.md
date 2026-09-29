@@ -18,6 +18,12 @@ okf_version: "0.1"
 
 - [2026-09-29-dashboard-autoplay-and-stages.md](2026-09-29-dashboard-autoplay-and-stages.md) — 목록 페이지네이션·단계 아이콘 트랙·자동 재생 이력/필터/연결 이동·레일 접기
 
+- [2026-09-28-web-state-screens.md](2026-09-28-web-state-screens.md) — 초기 로딩 스켈레톤·서버 오류 배너·검색/필터 빈 결과 상태
+
+- [2026-09-28-autoplay-in-list-and-skip-watched.md](2026-09-28-autoplay-in-list-and-skip-watched.md) — AUTO PLAY 그룹으로 재생 큐를 목록에 노출, 이미 본 강의는 감지에서 제외
+
+- [2026-09-28-job-titles-and-metadata.md](2026-09-28-job-titles-and-metadata.md) — URL 작업 자동 이름 변경과 과목·주차 메타데이터 저장·표시
+
 - [2026-09-28-continue-processing.md](2026-09-28-continue-processing.md) — 완료된 초기 단계 작업을 산출물 재사용으로 뒤 단계까지 이어서 실행
 
 - [2026-09-28-autoplay-worker.md](2026-09-28-autoplay-worker.md) — 자동 재생 큐·팝업 처리·출석 확인 워커 구현과 실제 LMS 끝까지 재생 검증
