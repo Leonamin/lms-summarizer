@@ -1945,12 +1945,38 @@ fieldset details {
 }
 
 .form-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 18px;
-  padding-top: 22px;
+  margin-top: 26px;
+  padding: 16px 0 18px;
   border-top: 1px solid var(--line);
+  background: var(--paper);
+}
+
+.form-footer.unsaved {
+  border-top-color: var(--warning);
+}
+
+.form-footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.unsaved-badge {
+  padding: 5px 11px;
+  border-radius: var(--pill);
+  font-size: var(--t-xs);
+  font-weight: 650;
+  white-space: nowrap;
+  color: var(--warning);
+  background: var(--warning-100);
 }
 
 .form-footer p,
@@ -2362,6 +2388,14 @@ fieldset details {
   }
   .course-checks {
     grid-template-columns: 1fr;
+  }
+  .form-footer {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  .form-footer-actions {
+    justify-content: flex-end;
   }
 }
 

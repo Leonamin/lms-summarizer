@@ -252,7 +252,8 @@ class JobService:
                            'initial_stage':int(start), 'end_stage':int(end_stage),
                            'settings_revision_id':revision.id, 'current_attempt_id':'',
                            'status':'queued', 'revision':1, 'created_at':utcnow(), 'result_kind':None,
-                           'keep_source':bool(settings.get('keep_source', False))}
+                           'keep_source':bool(settings.get('keep_source', False)),
+                           'keep_audio':bool(settings.get('keep_audio', False))}
                     self.db.insert('jobs', job, owner_id=context.owner_id, status='queued', current_attempt_id='', revision=1)
                     attempt = self._new_attempt(job, 1)
                     job['current_attempt_id'] = attempt['id']
@@ -345,7 +346,7 @@ class JobService:
                 return prior
             if job['current_attempt_id'] != attempt_id or job['status'] not in RETRYABLE:
                 raise ServiceError('attempt_conflict')
-            point = self._resume_point(attempt_id, job['end_stage'])
+            point = self._resume_point(job, job['end_stage'])
             if point is None:
                 raise ServiceError('no_resume_point')
             start_stage, input_id = point
@@ -364,21 +365,25 @@ class JobService:
             self.changed.notify_all()
             return attempt['id']
 
-    def _resume_point(self, attempt_id, end_stage):
-        """Return (stage, artifact_id) to resume from, or None when nothing is resumable."""
-        runs = self.db.records('SELECT payload FROM stage_runs WHERE attempt_id=?', (attempt_id,))
-        completed = [run for run in runs if run['status'] == 'completed' and run['output_id']]
-        if not completed:
-            return None
-        last = max(completed, key=lambda run: run['stage'])
-        if last['stage'] + 1 > int(end_stage):
-            return None
-        artifact = self.db.get('artifacts', last['output_id'])
-        if not artifact or artifact['state'] != 'complete':
-            return None
-        if not self.paths.file(artifact['path']).is_file():
-            return None
-        return last['stage'] + 1, last['output_id']
+    def _resume_point(self, job, end_stage):
+        """Return (stage, artifact_id) to resume from, or None when nothing is resumable.
+
+        Considers every attempt of the job (newest first), not just the current one,
+        so a failed resume attempt can be resumed again from the last retained output.
+        """
+        end = int(end_stage)
+        attempts = self.db.records('SELECT payload FROM attempts WHERE job_id=? ORDER BY number DESC', (job['id'],))
+        for attempt in attempts:
+            runs = self.db.records('SELECT payload FROM stage_runs WHERE attempt_id=?', (attempt['id'],))
+            completed = sorted((run for run in runs if run['status'] == 'completed' and run['output_id']),
+                               key=lambda run: run['stage'], reverse=True)
+            for run in completed:
+                if int(run['stage']) + 1 > end:
+                    continue
+                artifact = self.db.get('artifacts', run['output_id'])
+                if artifact and artifact['state'] == 'complete' and self.paths.file(artifact['path']).is_file():
+                    return int(run['stage']) + 1, run['output_id']
+        return None
 
     def continue_job(self, context: UserContext, job_id: str, attempt_id: str, end_stage: int, *,
                      idempotency_key: str):
@@ -726,7 +731,9 @@ class JobService:
         for run in runs:
             if run['output_id'] and run['stage'] < job['end_stage'] and run['stage'] in (1,2):
                 artifact = self.db.get('artifacts', run['output_id'])
-                if artifact['kind'] == 'audio' or not job['keep_source']:
+                # Video follows keep_source; converted audio follows keep_audio.
+                keep = job.get('keep_audio', False) if artifact['kind'] == 'audio' else job.get('keep_source', False)
+                if not keep:
                     self._delete_artifact(artifact)
         if job['source_kind'] == 'file' and not job['keep_source']:
             input_id = job['source_reference']

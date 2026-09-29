@@ -103,6 +103,7 @@ class JobServiceTests(unittest.TestCase):
                 first = details[0]
                 artifacts = {a['kind']:a for a in first['artifacts']}
                 self.assertEqual(artifacts['audio']['state'],'deleted')
+                self.assertEqual(artifacts['video']['state'],'deleted')
                 self.assertEqual(artifacts['transcript']['state'],'complete')
                 snapshot = service.list_jobs(OWNER)
                 self.assertEqual(len(snapshot['jobs']),4)
@@ -111,6 +112,28 @@ class JobServiceTests(unittest.TestCase):
                 self.assertTrue(any(e['payload'].get('model_reused') for e in events))
             with self.make(root) as restarted:
                 self.assertEqual(restarted.detail(OWNER,jobs[0])['status'],'completed')
+
+    def test_keep_audio_retains_intermediate_audio_without_keeping_video(self):
+        with tempfile.TemporaryDirectory() as root:
+            service = self.make(root)
+            with service:
+                jobs = service.submit(OWNER,[Source.url('https://canvas.ssu.ac.kr/courses/1')],
+                                      revision({'delay':0.05,'keep_audio':True}), idempotency_key='keep-audio')
+                detail = wait_for(service,jobs[0],{'completed'})
+                artifacts = {a['kind']:a for a in detail['artifacts']}
+                self.assertEqual(artifacts['audio']['state'],'complete')
+                self.assertEqual(artifacts['video']['state'],'deleted')
+
+    def test_keep_source_and_audio_retained_independently(self):
+        with tempfile.TemporaryDirectory() as root:
+            service = self.make(root)
+            with service:
+                jobs = service.submit(OWNER,[Source.url('https://canvas.ssu.ac.kr/courses/1')],
+                                      revision({'delay':0.05,'keep_source':True,'keep_audio':True}), idempotency_key='keep-both')
+                detail = wait_for(service,jobs[0],{'completed'})
+                artifacts = {a['kind']:a for a in detail['artifacts']}
+                self.assertEqual(artifacts['video']['state'],'complete')
+                self.assertEqual(artifacts['audio']['state'],'complete')
 
     def test_queue_cancel_retry_and_dedup(self):
         with tempfile.TemporaryDirectory() as root:
@@ -190,6 +213,24 @@ class JobServiceTests(unittest.TestCase):
                 self.assertEqual(len(again['attempts']), 2)
                 # Resumes at stage 4 without re-running the earlier stages.
                 self.assertEqual([s['stage'] for s in again['attempts'][1]['stages']], [4])
+
+    def test_resume_after_failed_resume_reuses_prior_artifacts(self):
+        with tempfile.TemporaryDirectory() as root:
+            service = self.make(root)
+            with service:
+                job = service.submit(OWNER, [Source.url('https://canvas.ssu.ac.kr/courses/1/lecture/1')],
+                                     revision({'delay':0.02, 'fail_stage':4}),
+                                     end_stage=PipelineStage.SUMMARIZE, idempotency_key='resume-again')[0]
+                failed = wait_for(service, job, {'failed'})
+                service.resume(OWNER, job, failed['current_attempt_id'], idempotency_key='resume-again-1')
+                failed2 = wait_for(service, job, {'failed'})
+                self.assertEqual([s['stage'] for s in failed2['attempts'][-1]['stages']], [4])
+                # The failed resume attempt has no completed stage, but the job's
+                # earlier transcript is still resumable.
+                service.resume(OWNER, job, failed2['current_attempt_id'], idempotency_key='resume-again-2')
+                final = wait_for(service, job, {'failed'})
+                self.assertEqual(len(final['attempts']), 3)
+                self.assertEqual([s['stage'] for s in final['attempts'][-1]['stages']], [4])
 
     def test_resume_without_completed_stage_is_rejected(self):
         with tempfile.TemporaryDirectory() as root:

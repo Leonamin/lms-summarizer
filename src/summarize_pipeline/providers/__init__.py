@@ -32,7 +32,8 @@ ENGINE_API_KEY_MAP: dict[str, str] = {
 
 
 def create_provider(engine: str, api_key: str = None, model_name: str = None,
-                    base_url: str = None, manual_action=None, request_timeout: float = 120) -> AIProvider:
+                    base_url: str = None, manual_action=None, request_timeout: float = 120,
+                    api_mode: str = None) -> AIProvider:
     """엔진 이름으로 Provider 인스턴스를 생성하는 팩토리 함수
 
     Args:
@@ -40,6 +41,7 @@ def create_provider(engine: str, api_key: str = None, model_name: str = None,
         api_key: API 키 (clipboard에서는 불필요, custom에서는 선택사항)
         model_name: 모델명 (None이면 기본 모델 사용)
         base_url: 엔드포인트 URL (custom에서 사용)
+        api_mode: custom 엔진의 호출 방식 ("auto", "chat", "responses")
 
     Returns:
         AIProvider 인스턴스
@@ -52,9 +54,12 @@ def create_provider(engine: str, api_key: str = None, model_name: str = None,
         raise ValueError(f"지원하지 않는 엔진: {engine}")
 
     kwargs = {"api_key": api_key, "model_name": model_name or cls.default_model(), "request_timeout": request_timeout}
-    # custom에만 base_url 전달 (다른 Provider는 파라미터를 무시)
-    if base_url and engine == "custom":
-        kwargs["base_url"] = base_url
+    # custom에만 base_url/api_mode 전달 (다른 Provider는 파라미터를 무시)
+    if engine == "custom":
+        if base_url:
+            kwargs["base_url"] = base_url
+        if api_mode:
+            kwargs["api_mode"] = api_mode
     return cls(**kwargs)
 
 

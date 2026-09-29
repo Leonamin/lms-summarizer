@@ -30,6 +30,20 @@ const sttLabels: Record<string, string> = {
   returnzero: "ReturnZero",
 };
 
+/** Key-order-independent JSON so dirty checks survive object rebuilds. */
+function stableValue(value: unknown): string {
+  return JSON.stringify(value, (_key, item) =>
+    item && typeof item === "object" && !Array.isArray(item)
+      ? Object.keys(item)
+          .sort()
+          .reduce<Record<string, unknown>>((sorted, key) => {
+            sorted[key] = (item as Record<string, unknown>)[key];
+            return sorted;
+          }, {})
+      : item,
+  );
+}
+
 type AutoStatus = {
   enabled: boolean;
   interval_minutes: number;
@@ -157,6 +171,11 @@ export function SettingsPage({
     />
   );
 
+  const dirtyFields = (Object.keys(draft) as (keyof Settings)[]).filter(
+    (key) => stableValue(draft[key]) !== stableValue(settings.settings[key]),
+  );
+  const dirty = dirtyFields.length > 0;
+
   return (
     <section className="settings-sheet panel">
       <div className="section-heading">
@@ -218,16 +237,32 @@ export function SettingsPage({
           {draft.ai_engine !== "clipboard" &&
             secret("summary:" + draft.ai_engine, "요약 API 키")}
           {draft.ai_engine === "custom" && (
-            <label>
-              요약 API 주소
-              <input
-                type="url"
-                value={draft.base_url}
-                placeholder="https://…/v1"
-                onChange={(event) => change("base_url", event.target.value)}
-              />
-              <small>키 없이 사용하는 서버도 지원합니다.</small>
-            </label>
+            <>
+              <label>
+                요약 API 주소
+                <input
+                  type="url"
+                  value={draft.base_url}
+                  placeholder="https://…/v1"
+                  onChange={(event) => change("base_url", event.target.value)}
+                />
+                <small>키 없이 사용하는 서버도 지원합니다.</small>
+              </label>
+              <label>
+                요약 API 호출 방식
+                <Dropdown
+                  value={draft.custom_api_mode ?? "auto"}
+                  onChange={(value) => change("custom_api_mode", value)}
+                  ariaLabel="요약 API 호출 방식"
+                  options={[
+                    { value: "auto", label: "자동 (responses → chat/completions)" },
+                    { value: "chat", label: "chat/completions" },
+                    { value: "responses", label: "responses" },
+                  ]}
+                />
+                <small>대부분의 OpenAI 호환 서버는 chat/completions를 사용합니다.</small>
+              </label>
+            </>
           )}
         </div>
       </fieldset>
@@ -490,13 +525,22 @@ export function SettingsPage({
               checked={draft.keep_source}
               onChange={(event) => change("keep_source", event.target.checked)}
             />
-            처리 후 서버 원본 보관
+            처리 후 원본 영상 저장
+          </label>
+          <label className="check">
+            <input
+              type="checkbox"
+              checked={draft.keep_audio}
+              onChange={(event) => change("keep_audio", event.target.checked)}
+            />
+            처리 후 변환 오디오 저장
           </label>
         </div>
         <p className="muted">
-          실패·취소·중단 입력은 재시도용으로 보존합니다. 원문·요약·프롬프트와 작업
-          이력은 자동 삭제하지 않습니다. 파일은 서버 볼륨에 저장하며 이 기기로
-          다운로드할 수 있습니다.
+          원본 영상과 변환 오디오는 각 항목을 선택한 경우에만 보관하고, 선택하지
+          않으면 처리 완료 후 서버에서 정리합니다. 실패·취소·중단 입력은 재시도용으로
+          보존합니다. 원문·요약·프롬프트와 작업 이력은 자동 삭제하지 않습니다. 파일은
+          서버 볼륨에 저장하며 이 기기로 다운로드할 수 있습니다.
         </p>
       </fieldset>
       <fieldset disabled={saving}>
@@ -622,14 +666,24 @@ export function SettingsPage({
           )}
         </div>
       </fieldset>
-      <div className="form-footer">
+      <div className={"form-footer" + (dirty ? " unsaved" : "")}>
         <p>
-          자격 증명은 개별 저장·교체합니다. 나머지 변경은 설정 저장 후 새 작업부터
-          적용됩니다.
+          {dirty
+            ? `저장되지 않은 변경 ${dirtyFields.length}개가 있습니다. '설정 저장'을 눌러야 새 작업에 적용됩니다.`
+            : "자격 증명은 개별 저장·교체합니다. 나머지 변경은 설정 저장 후 새 작업부터 적용됩니다."}
         </p>
-        <button className="primary" disabled={saving || secretBusy > 0} onClick={save}>
-          {saving ? "저장 중…" : "설정 저장"}
-        </button>
+        <div className="form-footer-actions">
+          {dirty && (
+            <span className="unsaved-badge">미저장 변경 {dirtyFields.length}</span>
+          )}
+          <button
+            className="primary"
+            disabled={saving || secretBusy > 0}
+            onClick={save}
+          >
+            {saving ? "저장 중…" : dirty ? "변경 저장" : "설정 저장"}
+          </button>
+        </div>
       </div>
     </section>
   );

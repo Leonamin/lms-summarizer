@@ -116,6 +116,7 @@ class PipelineExecutor:
                 raise ServiceError('credentials_missing')
             provider = create_provider(engine, api_key=command.credentials.get('summary_api_key'),
                                        model_name=settings.get('ai_model'), base_url=settings.get('base_url'),
+                                       api_mode=settings.get('custom_api_mode'),
                                        request_timeout=settings.get('request_timeout',120))
             try:
                 result = provider.summarize(text, command.resolved_prompt)

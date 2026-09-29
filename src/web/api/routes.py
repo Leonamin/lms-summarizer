@@ -191,6 +191,7 @@ def system(request: Request):
             'runtime': {'local_stt_device': 'CPU 기본', 'chrome_mode': 'headless' if config.headless else 'headed/Xvfb', 'data_storage': '서버 데이터 볼륨',
                         'models_storage': '서버 모델 볼륨'},
             'retention': {'input': '성공 후 원본 보관 설정 적용; 실패·취소·중단은 재시도용 보존',
+                          'audio': '성공 후 변환 오디오 보관 설정 적용; 미보관 시 정리',
                           'results': '원문·요약·프롬프트·이력 자동 삭제 없음', 'logs_days': 7},
             'update_instructions': ['docker compose up -d --build', '업데이트 전에 데이터·모델 볼륨 백업']}
 
