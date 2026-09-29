@@ -1564,7 +1564,21 @@ button.stat-card:disabled {
 
 .detail-actions > div {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.detail-actions .check.compact {
+  font-size: var(--t-xs);
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.detail-actions .check.compact input {
+  width: 15px;
+  height: 15px;
 }
 
 /* Continue a completed early-stage job to a later stage. */

@@ -306,12 +306,17 @@ class JobService:
                 self.cancel(context, job_id, attempt_id)
             return [job_id for job_id, _ in snapshot]
 
-    def retry(self, context: UserContext, job_id: str, attempt_id: str, *, idempotency_key: str):
+    def retry(self, context: UserContext, job_id: str, attempt_id: str, *, idempotency_key: str,
+              settings_revision=None):
         with self.lock:
             self._ensure_open()
             job = self._job(context, job_id)
             operation = f'retry:{job_id}'
-            prior = self._dedup(context, operation, idempotency_key, attempt_id)
+            adopted = settings_revision is not None
+            revision = self._revision_for_attempt(context, job, settings_revision)
+            # Fingerprint the chosen revision so a replay with different settings conflicts.
+            fingerprint = f'{attempt_id}:{revision["id"]}'
+            prior = self._dedup(context, operation, idempotency_key, fingerprint)
             if prior is not None:
                 return prior
             if job['current_attempt_id'] != attempt_id or job['status'] not in RETRYABLE:
@@ -323,25 +328,31 @@ class JobService:
             active = self.db.execute("SELECT count(*) FROM jobs WHERE status IN ('queued','running','cancelling')").fetchone()[0]
             if active >= self.max_active:
                 raise ServiceError('queue_full')
-            revision = self.db.get('settings_revisions', job['settings_revision_id'])
             self._credentials(revision)  # Missing original secret versions fail before creating an attempt.
             with self.db.transaction():
+                self._save_revision(context, revision)
                 number = self.db.execute('SELECT max(number) FROM attempts WHERE job_id=?', (job_id,)).fetchone()[0] + 1
                 attempt = self._new_attempt(job, number)
+                self._bind_revision(job, revision, adopted)
                 job['current_attempt_id'] = attempt['id']
                 job['result_kind'] = None
                 self._write_job(job, attempt)
-                self._remember(context, operation, idempotency_key, attempt_id, attempt['id'])
+                self._remember(context, operation, idempotency_key, fingerprint, attempt['id'])
             self.changed.notify_all()
             return attempt['id']
 
-    def resume(self, context: UserContext, job_id: str, attempt_id: str, *, idempotency_key: str):
+    def resume(self, context: UserContext, job_id: str, attempt_id: str, *, idempotency_key: str,
+               settings_revision=None):
         """Retry a failed/interrupted job from its last completed stage, reusing artifacts."""
         with self.lock:
             self._ensure_open()
             job = self._job(context, job_id)
             operation = f'resume:{job_id}'
-            prior = self._dedup(context, operation, idempotency_key, attempt_id)
+            adopted = settings_revision is not None
+            revision = self._revision_for_attempt(context, job, settings_revision)
+            # Fingerprint the chosen revision so a replay with different settings conflicts.
+            fingerprint = f'{attempt_id}:{revision["id"]}'
+            prior = self._dedup(context, operation, idempotency_key, fingerprint)
             if prior is not None:
                 return prior
             if job['current_attempt_id'] != attempt_id or job['status'] not in RETRYABLE:
@@ -353,17 +364,57 @@ class JobService:
             active = self.db.execute("SELECT count(*) FROM jobs WHERE status IN ('queued','running','cancelling')").fetchone()[0]
             if active >= self.max_active:
                 raise ServiceError('queue_full')
-            revision = self.db.get('settings_revisions', job['settings_revision_id'])
             self._credentials(revision)
             with self.db.transaction():
+                self._save_revision(context, revision)
                 number = self.db.execute('SELECT max(number) FROM attempts WHERE job_id=?', (job_id,)).fetchone()[0] + 1
                 attempt = self._new_attempt_from(job, number, start_stage, input_id)
+                self._bind_revision(job, revision, adopted)
                 job['current_attempt_id'] = attempt['id']
                 job['result_kind'] = None
                 self._write_job(job, attempt)
-                self._remember(context, operation, idempotency_key, attempt_id, attempt['id'])
+                self._remember(context, operation, idempotency_key, fingerprint, attempt['id'])
             self.changed.notify_all()
             return attempt['id']
+
+    def _revision_for_attempt(self, context, job, settings_revision):
+        """Choose the settings revision for a new attempt.
+
+        Without ``settings_revision`` the job's frozen revision is reused unchanged.
+        When the caller supplies one (the user chose to run with the current
+        settings), it must be a SettingsRevision owned by the same context and it
+        replaces the frozen revision for this attempt.
+        """
+        if settings_revision is None:
+            revision = self.db.get('settings_revisions', job['settings_revision_id'])
+            if not revision:
+                raise ServiceError('settings_conflict')
+            return revision
+        if not isinstance(settings_revision, SettingsRevision):
+            raise TypeError('settings_revision must be a SettingsRevision')
+        if settings_revision.owner_id != context.owner_id:
+            raise ServiceError('not_found')
+        return asdict(settings_revision)
+
+    def _save_revision(self, context, revision):
+        saved = self.db.get('settings_revisions', revision['id'])
+        if saved and saved != json.loads(json.dumps(revision)):
+            raise ServiceError('settings_conflict')
+        if not saved:
+            self.db.insert('settings_revisions', revision, owner_id=context.owner_id)
+
+    def _bind_revision(self, job, revision, adopted):
+        """Point the job at the revision used for the next attempt.
+
+        When adopting the current settings, retention flags travel with them so a
+        retry does not silently keep the previous run's keep_source/keep_audio.
+        """
+        job['settings_revision_id'] = revision['id']
+        if not adopted:
+            return
+        values = json.loads(revision['settings_json'])
+        job['keep_source'] = bool(values.get('keep_source', False))
+        job['keep_audio'] = bool(values.get('keep_audio', False))
 
     def _resume_point(self, job, end_stage):
         """Return (stage, artifact_id) to resume from, or None when nothing is resumable.

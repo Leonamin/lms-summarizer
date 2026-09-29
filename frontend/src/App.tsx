@@ -144,20 +144,33 @@ export function App() {
     }
   };
 
-  const command = async (job: Job, action: "cancel" | "retry" | "resume") => {
+  const command = async (
+    job: Job,
+    action: "cancel" | "retry" | "resume",
+    useCurrentSettings = false,
+  ) => {
     setPending(job.id);
     setError("");
     try {
+      const body: Record<string, unknown> = {
+        attempt_id: job.current_attempt_id,
+      };
+      if (action !== "cancel") body.use_current_settings = useCurrentSettings;
       const updated = await api<Job>("/jobs/" + job.id + "/" + action, {
         method: "POST",
         headers:
           action === "cancel"
             ? undefined
             : { "Idempotency-Key": requestId() },
-        body: JSON.stringify({ attempt_id: job.current_attempt_id }),
+        body: JSON.stringify(body),
       });
       merge([updated]);
-      if (action === "resume") setNotice("끊긴 단계부터 이어서 처리합니다.");
+      if (action === "resume")
+        setNotice(
+          useCurrentSettings
+            ? "현재 설정으로 끊긴 단계부터 이어서 처리합니다."
+            : "끊긴 단계부터 이어서 처리합니다.",
+        );
     } catch (cause) {
       report(cause);
     } finally {
@@ -255,7 +268,9 @@ export function App() {
             pending={pending}
             loading={!ready}
             onNotice={setNotice}
-            onCommand={(job, action) => void command(job, action)}
+            onCommand={(job, action, useCurrent) =>
+              void command(job, action, useCurrent)
+            }
             onContinue={(job, stage) => void continueJob(job, stage)}
             onStopAll={() => void stopAll()}
           />

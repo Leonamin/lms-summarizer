@@ -11,7 +11,7 @@ from starlette.concurrency import run_in_threadpool
 from src.core.models.jobs import Source, ServiceError
 from src.core.models.settings import UserContext
 from src.core.models.stages import PipelineStage
-from src.web.schemas import AttemptCommand, JobCreate, SecretPut, SettingsPatch, UploadCreate, CourseRefresh, Settings, ContinueCommand
+from src.web.schemas import AttemptCommand, JobCreate, RetryCommand, SecretPut, SettingsPatch, UploadCreate, CourseRefresh, Settings, ContinueCommand
 
 router = APIRouter(prefix='/api/v1')
 OWNER = UserContext()
@@ -116,17 +116,26 @@ def cancel(job_id: UUID, body: AttemptCommand, request: Request):
     service.cancel(OWNER, str(job_id), str(body.attempt_id))
     return service.detail(OWNER, str(job_id))
 
+def _adopted_revision(request: Request, use_current_settings: bool):
+    """The current settings revision when a retry/resume opts into current settings."""
+    if not use_current_settings:
+        return None
+    settings = request.app.state.settings
+    return settings.snapshot(settings.public()['settings_revision'])
+
 @router.post('/jobs/{job_id}/retry', status_code=202)
-def retry(job_id: UUID, body: AttemptCommand, request: Request, idempotency_key: str = Header(min_length=1, max_length=200)):
-    service = request.app.state.service
-    service.retry(OWNER, str(job_id), str(body.attempt_id), idempotency_key=idempotency_key)
-    return service.detail(OWNER, str(job_id))
+def retry(job_id: UUID, body: RetryCommand, request: Request, idempotency_key: str = Header(min_length=1, max_length=200)):
+    state = request.app.state
+    revision = _adopted_revision(request, body.use_current_settings)
+    state.service.retry(OWNER, str(job_id), str(body.attempt_id), idempotency_key=idempotency_key, settings_revision=revision)
+    return state.service.detail(OWNER, str(job_id))
 
 @router.post('/jobs/{job_id}/resume', status_code=202)
-def resume(job_id: UUID, body: AttemptCommand, request: Request, idempotency_key: str = Header(min_length=1, max_length=200)):
-    service = request.app.state.service
-    service.resume(OWNER, str(job_id), str(body.attempt_id), idempotency_key=idempotency_key)
-    return service.detail(OWNER, str(job_id))
+def resume(job_id: UUID, body: RetryCommand, request: Request, idempotency_key: str = Header(min_length=1, max_length=200)):
+    state = request.app.state
+    revision = _adopted_revision(request, body.use_current_settings)
+    state.service.resume(OWNER, str(job_id), str(body.attempt_id), idempotency_key=idempotency_key, settings_revision=revision)
+    return state.service.detail(OWNER, str(job_id))
 
 @router.post('/jobs/{job_id}/continue', status_code=202)
 def continue_job(job_id: UUID, body: ContinueCommand, request: Request, idempotency_key: str = Header(min_length=1, max_length=200)):
