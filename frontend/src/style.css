@@ -987,17 +987,133 @@ label.check input,
 
 .jobs-panel .job-tools {
   display: flex;
-  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
   padding: 0 28px 18px;
 }
 
 .job-tools input {
-  flex: 1;
+  flex: 1 1 100%;
+  min-width: 0;
 }
 
 .job-tools .dropdown {
   flex: 0 0 auto;
-  min-width: 160px;
+  min-width: 148px;
+}
+
+.job-sortby,
+.job-pagesize {
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+.segment {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--control-h);
+  min-height: 0;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 0;
+  background: var(--paper-2);
+  color: var(--muted);
+  font-size: var(--t-sm);
+  font-weight: 650;
+  transition:
+    background var(--speed),
+    color var(--speed),
+    border-color var(--speed);
+}
+
+.segment + .segment {
+  border-left-color: transparent;
+}
+
+.segment:first-child {
+  border-radius: var(--radius-xs) 0 0 var(--radius-xs);
+}
+
+.segment:last-child {
+  border-radius: 0 var(--radius-xs) var(--radius-xs) 0;
+}
+
+.segment:hover:not(:disabled) {
+  color: var(--ink);
+}
+
+.segment.active {
+  position: relative;
+  z-index: 1;
+  color: var(--ink);
+  background: var(--paper);
+  border-color: var(--line-strong);
+}
+
+.segment:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.job-pagesize .segment {
+  height: 34px;
+  padding: 0 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.job-pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 28px;
+  font-size: var(--t-xs);
+  color: var(--faint);
+}
+
+.job-pager-range {
+  font-variant-numeric: tabular-nums;
+}
+
+.job-pager-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pager-btn {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  min-height: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xs);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 16px;
+  line-height: 1;
+}
+
+.pager-btn:hover:not(:disabled) {
+  background: var(--paper-2);
+  border-color: var(--line-strong);
+}
+
+.pager-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.job-pager-page {
+  min-width: 46px;
+  text-align: center;
+  font-weight: 700;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
 }
 
 .job-list {
@@ -2172,6 +2288,7 @@ fieldset details {
   }
   .section-heading,
   .job-tools,
+  .job-pager,
   .playback-group-head,
   .detail-actions,
   .continue-row,
