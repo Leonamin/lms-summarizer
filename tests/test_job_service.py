@@ -232,6 +232,44 @@ class JobServiceTests(unittest.TestCase):
                 self.assertEqual(len(final['attempts']), 3)
                 self.assertEqual([s['stage'] for s in final['attempts'][-1]['stages']], [4])
 
+    def test_resume_with_current_settings_swaps_revision_and_retention(self):
+        with tempfile.TemporaryDirectory() as root:
+            service = self.make(root)
+            with service:
+                job = service.submit(OWNER, [Source.url('https://canvas.ssu.ac.kr/courses/1/lecture/1')],
+                                     revision({'delay':0.02, 'fail_stage':4}),
+                                     end_stage=PipelineStage.SUMMARIZE, idempotency_key='swap')[0]
+                failed = wait_for(service, job, {'failed'})
+                self.assertFalse(service.db.get('jobs', job)['keep_source'])
+                current = revision({'delay':0.02, 'fail_stage':4, 'ai_engine':'custom', 'ai_model':'new-model',
+                                    'keep_source':True, 'keep_audio':True})
+                service.resume(OWNER, job, failed['current_attempt_id'],
+                               idempotency_key='swap-1', settings_revision=current)
+                detail = wait_for(service, job, {'failed'})
+                # The new attempt adopts the supplied (current) settings revision.
+                self.assertEqual(detail['settings_revision_id'], current.id)
+                self.assertNotEqual(detail['settings_revision_id'], failed['settings_revision_id'])
+                # Retention flags travel with the adopted settings.
+                record = service.db.get('jobs', job)
+                self.assertTrue(record['keep_source'])
+                self.assertTrue(record['keep_audio'])
+
+    def test_retry_with_current_settings_swaps_revision(self):
+        with tempfile.TemporaryDirectory() as root:
+            service = self.make(root)
+            with service:
+                job = service.submit(OWNER, [Source.url('https://canvas.ssu.ac.kr/courses/1/lecture/1')],
+                                     revision({'delay':0.02, 'fail_stage':4}),
+                                     end_stage=PipelineStage.SUMMARIZE, idempotency_key='swap-retry')[0]
+                failed = wait_for(service, job, {'failed'})
+                current = revision({'delay':0.02, 'fail_stage':4, 'ai_engine':'custom', 'ai_model':'new-model'})
+                service.retry(OWNER, job, failed['current_attempt_id'],
+                              idempotency_key='swap-retry-1', settings_revision=current)
+                detail = wait_for(service, job, {'failed'})
+                self.assertEqual(detail['settings_revision_id'], current.id)
+                # Retry restarts from the job's initial stage.
+                self.assertEqual(detail['attempts'][-1]['stages'][0]['stage'], int(PipelineStage.DOWNLOAD))
+
     def test_resume_without_completed_stage_is_rejected(self):
         with tempfile.TemporaryDirectory() as root:
             service = self.make(root)

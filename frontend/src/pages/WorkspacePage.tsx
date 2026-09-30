@@ -27,7 +27,7 @@ export function WorkspacePage({
   pending: string | null;
   loading?: boolean;
   onNotice: (message: string) => void;
-  onCommand: (job: Job, action: "cancel" | "retry" | "resume") => void;
+  onCommand: (job: Job, action: "cancel" | "retry" | "resume", useCurrentSettings?: boolean) => void;
   onContinue: (job: Job, endStage: number) => void;
   onStopAll: () => void;
 }) {

@@ -86,6 +86,10 @@ class JobCreate(DTO):
 class AttemptCommand(DTO):
     attempt_id: UUID
 
+class RetryCommand(DTO):
+    attempt_id: UUID
+    use_current_settings: bool = False
+
 class ContinueCommand(DTO):
     attempt_id: UUID
     end_stage: int = Field(ge=2, le=4)

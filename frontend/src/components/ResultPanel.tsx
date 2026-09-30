@@ -35,14 +35,16 @@ export function ResultPanel({
   pending: string | null;
   jobModel: string;
   onOpenArtifact: (artifact: Artifact) => void;
-  onCommand: (job: Job, action: "cancel" | "retry" | "resume") => void;
+  onCommand: (job: Job, action: "cancel" | "retry" | "resume", useCurrentSettings?: boolean) => void;
   onContinue: (job: Job, endStage: number) => void;
   onNotice: (message: string) => void;
   loadingFallback?: boolean;
 }) {
   const [continueStage, setContinueStage] = useState<number | null>(null);
+  const [useCurrent, setUseCurrent] = useState(false);
   useEffect(() => {
     setContinueStage(null);
+    setUseCurrent(false);
   }, [job?.id]);
   if (!job) {
     return (
@@ -133,12 +135,23 @@ export function ResultPanel({
           )}
           {job.retryable && (
             <>
+              <label
+                className="check compact"
+                title="지금 저장된 설정(엔진·모델·프롬프트·키)으로 실행합니다. 끄면 제출 당시 설정을 유지합니다."
+              >
+                <input
+                  type="checkbox"
+                  checked={useCurrent}
+                  onChange={(event) => setUseCurrent(event.target.checked)}
+                />
+                현재 설정 사용
+              </label>
               {resumableStage !== null && (
                 <button
                   disabled={pending === job.id}
                   className="secondary"
-                  title={`${resumableStage}단계부터 이어서 처리합니다. 이전 단계 결과를 재사용합니다.`}
-                  onClick={() => onCommand(job, "resume")}
+                  title={`${resumableStage}단계부터 이어서 처리합니다. 이전 단계 결과를 재사용합니다.${useCurrent ? " 현재 설정으로 실행합니다." : ""}`}
+                  onClick={() => onCommand(job, "resume", useCurrent)}
                 >
                   이어서 재개
                 </button>
@@ -146,8 +159,8 @@ export function ResultPanel({
               <button
                 disabled={pending === job.id}
                 className={resumableStage !== null ? "quiet" : "secondary"}
-                title={`${job.initial_stage}단계부터 처음부터 다시 시도합니다.`}
-                onClick={() => onCommand(job, "retry")}
+                title={`${job.initial_stage}단계부터 처음부터 다시 시도합니다.${useCurrent ? " 현재 설정으로 실행합니다." : ""}`}
+                onClick={() => onCommand(job, "retry", useCurrent)}
               >
                 {resumableStage !== null ? "처음부터" : "다시 시도"}
               </button>
