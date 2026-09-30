@@ -1640,10 +1640,23 @@ button.stat-card:disabled {
   align-items: center;
 }
 
-.reader > label {
+.reader-caption {
   display: block;
   margin-bottom: 8px;
   font-size: var(--t-xs);
+  color: var(--muted);
+}
+
+/* In-card reader is height-limited; the full content opens in the viewer dialog. */
+.reader-body {
+  max-height: min(46vh, 520px);
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.reader .source-text {
+  height: 340px;
+  min-height: 0;
 }
 
 .result-text {
@@ -1667,6 +1680,62 @@ button.stat-card:disabled {
   background: var(--paper-2);
   font-size: var(--t-sm);
   line-height: 1.85;
+}
+
+/* Full-screen artifact viewer (lightbox-style modal dialog). */
+.viewer-dialog {
+  width: min(1100px, 94vw);
+  height: min(90vh, 1040px);
+  max-width: none;
+  max-height: none;
+  margin: auto;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.viewer-dialog::backdrop {
+  background: rgba(15, 14, 30, 0.55);
+}
+
+.viewer-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 24px;
+  border-bottom: 1px solid var(--line);
+  font-size: var(--t-sm);
+  color: var(--muted);
+}
+
+.viewer-head > div {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.viewer-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 22px 26px 28px;
+  overscroll-behavior: contain;
+}
+
+.viewer-body .markdown {
+  max-width: 80ch;
+  margin: 0 auto;
+}
+
+.viewer-body .source-text {
+  min-height: 70vh;
 }
 
 .markdown {
