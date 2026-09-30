@@ -33,6 +33,7 @@ MESSAGES = {
     'secret_in_use': '기존 작업에서 사용하는 자격 증명은 삭제할 수 없습니다.',
     'content_too_large': '열람 한도를 초과했습니다. 파일을 다운로드해 주세요.',
     'no_resume_point': '이어서 재개할 완료 단계가 없습니다. 처음부터 다시 시도해 주세요.',
+    'already_attended': '이미 출석 처리된 재생입니다.',
 }
 
 def error(code, status, field=None):
@@ -115,7 +116,7 @@ def create_app(config=None, *, service_factory=JobService):
         status = 422
         if code in ('not_found', 'artifact_missing'):
             status = 404
-        elif code in ('settings_conflict', 'idempotency_conflict', 'upload_conflict', 'input_in_use', 'secret_in_use', 'attempt_conflict', 'job_not_retryable', 'job_active'):
+        elif code in ('settings_conflict', 'idempotency_conflict', 'upload_conflict', 'input_in_use', 'secret_in_use', 'attempt_conflict', 'job_not_retryable', 'job_active', 'already_attended'):
             status = 409
         elif code in ('input_too_large', 'content_too_large'):
             status = 413

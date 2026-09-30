@@ -40,14 +40,43 @@ def select_new_videos(seen: dict, lectures) -> list[dict]:
     return new
 
 
-def select_playback_videos(seen: dict, lectures) -> list[dict]:
-    """New selectable videos that still need attendance playback.
+PLAYBACK_RETRY_LIMIT = 3
 
-    Already completed / attended lectures are skipped: playing them again does
-    not change attendance and would needlessly occupy the single Chrome slot.
+
+def select_retry_videos(seen: dict, lectures, attempts: dict | None = None,
+                        limit: int = PLAYBACK_RETRY_LIMIT) -> list[dict]:
+    """Seen selectable videos that are still unwatched and under the retry limit.
+
+    A playback interrupted by a restart used to stay unattended forever because
+    ``seen`` excluded it. Re-include those while ``attempts`` (keyed by lecture
+    identity) caps repeated tries so a failing lecture cannot loop forever.
     """
-    return [lecture for lecture in select_new_videos(seen, lectures)
-            if not is_watched(lecture)]
+    attempts = attempts or {}
+    retry: list[dict] = []
+    for lecture in lectures:
+        if not is_selectable(lecture) or is_watched(lecture):
+            continue
+        key = lecture_key(lecture)
+        if not key or key not in seen:
+            continue
+        if attempts.get(key, 0) >= limit:
+            continue
+        retry.append(lecture)
+    return retry
+
+
+def select_playback_videos(seen: dict, lectures, attempts: dict | None = None,
+                           limit: int = PLAYBACK_RETRY_LIMIT) -> list[dict]:
+    """Selectable videos that still need attendance playback: new plus unwatched retries.
+
+    Already completed / attended lectures are skipped: playing them again does not
+    change attendance and would needlessly occupy the single Chrome slot.
+    """
+    new = [lecture for lecture in select_new_videos(seen, lectures) if not is_watched(lecture)]
+    keys = {lecture_key(lecture) for lecture in new}
+    retries = [lecture for lecture in select_retry_videos(seen, lectures, attempts, limit)
+               if lecture_key(lecture) not in keys]
+    return new + retries
 
 
 def mark_seen(seen: dict, lectures, now=None) -> dict:

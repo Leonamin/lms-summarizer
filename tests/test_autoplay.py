@@ -45,9 +45,16 @@ class FakePlayback:
 
     def submit(self, context, revision, url, title, scope, course_name=None, week_title=None):
         record = {"id": "pb-%d" % (len(self.records) + 1), "url": url, "scope": scope,
-                  "title": title, "course_name": course_name, "week_title": week_title}
+                  "title": title, "course_name": course_name, "week_title": week_title,
+                  "status": "queued"}
         self.records.append(record)
         return record
+
+    def find(self, context, lecture_url):
+        for record in reversed(self.records):
+            if record["url"] == lecture_url:
+                return record
+        return None
 
     def active(self, context):
         return []
@@ -138,6 +145,16 @@ class DetectionHelpersTests(unittest.TestCase):
         self.assertFalse(is_watched(lectures[2]))
         self.assertEqual([row["url"] for row in select_playback_videos(seen, lectures)], ["u3"])
 
+    def test_select_playback_retries_seen_unwatched_within_limit(self):
+        seen = {"u1": "t", "u2": "t"}
+        lectures = [
+            {**lecture("u1"), "attendance": "none", "completion": "incomplete"},
+            {**lecture("u2"), "attendance": "none", "completion": "incomplete"},
+        ]
+        # Seen but unattended lectures are re-queued while attempts remain.
+        self.assertEqual([row["url"] for row in select_playback_videos(seen, lectures, {"u1": 1})], ["u1", "u2"])
+        self.assertEqual(select_playback_videos(seen, lectures, {"u1": 3, "u2": 3}), [])
+
 
 class AutoDetectTests(unittest.TestCase):
     def engine(self, root, **overrides):
@@ -212,6 +229,26 @@ class AutoDetectTests(unittest.TestCase):
             }
             engine.tick(force=True)
             self.assertEqual([row["url"] for row in service.playback.records], ["u2"])
+
+    def test_unattended_playback_is_retried_then_capped(self):
+        with tempfile.TemporaryDirectory() as directory:
+            engine, service = self.engine(directory)
+            service.courses.list_expired = False
+            service.courses.list_data = [{"id": "123"}]
+            service.courses.detail["123"] = {"weeks": [{"lectures": [
+                {**lecture("u1"), "attendance": "none", "completion": "incomplete"}]}]}
+            engine.tick(force=True)  # first attempt
+            self.assertEqual(len(service.playback.records), 1)
+            service.playback.records[0]["status"] = "interrupted"
+            engine.tick(force=True)  # interrupted -> retried
+            self.assertEqual(len(service.playback.records), 2)
+            service.playback.records[-1]["status"] = "failed"
+            engine.tick(force=True)  # failed -> retried
+            self.assertEqual(len(service.playback.records), 3)
+            service.playback.records[-1]["status"] = "failed"
+            engine.tick(force=True)  # retry limit reached -> stop
+            self.assertEqual(len(service.playback.records), 3)
+            self.assertEqual(engine.store.read()["attempts"]["u1"], 3)
 
     def test_popup_repeat_pauses_detection(self):
         with tempfile.TemporaryDirectory() as directory:
