@@ -1,4 +1,7 @@
 import ReactMarkdown from "react-markdown";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
+import "katex/dist/katex.min.css";
 import type { Artifact } from "../types";
 
 /** Shared artifact renderer: markdown for summaries, raw selectable text otherwise. */
@@ -14,7 +17,9 @@ export function ArtifactBody({
   if (artifact.kind === "summary") {
     return (
       <div className="markdown">
-        <ReactMarkdown>{text}</ReactMarkdown>
+        <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+          {text}
+        </ReactMarkdown>
       </div>
     );
   }
