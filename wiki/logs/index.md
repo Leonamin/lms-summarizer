@@ -12,6 +12,8 @@ okf_version: "0.1"
 
 ## 로그
 
+- [2026-09-30-viewer-dialog-overflow.md](2026-09-30-viewer-dialog-overflow.md) — 풀스크린 뷰어 닫힘 상태 오버플로우 수정
+
 - [2026-09-30-katex-math-rendering.md](2026-09-30-katex-math-rendering.md) — 마크다운 뷰어 LaTeX(KaTeX) 렌더링 수정
 
 - [2026-09-30-artifact-fullscreen-viewer.md](2026-09-30-artifact-fullscreen-viewer.md) — 산출물 풀스크린 뷰어(라이트박스 다이얼로그)와 카드 내부 스크롤
