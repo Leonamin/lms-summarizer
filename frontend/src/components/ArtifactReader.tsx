@@ -1,7 +1,33 @@
-import { useRef } from "react";
-import ReactMarkdown from "react-markdown";
+import { useEffect, useRef, useState } from "react";
 import type { Artifact } from "../types";
 import { bytes, kindLabels } from "../lib/format";
+import { ArtifactBody } from "./ArtifactBody";
+
+/** Clipboard write with a legacy textarea fallback for insecure contexts. */
+async function copyText(text: string): Promise<boolean> {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    /* fall through to the legacy path */
+  }
+  try {
+    const area = document.createElement("textarea");
+    area.value = text;
+    area.setAttribute("readonly", "");
+    area.style.position = "fixed";
+    area.style.opacity = "0";
+    document.body.appendChild(area);
+    area.select();
+    const ok = document.execCommand("copy");
+    document.body.removeChild(area);
+    return ok;
+  } catch {
+    return false;
+  }
+}
 
 export function ArtifactReader({
   artifact,
@@ -14,27 +40,45 @@ export function ArtifactReader({
   loading: boolean;
   onNotice: (message: string) => void;
 }) {
-  const textArea = useRef<HTMLTextAreaElement>(null);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const [expanded, setExpanded] = useState(false);
+  const label = kindLabels[artifact.kind] ?? artifact.kind;
+  const download = "/api/v1/artifacts/" + artifact.id + "/download";
+
+  // Close the full-screen viewer when the displayed artifact changes.
+  useEffect(() => {
+    if (dialogRef.current?.open) dialogRef.current.close();
+    setExpanded(false);
+  }, [artifact.id]);
+
+  // Native <dialog> gives focus trapping and Escape handling for free.
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (dialog && expanded && !dialog.open) dialog.showModal();
+  }, [expanded]);
 
   const copy = async () => {
-    try {
-      if (!navigator.clipboard) throw new Error("manual");
-      await navigator.clipboard.writeText(text);
-      onNotice("클립보드에 복사했습니다.");
-    } catch {
-      textArea.current?.focus();
-      textArea.current?.select();
-      onNotice("텍스트를 전체 선택했습니다. 기기의 복사 기능을 사용해 주세요.");
-    }
+    onNotice(
+      (await copyText(text))
+        ? "클립보드에 복사했습니다."
+        : "복사하지 못했습니다. 본문을 직접 선택해 주세요.",
+    );
   };
 
   return (
     <div className="reader">
       <div className="reader-toolbar">
         <span>
-          {kindLabels[artifact.kind] ?? artifact.kind} · {bytes(artifact.size)}
+          {label} · {bytes(artifact.size)}
         </span>
         <div>
+          <button
+            className="ghost"
+            disabled={loading || !text}
+            onClick={() => setExpanded(true)}
+          >
+            전체 보기
+          </button>
           <button
             className="ghost"
             disabled={loading || !text}
@@ -42,11 +86,7 @@ export function ArtifactReader({
           >
             복사
           </button>
-          <a
-            className="ghost"
-            href={"/api/v1/artifacts/" + artifact.id + "/download"}
-            download
-          >
+          <a className="ghost" href={download} download>
             다운로드 ↓
           </a>
         </div>
@@ -55,27 +95,48 @@ export function ArtifactReader({
         <p className="reader-empty" role="status">
           결과를 불러오는 중…
         </p>
-      ) : artifact.kind === "summary" ? (
-        <div className="markdown">
-          <ReactMarkdown>{text}</ReactMarkdown>
+      ) : (
+        <div className="reader-body">
+          <ArtifactBody artifact={artifact} text={text} inputId="result-text" />
         </div>
-      ) : null}
-      <label
-        className={artifact.kind === "summary" ? "sr-only" : ""}
-        htmlFor="result-text"
+      )}
+      <dialog
+        ref={dialogRef}
+        className="viewer-dialog"
+        aria-label={label + " 전체 보기"}
+        onClose={() => setExpanded(false)}
+        onClick={(event) => {
+          if (event.target === dialogRef.current) dialogRef.current?.close();
+        }}
       >
-        {artifact.kind === "summary"
-          ? "요약 원문"
-          : "원문 · 전체 선택하여 복사할 수 있습니다."}
-      </label>
-      <textarea
-        id="result-text"
-        ref={textArea}
-        className={artifact.kind === "summary" ? "source-text" : "result-text"}
-        readOnly
-        value={text}
-        rows={12}
-      />
+        <div className="viewer-head">
+          <span>
+            {label} · {bytes(artifact.size)}
+          </span>
+          <div>
+            <button
+              className="ghost"
+              disabled={!text}
+              onClick={() => void copy()}
+            >
+              복사
+            </button>
+            <a className="ghost" href={download} download>
+              다운로드 ↓
+            </a>
+            <button
+              className="ghost"
+              aria-label="뷰어 닫기"
+              onClick={() => dialogRef.current?.close()}
+            >
+              닫기 ✕
+            </button>
+          </div>
+        </div>
+        <div className="viewer-body">
+          <ArtifactBody artifact={artifact} text={text} inputId="viewer-text" />
+        </div>
+      </dialog>
     </div>
   );
 }
