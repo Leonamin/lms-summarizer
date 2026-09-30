@@ -453,6 +453,8 @@ LMS_CHROME_HEADLESS=false docker compose up -d --force-recreate
 
 자동 재생(출석)은 서버가 **Xvfb로 headed** 실행하며, 다운로드·조회의 headless 설정
 (`LMS_CHROME_HEADLESS`)과 무관하게 동작합니다. 이미지에 Xvfb가 포함되어 있고 서버 종료 때 정리합니다.
+재생이 실패·중단되면 재생 이력의 `다시 재생`으로 다시 큐에 넣을 수 있고, 자동 감지도 이미 감지한(`seen`)
+강의라도 미출석이면 최대 3회까지 자동 재시도합니다.
 
 Docker 이미지에는 Xvfb가 포함되며 서버 종료 때 정리합니다. `LMS_CHROME_PATH`는 **서버 내부** Chrome
 경로입니다. 접속 기기의 경로로 지정하지 않습니다. 기존 작업은 원래 Chrome 실행 설정도 유지하므로

@@ -102,6 +102,7 @@ export function JobList({
   setPlaybackOpen,
   playbackFilter = "all",
   setPlaybackFilter,
+  onPlaybackRetry,
 }: {
   jobs: Job[];
   playbacks?: Playback[];
@@ -113,6 +114,7 @@ export function JobList({
   setPlaybackOpen?: (open: boolean) => void;
   playbackFilter?: PlaybackFilter;
   setPlaybackFilter?: (filter: PlaybackFilter) => void;
+  onPlaybackRetry?: (item: Playback) => void;
 }) {
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
@@ -363,6 +365,17 @@ export function JobList({
                   >
                     {item.attended ? "출석" : "미출석"}
                   </span>
+                  {(item.status === "failed" || item.status === "interrupted") &&
+                    onPlaybackRetry && (
+                      <button
+                        type="button"
+                        className="playback-link"
+                        onClick={() => onPlaybackRetry(item)}
+                        title="이 재생을 다시 큐에 넣습니다."
+                      >
+                        다시 재생
+                      </button>
+                    )}
                   {item.job_ids && item.job_ids.length > 0 && (
                     <button
                       type="button"

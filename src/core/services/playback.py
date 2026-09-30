@@ -71,6 +71,32 @@ class PlaybackQueue:
         return [self.public(record) for record in self.store.read()['records'].values()
                 if record['owner_id'] == context.owner_id and record['status'] in ('queued', 'running')]
 
+    def find(self, context, lecture_url):
+        """Latest record for a lecture URL (any status), or None."""
+        records = [record for record in self.store.read()['records'].values()
+                   if record['owner_id'] == context.owner_id and record['lecture_url'] == lecture_url]
+        if not records:
+            return None
+        return self.public(max(records, key=lambda record: record['created_at']))
+
+    def retry(self, context, record_id):
+        """Re-queue an unattended failed/interrupted playback for another attempt."""
+        with self.store.lock:
+            state = self.store.read()
+            record = state['records'].get(record_id)
+            if not record or record['owner_id'] != context.owner_id:
+                raise ServiceError('not_found')
+            if record['status'] in ('queued', 'running'):
+                return self.public(record)
+            if record['status'] == 'completed' and record.get('attended'):
+                raise ServiceError('already_attended')
+            record.update(status='queued', attended=False, error_code=None,
+                          ended_at=None, popup_repeats=0)
+            self.store.write(state)
+        with self.service.lock:
+            self.service.changed.notify_all()
+        return self.public(record)
+
     def popup_repeat_failed(self, context):
         return any(record['owner_id'] == context.owner_id and record['error_code'] == 'popup_repeat'
                    for record in self.store.read()['records'].values())

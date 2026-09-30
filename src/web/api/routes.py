@@ -260,6 +260,10 @@ def auto_detect_resume(request: Request):
 def playback(request: Request):
     return {'records': request.app.state.service.playback.list(OWNER, limit=50)}
 
+@router.post('/playback/{record_id}/retry', status_code=202)
+def playback_retry(record_id: UUID, request: Request):
+    return request.app.state.service.playback.retry(OWNER, str(record_id))
+
 @router.get('/jobs/{job_id}/logs')
 def job_logs(job_id: UUID, request: Request, cursor: int = Query(default=0, ge=0), limit: int = Query(default=100, ge=1, le=200)):
     return request.app.state.service.logs(OWNER, str(job_id), cursor, limit)

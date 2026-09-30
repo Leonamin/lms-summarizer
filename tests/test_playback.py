@@ -4,7 +4,7 @@ import tempfile
 import threading
 import types
 import unittest
-from src.core.models.jobs import StageResult
+from src.core.models.jobs import ServiceError, StageResult
 from src.core.models.settings import SettingsRevision, UserContext
 from src.core.models.stages import PipelineStage
 from src.core.services.playback import PlaybackQueue
@@ -202,6 +202,44 @@ class PlaybackQueueTests(unittest.TestCase):
         recovered = PlaybackQueue(self.service)
         self.assertEqual(recovered.get(OWNER, record['id'])['status'], 'interrupted')
         self.assertEqual(recovered.get(OWNER, record['id'])['error_code'], 'service_interrupted')
+
+    def test_retry_requeues_unattended_playback(self):
+        record = self.submit()
+        slot = FakeSlot()
+        self.queue.dispatch(slot)
+        self.queue.finish(slot['command'], StageResult(slot['command'].token, kind='playback',
+                                                       error_code='playback_failed', data={}))
+        self.assertEqual(self.queue.get(OWNER, record['id'])['status'], 'failed')
+        retried = self.queue.retry(OWNER, record['id'])
+        self.assertEqual(retried['status'], 'queued')
+        self.assertIsNone(retried['error_code'])
+        self.assertFalse(retried['attended'])
+        self.assertEqual(retried['popup_repeats'], 0)
+        # Re-queuing an in-flight record is a no-op.
+        self.assertEqual(self.queue.retry(OWNER, record['id'])['status'], 'queued')
+
+    def test_retry_rejects_attended_playback(self):
+        record = self.submit()
+        slot = FakeSlot()
+        self.queue.dispatch(slot)
+        self.queue.finish(slot['command'], StageResult(slot['command'].token, kind='playback',
+                                                       data={'attended': True}))
+        with self.assertRaises(ServiceError) as exc:
+            self.queue.retry(OWNER, record['id'])
+        self.assertEqual(exc.exception.code, 'already_attended')
+
+    def test_find_returns_latest_record_for_url(self):
+        first = self.submit()
+        slot = FakeSlot()
+        self.queue.dispatch(slot)
+        self.queue.finish(slot['command'], StageResult(slot['command'].token, kind='playback',
+                                                       error_code='playback_failed', data={}))
+        second = self.submit()  # a failed record does not block a new attempt
+        self.assertNotEqual(first['id'], second['id'])
+        self.assertEqual(self.queue.find(OWNER, 'https://canvas/lecture/1')['id'], second['id'])
+        self.assertIsNone(self.queue.find(OWNER, 'https://canvas/lecture/other'))
+        with self.assertRaises(ServiceError):
+            self.queue.retry(OWNER, 'missing')
 
 
 if __name__ == '__main__':

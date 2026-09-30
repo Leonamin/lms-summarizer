@@ -35,7 +35,7 @@ class AutoDetect:
         self.service = service
         self.settings = settings
         self.store = JsonStore(service.paths.file('auto-play.json'),
-                               {'seen': {}, 'submitted': {}, 'paused': False,
+                               {'seen': {}, 'submitted': {}, 'attempts': {}, 'paused': False,
                                 'last_run': None, 'last_error': None})
 
     # -- public surface ----------------------------------------------------
@@ -122,14 +122,18 @@ class AutoDetect:
                 self._refresh(course_id, revision)
                 return {'status': 'refreshing_course', 'course_id': course_id}
         queued: list[str] = []
+        attempts = state.setdefault('attempts', {})
         for course_id in selected:
             with self.service.lock:
                 cache = self.service.courses.cached(revision, course_id)
             detail = cache.get('data') or {}
             course_name = detail.get('course_name') or course_names.get(course_id)
             for week in detail.get('weeks') or []:
-                for lecture in select_playback_videos(state['seen'], week.get('lectures', [])):
+                for lecture in select_playback_videos(state['seen'], week.get('lectures', []), attempts):
                     key = lecture.get('url') or lecture.get('title')
+                    current = self.service.playback.find(OWNER, lecture['url']) if lecture.get('url') else None
+                    if current and current.get('status') in ('queued', 'running'):
+                        continue  # already in flight; do not spend a retry
                     try:
                         record = self.service.playback.submit(
                             OWNER, revision, lecture['url'], lecture.get('title', ''),
@@ -138,6 +142,7 @@ class AutoDetect:
                     except ServiceError as error:
                         return self._record(state, error.code, queued)
                     mark_seen(state['seen'], [lecture])
+                    attempts[key] = attempts.get(key, 0) + 1
                     state['submitted'][key] = [record['id']]
                     queued.append(record['id'])
         return self._record(state, None, queued, completed=True)

@@ -163,6 +163,17 @@ export function WorkspacePage({
     );
   }, []);
 
+  const retryPlayback = async (item: Playback) => {
+    try {
+      await api(`/playback/${item.id}/retry`, { method: "POST", body: "{}" });
+      const result = await api<{ records: Playback[] }>("/playback");
+      setPlaybacks(result.records);
+      onNotice("재생을 다시 큐에 넣었습니다.");
+    } catch (cause) {
+      report(cause);
+    }
+  };
+
   return (
     <>
       <OverviewStats
@@ -199,6 +210,7 @@ export function WorkspacePage({
           setPlaybackOpen={setPlaybackOpen}
           playbackFilter={playbackFilter}
           setPlaybackFilter={setPlaybackFilter}
+          onPlaybackRetry={(item) => void retryPlayback(item)}
         />
         <ResultPanel
           job={current}
