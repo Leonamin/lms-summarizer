@@ -1695,9 +1695,13 @@ button.stat-card:disabled {
   background: var(--paper);
   color: var(--ink);
   box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+/* Keep the closed dialog hidden; only lay it out while open (UA hides [not open]). */
+.viewer-dialog[open] {
   display: flex;
   flex-direction: column;
-  overflow: hidden;
 }
 
 .viewer-dialog::backdrop {
@@ -1769,6 +1773,14 @@ button.stat-card:disabled {
 
 .markdown a {
   text-decoration: underline;
+}
+
+/* Long display equations scroll within the block instead of widening the card. */
+.markdown .katex-display {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 2px 0;
 }
 
 .markdown pre {
