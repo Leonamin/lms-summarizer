@@ -12,6 +12,8 @@ okf_version: "0.1"
 
 ## 로그
 
+- [2026-09-30-playback-retry.md](2026-09-30-playback-retry.md) — 재생 재시도와 자동 감지 재시도 정책
+
 - [2026-09-30-viewer-dialog-overflow.md](2026-09-30-viewer-dialog-overflow.md) — 풀스크린 뷰어 닫힘 상태 오버플로우 수정
 
 - [2026-09-30-katex-math-rendering.md](2026-09-30-katex-math-rendering.md) — 마크다운 뷰어 LaTeX(KaTeX) 렌더링 수정
