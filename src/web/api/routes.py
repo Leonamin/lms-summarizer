@@ -157,7 +157,8 @@ def content(artifact_id: UUID, request: Request):
 def download(artifact_id: UUID, request: Request):
     service = request.app.state.service
     path = service.artifact_path(OWNER, str(artifact_id))
-    return FileResponse(path, filename=path.name, media_type='application/octet-stream', headers={'X-Content-Type-Options': 'nosniff'})
+    filename = service.artifact_name(OWNER, str(artifact_id))
+    return FileResponse(path, filename=filename, media_type='application/octet-stream', headers={'X-Content-Type-Options': 'nosniff'})
 
 @router.get('/events')
 async def events(request: Request, cursor: int = Query(default=0, ge=0), last_event_id: str | None = Header(default=None)):

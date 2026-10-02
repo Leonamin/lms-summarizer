@@ -92,6 +92,7 @@ class DesktopRuntime:
                 'stt_base_url': params.pop('base_url', ''),
                 'stt_compatible_model': params.pop('model_name', ''),
                 'stt_params': params, 'keep_source': bool(options.get('save_video_dir')),
+                'filename_scope': options.get('filename_scope', 'lecture'),
                 'chrome_path': options.get('chrome_path'), 'headless': options.get('headless', True),
             }
             if settings['stt_engine'] == 'faster-whisper':
@@ -190,7 +191,8 @@ class DesktopRuntime:
                 if artifact['state'] != 'complete' or artifact['attempt_id'] not in (None, '', attempt_id):
                     continue
                 source = self.service.artifact_path(self.context, artifact['id'])
-                target = folder / (artifact['kind'] + source.suffix)
+                name = self.service.artifact_name(self.context, artifact['id'])
+                target = folder / (name or (artifact['kind'] + source.suffix))
                 temp = target.with_suffix(target.suffix + '.tmp')
                 shutil.copyfile(source, temp)
                 os.replace(temp, target)

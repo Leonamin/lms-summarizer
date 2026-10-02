@@ -62,6 +62,9 @@ class WebAPITests(unittest.TestCase):
                 downloaded=client.get('/api/v1/artifacts/'+artifact['id']+'/download')
                 self.assertEqual(downloaded.status_code,200)
                 self.assertEqual(downloaded.content.decode('utf-8'),content)
+                disposition=downloaded.headers['content-disposition']
+                self.assertIn('lecture_', disposition)
+                self.assertIn('.txt', disposition)
                 self.assertEqual(client.delete('/api/v1/uploads/'+upload).status_code,409)
                 config=client.get('/api/v1/settings').json()
             with TestClient(self.make(root,JobService)) as restarted:
