@@ -171,6 +171,20 @@ class JobServiceTests(unittest.TestCase):
                 # Named after the downloaded artifact instead of the placeholder.
                 self.assertEqual(done['display_name'], 'stage-1')
 
+    def test_artifact_download_name_uses_scope_and_metadata(self):
+        with tempfile.TemporaryDirectory() as root:
+            service = self.make(root)
+            with service:
+                source = Source.url('https://canvas.ssu.ac.kr/courses/1/lecture/1',
+                                    course_name='자료구조', week_title='1주차')
+                job = service.submit(OWNER, [source],
+                                     revision({'delay':0.02, 'filename_scope':'course'}),
+                                     end_stage=PipelineStage.DOWNLOAD, idempotency_key='name')[0]
+                done = wait_for(service, job, {'completed'})
+                video = next(a for a in done['artifacts'] if a['kind'] == 'video')
+                self.assertEqual(service.artifact_name(OWNER, video['id']),
+                                 '자료구조_1주차_stage-1_영상.txt')
+
     def test_continue_reuses_artifact_and_extends_stage(self):
         with tempfile.TemporaryDirectory() as root:
             service = self.make(root)

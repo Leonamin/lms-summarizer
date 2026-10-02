@@ -16,6 +16,7 @@ export interface Settings {
   custom_prompt: string;
   keep_source: boolean;
   keep_audio: boolean;
+  filename_scope: string;
   request_timeout: number;
   auto_detect_enabled: boolean;
   auto_detect_interval_minutes: number;

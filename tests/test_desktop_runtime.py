@@ -56,8 +56,8 @@ class DesktopRuntimeTests(unittest.TestCase):
                 options['summary_prompt'] = 'changed'
                 job = self.exported(runtime, job_id)
                 folder = runtime.export(job)
-                self.assertTrue((folder / 'prompt.txt').exists())
-                self.assertIn('fixed prompt', (folder / 'prompt.txt').read_text())
+                self.assertTrue((folder / 'lecture_프롬프트.txt').exists())
+                self.assertIn('fixed prompt', (folder / 'lecture_프롬프트.txt').read_text())
                 self.assertEqual(source.read_text(), 'original')
                 saved = json.loads((root / 'settings.json').read_text())
                 self.assertEqual(saved['unknown'], {'preserved': True})
@@ -138,7 +138,7 @@ class DesktopRuntimeTests(unittest.TestCase):
                 self.assertEqual(runtime.state.read().get('exports', {}), {})
                 blocked.unlink()
                 folder = runtime.export(job)
-                self.assertTrue((folder / 'prompt.txt').exists())
+                self.assertTrue((folder / 'lecture_프롬프트.txt').exists())
                 runtime.export(job)
                 self.assertEqual(len(runtime.history.read()['history']), 1)
             finally:

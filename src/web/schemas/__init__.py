@@ -55,6 +55,7 @@ class Settings(DTO):
     custom_prompt: str = Field(default=DEFAULT_PROMPT, min_length=1, max_length=100000)
     keep_source: bool = False
     keep_audio: bool = False
+    filename_scope: Literal['lecture', 'week', 'course'] = 'lecture'
     auto_detect_enabled: bool = False
     auto_detect_interval_minutes: int = Field(default=30, ge=5, le=1440)
     auto_detect_courses: str = Field(default='', max_length=2000)

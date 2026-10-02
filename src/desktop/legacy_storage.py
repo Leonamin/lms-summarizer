@@ -515,6 +515,21 @@ def set_auto_open_folder(enabled: bool) -> None:
     settings = load_settings()
     settings["auto_open_folder"] = enabled
     save_settings(settings)
+
+
+# ── 파일 이름 prefix 범위 ─────────────────────────────
+
+def get_filename_scope() -> str:
+    """결과 파일 이름에 붙일 prefix 범위. 기본값: lecture."""
+    from src.core.naming import DEFAULT_SCOPE
+    return load_settings().get("filename_scope", DEFAULT_SCOPE)
+
+
+def set_filename_scope(scope: str) -> None:
+    """파일 이름 prefix 범위를 settings.json에 저장"""
+    settings = load_settings()
+    settings["filename_scope"] = scope
+    save_settings(settings)
 # Desktop workers and UI share one legacy file. Serialize complete mutations.
 from functools import wraps
 import threading

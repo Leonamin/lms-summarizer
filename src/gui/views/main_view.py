@@ -18,7 +18,7 @@ from src.gui.core.file_manager import (
     ensure_downloads_directory, save_user_inputs, load_user_inputs,
     set_summary_mode, set_subject_category, set_subject_custom,
     get_summary_prompt, get_chrome_path, get_debug_mode,
-    get_stt_engine, get_stt_model, get_stt_params,
+    get_stt_engine, get_stt_model, get_stt_params, get_filename_scope,
 )
 from src.gui.components.header import build_header
 from src.gui.components.sidebar import Sidebar
@@ -487,6 +487,7 @@ class MainView:
             'stt_model': get_stt_model(),
             'stt_params': self._stt_execution_params(),
             'downloads_dir': ensure_downloads_directory(),
+            'filename_scope': get_filename_scope(),
         }
 
     def _on_task_updated(self, task):

@@ -19,6 +19,7 @@ from uuid import uuid4
 from src.core.models.jobs import Source, WorkToken, StageCommand, StageResult, ServiceError
 from src.core.models.settings import SettingsRevision, UserContext
 from src.core.models.stages import PipelineStage
+from src.core.naming import DEFAULT_SCOPE, artifact_filename
 from src.core.repositories.jobs import JobRepository, utcnow
 from src.core.repositories.paths import DataPaths
 from src.core.repositories.secrets import SecretRepository
@@ -533,6 +534,18 @@ class JobService:
             if not path.is_file():
                 raise ServiceError('artifact_missing')
             return path
+
+    def artifact_name(self, context: UserContext, artifact_id: str) -> str:
+        """사용자 다운로드·내보내기에 쓸 prefix+suffix 파일 이름."""
+        with self.lock:
+            artifact = self._artifact(context, artifact_id)
+            job = self.db.get('jobs', artifact['job_id']) if artifact['job_id'] else None
+            scope = DEFAULT_SCOPE
+            if job:
+                revision = self.db.get('settings_revisions', job['settings_revision_id'])
+                if revision:
+                    scope = json.loads(revision['settings_json']).get('filename_scope', DEFAULT_SCOPE)
+            return artifact_filename(artifact, job, scope)
 
     def events_since(self, context: UserContext, cursor=0, limit=200):
         with self.lock:

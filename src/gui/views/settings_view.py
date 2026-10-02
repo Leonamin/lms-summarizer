@@ -16,6 +16,7 @@ from src.gui.core.file_manager import (
     get_chrome_path, set_chrome_path, detect_chrome_paths,
     get_debug_mode, set_debug_mode,
     get_auto_open_folder, set_auto_open_folder,
+    get_filename_scope, set_filename_scope,
 )
 from src.core.prompts import (
     SummaryMode, SUMMARY_MODE_LABELS, SUBJECT_CATEGORIES,
@@ -407,6 +408,21 @@ class SettingsDialog:
             active_color=Colors.PRIMARY,
             tooltip="작업 완료 시 결과물이 저장된 폴더를 자동으로 엽니다",
         )
+        self.filename_scope_dropdown = ft.Dropdown(
+            options=[
+                ft.dropdown.Option(key="lecture", text="강의명만"),
+                ft.dropdown.Option(key="week", text="주차 + 강의명"),
+                ft.dropdown.Option(key="course", text="과목 + 주차 + 강의명"),
+            ],
+            value=get_filename_scope(),
+            border_radius=Radius.MD,
+            border_color=Colors.BORDER,
+            focused_border_color=Colors.PRIMARY,
+            text_size=Typography.BODY,
+            label_style=ft.TextStyle(size=Typography.CAPTION, color=Colors.TEXT_SECONDARY),
+            dense=True,
+            width=220,
+        )
 
         def _toggle_row(icon, title, desc, switch) -> ft.Container:
             return ft.Container(
@@ -450,6 +466,34 @@ class SettingsDialog:
                     "작업 완료 시 결과 폴더를 자동으로 엽니다.",
                     self.auto_open_switch,
                 ),
+                divider(),
+                ft.Container(
+                    content=ft.Row(
+                        controls=[
+                            ft.Column(
+                                controls=[
+                                    ft.Row(
+                                        controls=[
+                                            ft.Icon(ft.Icons.LABEL_OUTLINE, size=16, color=Colors.TEXT_SECONDARY),
+                                            ft.Text("파일 이름 prefix", size=Typography.BODY,
+                                                    weight=Typography.SEMI_BOLD,
+                                                    color=Colors.TEXT),
+                                        ],
+                                        spacing=Spacing.XS,
+                                    ),
+                                    ft.Text("다운로드·내보내기 파일 이름에 포함할 범위입니다.",
+                                            size=Typography.SMALL, color=Colors.TEXT_MUTED),
+                                ],
+                                spacing=2,
+                                expand=True,
+                            ),
+                            self.filename_scope_dropdown,
+                        ],
+                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                    ),
+                    padding=ft.padding.symmetric(vertical=Spacing.SM),
+                ),
             ],
             spacing=Spacing.SM,
             scroll=ft.ScrollMode.AUTO,
@@ -473,6 +517,7 @@ class SettingsDialog:
 
         set_debug_mode(self.debug_switch.value)
         set_auto_open_folder(self.auto_open_switch.value)
+        set_filename_scope(self.filename_scope_dropdown.value or "lecture")
 
         if chrome_path:
             if not os.path.exists(chrome_path):
