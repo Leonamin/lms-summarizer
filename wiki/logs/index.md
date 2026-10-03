@@ -12,6 +12,8 @@ okf_version: "0.1"
 
 ## 로그
 
+- [2026-10-01-sensevoice-vs-whisper-cpu-benchmark.md](2026-10-01-sensevoice-vs-whisper-cpu-benchmark.md) — SenseVoice vs faster-whisper CPU 벤치마크(속도·한국어 정확도): 10배 빠르지만 한국어·영어 정확도 열세로 기본 엔진 교체 부적합
+
 - [2026-09-30-playback-retry.md](2026-09-30-playback-retry.md) — 재생 재시도와 자동 감지 재시도 정책
 
 - [2026-09-30-viewer-dialog-overflow.md](2026-09-30-viewer-dialog-overflow.md) — 풀스크린 뷰어 닫힘 상태 오버플로우 수정
