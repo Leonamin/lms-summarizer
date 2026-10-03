@@ -46,3 +46,7 @@ whisper.cpp에서는 `royshilkrot/whisper-large-v3-turbo-korean-ggml`(GGML 양�
 ## 의존
 
 - faster-whisper-gpu-windows (부분 완료 상태, 독립 진행 가능)
+
+## 관련
+
+- [2026-10-01 SenseVoice vs faster-whisper CPU 벤치마크](../logs/2026-10-01-sensevoice-vs-whisper-cpu-benchmark.md) — CPU 대안 STT로 SenseVoice 검토 결과. 약 10배 빠르지만 한국어·영어(외래어) 정확도가 크게 낮아 기본 엔진 교체 부적합, CPU 절충은 `faster-whisper small`.
