@@ -7,12 +7,58 @@ import { Rail } from "./components/Rail";
 import { ServerPanel } from "./components/ServerPanel";
 import { SettingsPage } from "./pages/SettingsPage";
 import { WorkspacePage } from "./pages/WorkspacePage";
+import { Plus } from "lucide-react";
+
+const readView = (): View => {
+  const value = window.location.hash.slice(1).split("/")[0];
+  return value === "import" || value === "settings" ? value : "workspace";
+};
+const pageCopy = {
+  workspace: {
+    title: "작업실",
+    description: "처리 현황을 확인하고 강의 결과를 읽으세요.",
+  },
+  import: {
+    title: "강의 가져오기",
+    description: "가져올 자료의 종류를 선택하세요.",
+  },
+  settings: {
+    title: "처리 설정",
+    description:
+      "저장한 설정은 새 작업에 적용됩니다. 진행 중인 작업은 제출 당시 설정을 유지합니다.",
+  },
+};
 
 export function App() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [settings, setSettings] = useState<SettingsResponse | null>(null);
   const [draft, setDraft] = useState<Settings | null>(null);
-  const [view, setView] = useState<View>("workspace");
+  const [view, updateView] = useState<View>(readView);
+  const viewRef = useRef(view);
+  const viewScroll = useRef<Partial<Record<View, number>>>({});
+  const pageTitleRef = useRef<HTMLHeadingElement>(null);
+  const setView = useCallback((next: View) => {
+    window.location.hash = next;
+  }, []);
+  useEffect(() => {
+    const syncView = () => {
+      const next = readView();
+      if (next === viewRef.current) return;
+      viewScroll.current[viewRef.current] = window.scrollY;
+      viewRef.current = next;
+      updateView(next);
+    };
+    window.addEventListener("hashchange", syncView);
+    return () => window.removeEventListener("hashchange", syncView);
+  }, []);
+  useEffect(() => {
+    document.title = `${pageCopy[view].title} · LMS`;
+    pageTitleRef.current?.focus({ preventScroll: true });
+    window.scrollTo({
+      top: viewScroll.current[view] ?? 0,
+      behavior: "instant",
+    });
+  }, [view]);
   const [saving, setSaving] = useState(false);
   const [pending, setPending] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
@@ -159,9 +205,7 @@ export function App() {
       const updated = await api<Job>("/jobs/" + job.id + "/" + action, {
         method: "POST",
         headers:
-          action === "cancel"
-            ? undefined
-            : { "Idempotency-Key": requestId() },
+          action === "cancel" ? undefined : { "Idempotency-Key": requestId() },
         body: JSON.stringify(body),
       });
       merge([updated]);
@@ -222,22 +266,26 @@ export function App() {
       <main>
         <header className="page-header">
           <div>
-            <span className="eyebrow">
-              {view === "settings" ? "PREFERENCES" : "LECTURE WORKSPACE"}
-            </span>
-            <h1>{view === "settings" ? "처리 설정" : "강의에서, 핵심으로."}</h1>
-            <p>
-              {view === "settings"
-                ? "저장한 설정은 새 작업에 적용됩니다. 진행 중인 작업은 제출 당시 설정을 유지합니다."
-                : "자료를 올리고, 처리 흐름을 확인하고, 핵심을 다시 읽으세요."}
-            </p>
+            <h1 ref={pageTitleRef} tabIndex={-1}>
+              {pageCopy[view].title}
+            </h1>
+            <p>{pageCopy[view].description}</p>
           </div>
-          <span className="private-label">개인 작업실</span>
+          {view === "workspace" && (
+            <button
+              className="primary import-action"
+              onClick={() => setView("import")}
+            >
+              <Plus size={18} aria-hidden="true" /> 강의 가져오기
+            </button>
+          )}
         </header>
         <MessageBanner
           error={error}
           notice={notice}
-          onDismiss={(kind) => (kind === "error" ? setError("") : setNotice(""))}
+          onDismiss={(kind) =>
+            kind === "error" ? setError("") : setNotice("")
+          }
         />
         {connection === "연결 끊김" && (
           <div className="server-banner" role="alert">
@@ -261,6 +309,8 @@ export function App() {
         )}
         <div hidden={view === "settings"}>
           <WorkspacePage
+            view={view}
+            onNavigate={setView}
             jobs={jobs}
             settings={settings}
             merge={merge}
@@ -290,7 +340,7 @@ export function App() {
             report={report}
           />
         )}
-        <ServerPanel report={report} />
+        {view === "settings" && <ServerPanel report={report} />}
         <footer className="page-footer">
           <span>LMS SUMMARIZER</span>
           <span>화면을 닫아도 서버의 작업은 계속됩니다.</span>

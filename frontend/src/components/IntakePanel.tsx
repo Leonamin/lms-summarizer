@@ -8,7 +8,6 @@ const intakeStageOptions = [
   { value: "4", label: "요약 / 프롬프트 준비" },
   { value: "3", label: "음성 인식까지만" },
   { value: "2", label: "오디오 변환까지만" },
-  { value: "1", label: "다운로드까지만 (LMS URL)" },
 ];
 
 const allowed = /\.(mp4|ts|wav|mp3|txt)$/i;
@@ -144,8 +143,7 @@ export function IntakePanel({
   return (
     <section className="intake panel">
       <div className="intake-title">
-        <span className="eyebrow">ADD MATERIAL</span>
-        <h2>새로운 강의 자료</h2>
+        <h2>파일 업로드</h2>
         <p>파일에 맞는 단계부터 이어서 처리합니다.</p>
       </div>
       <div className="intake-body">
@@ -178,7 +176,11 @@ export function IntakePanel({
           <span className="file-types">MP4 / TS / WAV / MP3 / TXT</span>
         </label>
         {error && (
-          <p role="alert" className="inline-error" style={{ margin: "12px 0 0" }}>
+          <p
+            role="alert"
+            className="inline-error"
+            style={{ margin: "12px 0 0" }}
+          >
             {error}
           </p>
         )}

@@ -1,11 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { api, ApiError } from "../api";
 import type { SettingsResponse } from "../types";
-import {
-  attendanceLabels,
-  completionLabels,
-  requestId,
-} from "../lib/format";
+import { attendanceLabels, completionLabels, requestId } from "../lib/format";
 import { Dropdown } from "./Dropdown";
 
 const endStageOptions = [
@@ -50,19 +46,22 @@ type Cache<T> = {
 };
 
 export function LmsImportPanel({
+  mode,
+  onSettings,
   settings,
   endStage,
   setEndStage,
   onSubmitted,
   report,
 }: {
+  mode: "urls" | "courses";
+  onSettings: () => void;
   settings: SettingsResponse | null;
   endStage: number;
   setEndStage: (stage: number) => void;
   onSubmitted: (ids: string[]) => Promise<void>;
   report: (cause: unknown) => void;
 }) {
-  const [tab, setTab] = useState("urls");
   const [urls, setUrls] = useState("");
   const [courses, setCourses] = useState<Cache<Course[]> | null>(null);
   const [course, setCourse] = useState("");
@@ -257,28 +256,25 @@ export function LmsImportPanel({
     <section className="panel lms-panel">
       <div className="section-heading">
         <div>
-          <span className="eyebrow">FROM YOUR LMS</span>
-          <h2>LMS 강의 가져오기</h2>
-        </div>
-        <div className="segmented" role="group" aria-label="LMS 입력 방식">
-          <button
-            className={tab === "urls" ? "active" : ""}
-            onClick={() => setTab("urls")}
-          >
-            URL 입력
-          </button>
-          <button
-            className={tab === "courses" ? "active" : ""}
-            onClick={() => setTab("courses")}
-          >
-            과목·주차
-          </button>
+          <h2>{mode === "courses" ? "과목·주차에서 선택" : "강의 URL 입력"}</h2>
+          <p className="muted">
+            {mode === "courses"
+              ? "과목을 고르고 가져올 강의를 선택하세요."
+              : "강의 링크를 한 줄에 하나씩 입력하세요."}
+          </p>
         </div>
       </div>
+      {settings &&
+        (!settings.settings.student_id ||
+          !settings.secrets.lms_password?.configured) && (
+          <p className="manual-note">
+            LMS에서 가져오려면 처리 설정에 학번과 비밀번호를 저장하세요.
+          </p>
+        )}
       <div className="course-tools">
-        <p className="muted" style={{ flex: 1 }}>
-          처리 설정에서 학번·비밀번호를 저장해 주세요.
-        </p>
+        <button className="quiet" onClick={onSettings}>
+          LMS 계정·처리 설정 →
+        </button>
         <label>
           LMS 마지막 처리 단계
           <Dropdown
@@ -301,7 +297,7 @@ export function LmsImportPanel({
           새로고침해도 조회는 계속됩니다.
         </p>
       )}
-      {tab === "urls" ? (
+      {mode === "urls" ? (
         <>
           <label>
             LMS 강의 URL
@@ -323,7 +319,9 @@ export function LmsImportPanel({
                 urlLines.length > 50 ||
                 !settings
               }
-              onClick={() => void submit(urlLines.map((reference) => ({ reference })))}
+              onClick={() =>
+                void submit(urlLines.map((reference) => ({ reference })))
+              }
             >
               {busy
                 ? "제출 중…"
@@ -456,7 +454,9 @@ export function LmsImportPanel({
                           setSelected(
                             event.target.checked
                               ? [...selected, lecture.url]
-                              : selected.filter((value) => value !== lecture.url),
+                              : selected.filter(
+                                  (value) => value !== lecture.url,
+                                ),
                           )
                         }
                       />

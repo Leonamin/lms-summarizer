@@ -1,92 +1,97 @@
 import type { Job } from "../types";
-import { stages } from "../lib/format";
+import {
+  isActive,
+  matchesJobFilter,
+  stages,
+  type JobFilter,
+} from "../lib/format";
+
+const filters: { value: JobFilter; label: string }[] = [
+  { value: "all", label: "전체" },
+  { value: "active", label: "처리 중" },
+  { value: "completed", label: "완료" },
+  { value: "retryable", label: "확인 필요" },
+];
 
 export function OverviewStats({
-  working,
-  completed,
-  incompletePlaybacks = 0,
-  incompleteActive = false,
+  jobs,
+  filter,
+  onFilter,
+  incompletePlaybacks,
   onIncomplete,
-  loading = false,
+  isLoading,
 }: {
-  working: Job[];
-  completed: Job[];
-  incompletePlaybacks?: number;
-  incompleteActive?: boolean;
-  onIncomplete?: () => void;
-  loading?: boolean;
+  jobs: Job[];
+  filter: JobFilter;
+  onFilter: (filter: JobFilter) => void;
+  incompletePlaybacks: number;
+  onIncomplete: () => void;
+  isLoading: boolean;
 }) {
+  const working = jobs.filter(isActive);
   const runs = working.flatMap((job) => job.attempts.at(-1)?.stages ?? []);
   return (
-    <section className="overview" aria-label="작업 현황">
-      <div className="stat-card">
-        {loading ? (
-          <>
-            <span className="skeleton skeleton-num" />
-            <span className="skeleton skeleton-label" />
-          </>
-        ) : (
-          <>
-            <span className="stat-number">
-              {String(working.length).padStart(2, "0")}
-            </span>
-            <span className="stat-label">처리 중인 작업</span>
-          </>
+    <section className="workspace-overview" aria-label="작업 현황">
+      <div className="workspace-status-bar">
+        <div
+          className="status-filters"
+          role="group"
+          aria-label="작업 상태 필터"
+        >
+          {filters.map(({ value, label }) => (
+            <button
+              key={value}
+              className={"status-filter" + (filter === value ? " active" : "")}
+              aria-pressed={filter === value}
+              disabled={isLoading}
+              onClick={() => onFilter(value)}
+            >
+              {label}
+              <span>
+                {isLoading
+                  ? "…"
+                  : jobs.filter((job) => matchesJobFilter(job, value)).length}
+              </span>
+            </button>
+          ))}
+        </div>
+        {incompletePlaybacks > 0 && (
+          <button
+            className="playback-alert"
+            onClick={onIncomplete}
+            disabled={isLoading}
+          >
+            미완료 재생 <strong>{incompletePlaybacks}</strong>
+            <span aria-hidden="true"> →</span>
+          </button>
         )}
       </div>
-      <div className="stat-card is-done">
-        {loading ? (
-          <>
-            <span className="skeleton skeleton-num" />
-            <span className="skeleton skeleton-label" />
-          </>
-        ) : (
-          <>
-            <span className="stat-number">
-              {String(completed.length).padStart(2, "0")}
-            </span>
-            <span className="stat-label">완료된 작업</span>
-          </>
-        )}
-      </div>
-      <button
-        type="button"
-        className={
-          "stat-card is-warn" + (incompleteActive ? " is-active" : "")
-        }
-        onClick={onIncomplete}
-        disabled={loading || !onIncomplete || incompletePlaybacks === 0}
-        aria-pressed={incompleteActive}
-      >
-        {loading ? (
-          <>
-            <span className="skeleton skeleton-num" />
-            <span className="skeleton skeleton-label" />
-          </>
-        ) : (
-          <>
-            <span className="stat-number">
-              {String(incompletePlaybacks).padStart(2, "0")}
-            </span>
-            <span className="stat-label">미완료 재생</span>
-          </>
-        )}
-      </button>
-      <div className="pipeline-summary">
-        {stages.map((stage, index) => {
-          const rows = runs.filter((run) => run.stage === index + 1);
-          return (
-            <div className="pipeline-step" key={stage}>
-              <span className="step-index">STEP 0{index + 1}</span>
-              <strong>{stage}</strong>
-              <small>
-                대기 {rows.filter((run) => run.status === "queued").length} ·
-                실행 {rows.filter((run) => run.status === "running").length}
-              </small>
-            </div>
-          );
-        })}
-      </div>
+      <details className="pipeline-details">
+        <summary>
+          단계별 처리 현황{" "}
+          <span>
+            {isLoading
+              ? "불러오는 중"
+              : working.length
+                ? `${working.length}개 작업 처리 중`
+                : "처리 중인 작업 없음"}
+          </span>
+        </summary>
+        <div className="pipeline-summary">
+          {stages.map((stage, index) => {
+            const rows = runs.filter((run) => run.stage === index + 1);
+            return (
+              <div className="pipeline-step" key={stage}>
+                <strong>{stage}</strong>
+                <small>
+                  대기 {rows.filter((run) => run.status === "queued").length} ·
+                  실행 {rows.filter((run) => run.status === "running").length}
+                </small>
+              </div>
+            );
+          })}
+        </div>
+      </details>
     </section>
   );
 }

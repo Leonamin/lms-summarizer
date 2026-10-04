@@ -14,8 +14,14 @@
 :root {
   color-scheme: light;
   font-family:
-    "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont,
-    "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
+    "Pretendard Variable",
+    Pretendard,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Apple SD Gothic Neo",
+    "Noto Sans KR",
+    system-ui,
+    sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
 
@@ -641,68 +647,70 @@ label.check input,
 }
 
 /* ------------------------------------------------------------- overview -- */
-.overview {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 150px)) minmax(0, 1fr);
-  gap: 20px;
-  margin-bottom: 28px;
+/* Status is navigation into the list, not a row of dashboard cards. */
+.workspace-overview {
+  margin-bottom: 20px;
 }
-
-.stat-card {
-  padding: 22px 24px;
-  border-radius: var(--radius);
-  border: 1px solid var(--line);
-  background: var(--paper);
-  box-shadow: var(--shadow-sm);
+.workspace-status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
 }
-
-.stat-card .stat-number {
-  display: block;
-  font-size: var(--t-display);
-  font-weight: 780;
-  line-height: 1;
-  color: var(--brand);
-  font-variant-numeric: tabular-nums;
+.status-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
-
-.stat-card.is-done .stat-number {
-  color: var(--positive);
-}
-
-button.stat-card {
-  width: 100%;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-  transition:
-    border-color var(--speed),
-    box-shadow var(--speed);
-}
-
-button.stat-card:hover:not(:disabled) {
-  border-color: var(--line-strong);
-}
-
-button.stat-card:disabled {
-  cursor: default;
-}
-
-.stat-card.is-warn .stat-number {
-  color: var(--warning);
-}
-
-.stat-card.is-active {
-  border-color: var(--brand-500);
-  box-shadow: 0 0 0 3px var(--brand-100);
-}
-
-.stat-label {
-  display: block;
-  margin-top: 10px;
-  font-size: var(--t-sm);
+.status-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: var(--radius-xs);
   color: var(--muted);
+  font-size: var(--t-sm);
 }
-
+.status-filter span {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+.status-filter:hover {
+  background: var(--brand-100);
+  color: var(--brand-700);
+}
+.status-filter.active {
+  background: var(--brand);
+  color: var(--paper);
+}
+.playback-alert {
+  min-height: 44px;
+  padding: 0 12px;
+  font-size: var(--t-sm);
+  color: var(--warning);
+  border-radius: var(--radius-xs);
+  background: var(--warning-100);
+}
+.pipeline-details {
+  margin-top: 12px;
+}
+.pipeline-details > summary {
+  width: fit-content;
+  min-height: 36px;
+  padding: 6px 0;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: var(--t-sm);
+}
+.pipeline-details > summary span {
+  margin-left: 12px;
+  font-size: var(--t-xs);
+}
+.pipeline-details .pipeline-summary {
+  margin-top: 12px;
+}
 .pipeline-summary {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1163,7 +1171,7 @@ button.stat-card:disabled {
   color: var(--faint);
 }
 
-.job-table-head [role="columnheader"] {
+.job-table-head > span {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1404,6 +1412,9 @@ button.stat-card:disabled {
 
 .job-attempts,
 .job-time {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-size: var(--t-xs);
   color: var(--muted);
   white-space: nowrap;
@@ -2446,7 +2457,7 @@ fieldset details {
   .job-row {
     grid-template-columns: 84px minmax(0, 1fr) 70px 72px;
   }
-  .job-table-head [role="columnheader"]:nth-child(4),
+  .job-table-head > span:nth-child(4),
   .job-attempts {
     display: none;
   }
@@ -2455,9 +2466,6 @@ fieldset details {
 @media (max-width: 1180px) {
   .app-shell {
     grid-template-columns: 216px minmax(0, 1fr);
-  }
-  .overview {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
   .pipeline-summary {
     grid-column: 1 / -1;
@@ -2468,9 +2476,6 @@ fieldset details {
 }
 
 @media (max-width: 900px) {
-  .overview {
-    grid-template-columns: 1fr 1fr;
-  }
   .pipeline-summary {
     grid-column: 1 / -1;
   }
@@ -2557,10 +2562,6 @@ fieldset details {
   .private-label {
     display: none;
   }
-  .overview {
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-  }
   .pipeline-summary {
     grid-template-columns: 1fr 1fr;
   }
@@ -2643,34 +2644,277 @@ fieldset details {
   }
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .page-header,
-  .overview,
-  .lms-panel,
-  .intake,
-  .workspace-grid {
-    animation: rise 0.4s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+/* Task-oriented workspace and import screens. */
+[hidden] {
+  display: none !important;
+}
+:where(summary):focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 4px;
+  border-radius: var(--radius-xs);
+}
+.page-header {
+  align-items: center;
+  margin-bottom: 24px;
+}
+.page-header h1:focus {
+  outline: none;
+  box-shadow: none;
+}
+.import-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+.nav-item > svg {
+  flex-shrink: 0;
+}
+.import-page {
+  max-width: 1000px;
+  margin-inline: auto;
+}
+.source-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.source-option {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+  text-align: left;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--paper);
+  color: var(--muted);
+}
+.source-option strong,
+.source-option small {
+  display: block;
+}
+.source-option strong {
+  font-size: var(--t-md);
+  color: var(--ink);
+}
+.source-option small {
+  margin-top: 4px;
+  font-size: var(--t-xs);
+}
+.source-option.active {
+  border-color: var(--brand);
+  background: var(--brand-50);
+  color: var(--brand);
+}
+.source-option.active strong {
+  color: var(--brand-700);
+}
+.source-option:hover {
+  border-color: var(--brand);
+}
+.import-page .lms-panel .section-heading {
+  padding: 0 0 20px;
+}
+.import-page .lms-panel .section-heading p {
+  margin-top: 6px;
+}
+.import-page .course-tools:first-of-type {
+  justify-content: space-between;
+}
+.import-page .intake {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
+}
+.import-hint {
+  margin-top: 18px;
+  color: var(--muted);
+  font-size: var(--t-sm);
+}
+.workspace-detail-pane {
+  min-width: 0;
+  scroll-margin-top: 20px;
+}
+.workspace-detail-pane:focus {
+  outline: none;
+  box-shadow: none;
+}
+.back-to-list {
+  display: none;
+}
+.job-row .job-name strong,
+.job-row .job-name small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.job-row .job-name strong {
+  font-weight: 600;
+}
+.job-row .job-name small {
+  margin-top: 4px;
+  font-size: var(--t-xs);
+  font-weight: 400;
+}
+.job-tools input {
+  flex-basis: 180px;
+}
+.jobs-panel .section-heading {
+  padding-top: 24px;
+}
+.job-row .status {
+  white-space: normal;
+  text-align: center;
+}
+.playback-group {
+  border-top: 1px solid var(--line);
+  border-radius: 0 0 var(--radius) var(--radius);
+}
+.playback-group-head strong {
+  font-size: var(--t-sm);
+}
+.processing-details {
+  margin: 0 28px 18px;
+  border-bottom: 1px solid var(--line);
+}
+.processing-details > summary {
+  padding: 10px 0;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: var(--t-sm);
+}
+.processing-details .stage-track {
+  margin: 16px 0;
+}
+.processing-details .detail-actions {
+  padding: 12px 0 18px;
+}
+.result-subtitle {
+  white-space: normal;
+}
+@media (min-width: 1181px) {
+  .workspace-detail-pane {
+    position: sticky;
+    top: 20px;
   }
-  .overview {
-    animation-delay: 0.04s;
+}
+@media (min-width: 681px) and (max-width: 1600px) {
+  .job-row,
+  .job-table-head {
+    grid-template-columns: 84px minmax(0, 1fr) 70px;
   }
-  .lms-panel {
-    animation-delay: 0.08s;
+  .job-attempts,
+  .job-time,
+  .job-table-head > span:nth-child(4),
+  .job-table-head > span:nth-child(5) {
+    display: none;
   }
-  .intake {
-    animation-delay: 0.12s;
+}
+@media (max-width: 1180px) {
+  .workspace:not(.has-detail) .workspace-detail-pane {
+    display: none;
   }
-  .workspace-grid {
-    animation-delay: 0.16s;
+  .workspace.has-detail .workspace-list-pane,
+  .workspace.has-detail .workspace-list-overview {
+    display: none;
   }
-  @keyframes rise {
-    from {
-      opacity: 0;
-      transform: translateY(8px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
+  .back-to-list {
+    display: inline-flex;
+    margin-bottom: 16px;
+  }
+}
+@media (max-width: 680px) {
+  .rail {
+    flex-wrap: wrap;
+    gap: 12px;
+    border-radius: 0;
+    padding: 14px 16px;
+  }
+  .rail nav {
+    width: 100%;
+    margin: 0;
+  }
+  .nav-item {
+    flex: 1;
+    justify-content: center;
+    padding: 10px 6px;
+    gap: 6px;
+    font-size: var(--t-xs);
+    white-space: nowrap;
+  }
+  .nav-item > svg {
+    width: 16px;
+    height: 16px;
+  }
+  .page-header {
+    gap: 12px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .page-header p {
+    font-size: var(--t-sm);
+  }
+  .page-header .import-action {
+    width: 100%;
+  }
+  .status-filters {
+    gap: 2px;
+    width: 100%;
+  }
+  .status-filter {
+    flex: 1;
+    gap: 6px;
+    padding: 0 8px;
+    font-size: var(--t-xs);
+  }
+  .pipeline-details > summary span {
+    display: none;
+  }
+  .source-options {
+    gap: 6px;
+  }
+  .source-option {
+    flex-direction: column;
+    gap: 8px;
+    padding: 16px 6px;
+    text-align: center;
+  }
+  .source-option strong {
+    font-size: var(--t-sm);
+  }
+  .source-option small {
+    display: none;
+  }
+  .import-page .course-tools {
+    align-items: stretch;
+  }
+  .import-page .course-tools > label {
+    width: 100%;
+  }
+  .import-page .lms-panel {
+    padding: 20px;
+  }
+  .jobs-panel .job-tools {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+  .job-tools input {
+    flex-basis: 100%;
+  }
+  .processing-details {
+    margin-left: 20px;
+    margin-right: 20px;
+  }
+  .job-row {
+    min-height: 68px;
+  }
+  .playback-row {
+    flex-wrap: wrap;
+  }
+  .playback-row .job-name {
+    flex-basis: 50%;
   }
 }

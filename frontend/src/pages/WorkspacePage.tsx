@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../api";
 import type { Artifact, Job, Playback, SettingsResponse } from "../types";
-import { isActive, isPlaybackActive, isPlaybackIncomplete } from "../lib/format";
-import { IntakePanel } from "../components/IntakePanel";
+import { isPlaybackIncomplete, type JobFilter, type View } from "../lib/format";
+import { ImportPage } from "./ImportPage";
 import { JobList } from "../components/JobList";
-import { LmsImportPanel } from "../components/LmsImportPanel";
 import { OverviewStats } from "../components/OverviewStats";
 import { ResultPanel } from "../components/ResultPanel";
 
 export function WorkspacePage({
+  view,
+  onNavigate,
   jobs,
   settings,
   merge,
@@ -20,6 +21,8 @@ export function WorkspacePage({
   onContinue,
   onStopAll,
 }: {
+  view: View;
+  onNavigate: (view: View) => void;
   jobs: Job[];
   settings: SettingsResponse | null;
   merge: (jobs: Job[]) => void;
@@ -27,12 +30,66 @@ export function WorkspacePage({
   pending: string | null;
   loading?: boolean;
   onNotice: (message: string) => void;
-  onCommand: (job: Job, action: "cancel" | "retry" | "resume", useCurrentSettings?: boolean) => void;
+  onCommand: (
+    job: Job,
+    action: "cancel" | "retry" | "resume",
+    useCurrentSettings?: boolean,
+  ) => void;
   onContinue: (job: Job, endStage: number) => void;
   onStopAll: () => void;
 }) {
   const [selected, setSelected] = useState<string | null>(null);
-  const [endStage, setEndStage] = useState(4);
+  const [filter, setFilter] = useState<JobFilter>("all");
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [revealJobId, setRevealJobId] = useState<string | null>(null);
+  const listScroll = useRef(0);
+  const hasDetailHistory = useRef(false);
+  const detailRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  const selectedRef = useRef(selected);
+  selectedRef.current = selected;
+
+  useEffect(() => {
+    const syncDetail = () => {
+      const id = window.location.hash.match(/^#workspace\/([^/]+)$/)?.[1];
+      setIsDetailOpen(!!id);
+      if (id) setSelected(id);
+      if (!window.matchMedia("(max-width: 1180px)").matches) return;
+      const route = window.location.hash.slice(1).split("/")[0];
+      if (route && route !== "workspace") return;
+      requestAnimationFrame(() => {
+        if (id) {
+          detailRef.current?.focus({ preventScroll: true });
+          detailRef.current?.scrollIntoView({ block: "start" });
+        } else {
+          const row = Array.from(
+            listRef.current?.querySelectorAll<HTMLButtonElement>(".job-row") ??
+              [],
+          ).find((item) => item.dataset.jobId === selectedRef.current);
+          row?.focus({ preventScroll: true });
+          window.scrollTo({ top: listScroll.current, behavior: "instant" });
+        }
+      });
+    };
+    syncDetail();
+    window.addEventListener("hashchange", syncDetail);
+    return () => window.removeEventListener("hashchange", syncDetail);
+  }, []);
+
+  const selectJob = (id: string) => {
+    setSelected(id);
+    if (window.matchMedia("(max-width: 1180px)").matches) {
+      listScroll.current = window.scrollY;
+      hasDetailHistory.current = true;
+      window.location.hash = `workspace/${id}`;
+    }
+  };
+  const backToList = () => {
+    if (hasDetailHistory.current) {
+      hasDetailHistory.current = false;
+      window.history.back();
+    } else window.location.hash = "workspace";
+  };
   const [artifact, setArtifact] = useState<Artifact | null>(null);
   const [text, setText] = useState("");
   const [loadingText, setLoadingText] = useState(false);
@@ -61,19 +118,15 @@ export function WorkspacePage({
     };
   }, []);
 
-  // Keep a valid selection as jobs stream in and out.
-  useEffect(() => {
-    if (jobs.length && !jobs.some((job) => job.id === selected))
-      setSelected(jobs[0].id);
-  }, [jobs, selected]);
-
   const current = jobs.find((job) => job.id === selected) ?? null;
 
   useEffect(() => {
     let alive = true;
     setJobModel("chatgpt");
     if (current)
-      api<{ settings: { ai_model: string } }>("/jobs/" + current.id + "/settings")
+      api<{ settings: { ai_model: string } }>(
+        "/jobs/" + current.id + "/settings",
+      )
         .then((result) => {
           if (alive) setJobModel(result.settings.ai_model);
         })
@@ -137,16 +190,18 @@ export function WorkspacePage({
 
   const onSubmitted = useCallback(
     async (ids: string[]) => {
-      const added = await Promise.all(
-        ids.map((id) => api<Job>("/jobs/" + id)),
-      );
+      const added = await Promise.all(ids.map((id) => api<Job>("/jobs/" + id)));
       merge(added);
-      if (ids[0]) setSelected(ids[0]);
+      if (ids[0]) {
+        setSelected(ids[0]);
+        setRevealJobId(ids[0]);
+      }
+      onNavigate("workspace");
       onNotice(
         `${added.length}개 작업을 추가했습니다. 이 화면을 닫아도 처리는 계속됩니다.`,
       );
     },
-    [merge, onNotice],
+    [merge, onNotice, onNavigate],
   );
 
   const incompletePlaybacks = playbacks.filter((item) =>
@@ -154,13 +209,16 @@ export function WorkspacePage({
   ).length;
 
   const showIncompletePlaybacks = useCallback(() => {
+    setIsDetailOpen(false);
+    hasDetailHistory.current = false;
+    window.history.replaceState(null, "", "#workspace");
     setPlaybackFilter("incomplete");
     setPlaybackOpen(true);
-    requestAnimationFrame(() =>
-      document
-        .getElementById("playback-group")
-        ?.scrollIntoView({ block: "start", behavior: "smooth" }),
-    );
+    requestAnimationFrame(() => {
+      const group = document.getElementById("playback-group");
+      group?.scrollIntoView({ block: "start", behavior: "instant" });
+      group?.focus({ preventScroll: true });
+    });
   }, []);
 
   const retryPlayback = async (item: Playback) => {
@@ -176,56 +234,77 @@ export function WorkspacePage({
 
   return (
     <>
-      <OverviewStats
-        working={jobs.filter(isActive)}
-        completed={jobs.filter((job) => job.status === "completed")}
-        incompletePlaybacks={incompletePlaybacks}
-        incompleteActive={playbackFilter === "incomplete"}
-        onIncomplete={showIncompletePlaybacks}
-        loading={loading}
-      />
-      <LmsImportPanel
-        settings={settings}
-        endStage={endStage}
-        setEndStage={setEndStage}
-        onSubmitted={onSubmitted}
-        report={report}
-      />
-      <IntakePanel
-        settings={settings}
-        endStage={endStage}
-        setEndStage={setEndStage}
-        onSubmitted={onSubmitted}
-        report={report}
-      />
-      <div className="workspace-grid">
-        <JobList
-          jobs={jobs}
-          playbacks={playbacks}
-          selected={selected}
-          onSelect={setSelected}
-          onStopAll={onStopAll}
-          loading={loading}
-          playbackOpen={playbackOpen}
-          setPlaybackOpen={setPlaybackOpen}
-          playbackFilter={playbackFilter}
-          setPlaybackFilter={setPlaybackFilter}
-          onPlaybackRetry={(item) => void retryPlayback(item)}
+      <div hidden={view !== "import"}>
+        <ImportPage
+          settings={settings}
+          onSubmitted={onSubmitted}
+          report={report}
+          onSettings={() => onNavigate("settings")}
         />
-        <ResultPanel
-          job={current}
-          available={available}
-          artifact={artifact}
-          text={text}
-          loading={loadingText}
-          pending={pending}
-          jobModel={jobModel}
-          onOpenArtifact={(item) => void openArtifact(item)}
-          onCommand={onCommand}
-          onContinue={onContinue}
-          onNotice={onNotice}
-          loadingFallback={loading}
-        />
+      </div>
+      <div
+        hidden={view !== "workspace"}
+        className={isDetailOpen ? "workspace has-detail" : "workspace"}
+      >
+        <div className="workspace-list-overview">
+          <OverviewStats
+            jobs={jobs}
+            filter={filter}
+            onFilter={setFilter}
+            incompletePlaybacks={incompletePlaybacks}
+            onIncomplete={showIncompletePlaybacks}
+            isLoading={loading}
+          />
+        </div>
+        <div className="workspace-grid">
+          <div className="workspace-list-pane" ref={listRef}>
+            <JobList
+              jobs={jobs}
+              playbacks={playbacks}
+              selected={selected}
+              onSelect={selectJob}
+              onSelectionChange={setSelected}
+              filter={filter}
+              onFilter={setFilter}
+              revealJobId={revealJobId}
+              onImport={() => onNavigate("import")}
+              isVisible={view === "workspace"}
+              hasOpenDetail={isDetailOpen}
+              onStopAll={onStopAll}
+              loading={loading}
+              playbackOpen={playbackOpen}
+              setPlaybackOpen={setPlaybackOpen}
+              playbackFilter={playbackFilter}
+              setPlaybackFilter={setPlaybackFilter}
+              onPlaybackRetry={(item) => void retryPlayback(item)}
+            />
+          </div>
+          <div
+            id="job-result"
+            className="workspace-detail-pane"
+            ref={detailRef}
+            tabIndex={-1}
+            aria-label="선택한 작업 상세"
+          >
+            <button className="ghost back-to-list" onClick={backToList}>
+              ← 작업 목록으로
+            </button>
+            <ResultPanel
+              job={current}
+              available={available}
+              artifact={artifact}
+              text={text}
+              loading={loadingText}
+              pending={pending}
+              jobModel={jobModel}
+              onOpenArtifact={(item) => void openArtifact(item)}
+              onCommand={onCommand}
+              onContinue={onContinue}
+              onNotice={onNotice}
+              loadingFallback={loading}
+            />
+          </div>
+        </div>
       </div>
     </>
   );
