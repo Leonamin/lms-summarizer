@@ -13,3 +13,6 @@ __pycache__
 wiki
 tests
 assets
+docs
+examples
+packaging

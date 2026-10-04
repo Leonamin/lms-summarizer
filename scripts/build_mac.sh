@@ -1,10 +1,13 @@
 #!/bin/bash
 #
 # LMS Summarizer - Mac .app 빌드 스크립트
-# 사용법: ./build_mac_pyinstaller.sh
+# 사용법: bash scripts/build_mac.sh
 #
 
 set -e
+
+PROJECT_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$PROJECT_ROOT"
 
 APP_NAME="LMS-Summarizer"
 APP_VERSION=$(sed -n 's/^version = "\(.*\)"/\1/p' pyproject.toml | head -n1)
@@ -38,7 +41,7 @@ rm -rf build/ dist/
 
 # spec 파일로 빌드
 echo "🔨 PyInstaller 빌드 시작..."
-uv run --extra desktop pyinstaller lms-summarizer.spec
+uv run --extra desktop pyinstaller packaging/lms-summarizer.spec
 
 # 빌드 결과 확인
 DIST_APP="dist/${APP_NAME}.app"

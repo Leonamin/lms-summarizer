@@ -32,7 +32,7 @@ jobs:
           uv pip install pyinstaller
 
       - name: PyInstaller 빌드
-        run: uv run --extra desktop pyinstaller lms-summarizer.spec
+        run: uv run --extra desktop pyinstaller packaging/lms-summarizer.spec
 
       - name: 패키징된 공통 작업 프로세스 검증
         run: |
@@ -87,7 +87,7 @@ jobs:
           "
 
       - name: PyInstaller 빌드
-        run: uv run --extra desktop --extra cuda pyinstaller lms-summarizer.spec
+        run: uv run --extra desktop --extra cuda pyinstaller packaging/lms-summarizer.spec
 
       - name: 패키징된 공통 작업 프로세스 검증
         shell: pwsh
