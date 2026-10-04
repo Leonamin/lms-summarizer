@@ -1,0 +1,223 @@
+/* ---------------------------------------------------------------- card -- */
+.panel {
+  position: relative;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Raise a card above its siblings while one of its dropdowns is open. */
+.panel:has(.dropdown.open),
+.panel:has(.combobox-menu) {
+  z-index: 40;
+}
+
+.section-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 28px 28px 18px;
+}
+
+.section-heading .eyebrow {
+  margin-bottom: 10px;
+}
+
+.heading-count {
+  font-size: var(--t-md);
+  font-weight: 500;
+  color: var(--faint);
+  padding-left: 8px;
+}
+
+/* ------------------------------------------------------------- buttons -- */
+.primary,
+.secondary,
+.quiet,
+.ghost,
+.button-danger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  border-radius: var(--radius-sm);
+  font-weight: 650;
+  white-space: nowrap;
+  transition:
+    background var(--speed),
+    border-color var(--speed),
+    color var(--speed),
+    transform var(--speed);
+}
+
+.primary {
+  padding: 0 22px;
+  font-size: var(--t-md);
+  color: #fff;
+  background: var(--brand);
+}
+
+.primary:hover:not(:disabled) {
+  background: var(--brand-700);
+}
+
+.primary:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.secondary {
+  padding: 0 18px;
+  font-size: var(--t-sm);
+  color: var(--brand-700);
+  background: var(--brand-100);
+}
+
+.secondary:hover:not(:disabled) {
+  background: #e2e1f7;
+}
+
+.quiet {
+  min-height: 0;
+  padding: 8px 10px;
+  font-size: var(--t-sm);
+  color: var(--muted);
+}
+
+.quiet:hover:not(:disabled) {
+  background: var(--bg);
+  color: var(--ink);
+}
+
+.ghost {
+  padding: 0 16px;
+  font-size: var(--t-sm);
+  color: var(--ink-2);
+  border: 1px solid var(--line-strong);
+  background: var(--paper);
+}
+
+.ghost:hover:not(:disabled) {
+  border-color: var(--brand-500);
+  color: var(--brand-700);
+}
+
+.danger,
+.button-danger {
+  color: var(--danger);
+}
+
+.button-danger {
+  padding: 0 16px;
+  font-size: var(--t-sm);
+  border: 1px solid #f2c9d2;
+  background: var(--danger-100);
+}
+
+.button-danger:hover:not(:disabled) {
+  background: #f7d6dd;
+}
+
+/* --------------------------------------------------------------- forms -- */
+input,
+select,
+textarea {
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-xs);
+  background: var(--paper-2);
+  padding: 11px 13px;
+  font-size: var(--t-md);
+  color: var(--ink);
+  min-width: 0;
+  transition:
+    border-color var(--speed),
+    box-shadow var(--speed);
+}
+
+input,
+select {
+  height: var(--control-h);
+}
+
+input:hover:not(:disabled),
+select:hover:not(:disabled),
+textarea:hover:not(:disabled) {
+  border-color: var(--brand-500);
+}
+
+input:disabled,
+select:disabled,
+textarea:disabled {
+  background: var(--bg);
+  color: var(--faint);
+}
+
+textarea {
+  resize: vertical;
+  line-height: 1.7;
+  min-height: 96px;
+}
+
+label {
+  font-size: var(--t-sm);
+  color: var(--muted);
+}
+
+label.check,
+.check {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 9px;
+  font-size: var(--t-sm);
+  color: var(--ink-2);
+  cursor: pointer;
+}
+
+label.check input,
+.check input {
+  width: 17px;
+  height: 17px;
+  min-height: 0;
+  accent-color: var(--brand);
+  flex-shrink: 0;
+}
+
+/* ------------------------------------------------------------- messages -- */
+.message {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 18px;
+  margin-bottom: 22px;
+  border-radius: var(--radius-sm);
+  font-size: var(--t-sm);
+  font-weight: 550;
+}
+
+.message button {
+  font-size: 20px;
+  line-height: 1;
+  color: inherit;
+  opacity: 0.7;
+}
+
+.message.error,
+.inline-error {
+  color: #8f2340;
+  background: var(--danger-100);
+}
+
+.message.notice {
+  color: var(--positive);
+  background: var(--positive-100);
+}
+
+.inline-error {
+  margin: 0 28px 16px;
+  padding: 12px 15px;
+  border-radius: var(--radius-xs);
+  font-size: var(--t-sm);
+}

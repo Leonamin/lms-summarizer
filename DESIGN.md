@@ -1,7 +1,7 @@
 ---
 version: alpha
 name: LMS 강의 작업실 (Web Dashboard)
-description: "Docker 웹 대시보드(frontend/)의 실제 구현 디자인 시스템. 토큰은 frontend/src/style.css :root 에 정의되어 있다."
+description: "Docker 웹 대시보드(frontend/)의 실제 구현 디자인 시스템. 토큰은 frontend/src/styles/foundation.css :root 에 정의되어 있다."
 colors:
   brand: "#4f46b8"
   brand-strong: "#3b338f"
@@ -201,7 +201,7 @@ components:
 ## Overview
 
 **범위.** Vite/React 웹 대시보드 `frontend/`에만 적용된다. 설치는 `src/gui`(Flet), 서버는 `src/web`으로 별도다.
-스타일 단일 소스는 `frontend/src/style.css`이며 Tailwind/PostCSS/토큰 파일은 없다.
+스타일 진입점은 `frontend/src/style.css`이며 `styles/`의 토큰·공용 요소·기능별 스타일·반응형 규칙을 순서대로 가져온다. 토큰은 `styles/foundation.css`의 `:root`에 정의한다. Tailwind나 별도 토큰 생성기는 사용하지 않는다.
 
 **반복되는 시각 특성.**
 
@@ -211,10 +211,10 @@ components:
   쓴다(단계 카드 상단 강조 보더도 없다). 작업 목록 선택은 아래의 **인디케이터**로 표시한다.
 - **넉넉한 여백 + 타이포 중심 위계.** 카드 패딩 30px, 섹션 간격 확대, 낮은 그림자, 헤어라인 경계.
 - **상태는 알약 배지.** `--pill` 배지로 의미를 구분한다.
-- **모달 없음.** 부가 정보는 페이지 전환 또는 네이티브 `<details>`로 접는다(작업 로그·시도 이력·서버 진단·설정 고급).
-  파괴적 전체 동작만 `window.confirm`.
+- **목적별 화면.** 작업실·강의 가져오기·처리 설정을 분리한다. 단계 집계·완료 작업의 처리 정보·로그는 `<details>`로 접는다.
+  긴 결과의 전체 보기는 기존 네이티브 `<dialog>`를 사용하며 Esc·포커스 복귀를 유지한다.
 - **커스텀 컨트롤.** 네이티브 `<select>`/`<datalist>` 없이 `Dropdown`(선택)과 `Combobox`(자유 입력)를 쓴다.
-- **텍스트 글리프 아이콘.** 아이콘 라이브러리 없이 유니코드 글리프(▤ ⚙ ↑ ✓ × ↗ ★ ↓ →)를 쓴다.
+- **아이콘.** 내비게이션·자료 유형·처리 단계는 기존 lucide-react를 사용한다. 일부 기존 버튼의 화살표 글리프는 유지한다.
 
 ## Colors
 
@@ -249,9 +249,13 @@ Pretendard 가변 폰트 자체 호스팅(`frontend/public/fonts/PretendardVaria
 
 - `.app-shell` = `264px + minmax(0,1fr)`. `.rail`은 `sticky`, `height:100vh`, 단색 배경, 세로 flex.
 - `main` 최대 1480px, 패딩 `44px clamp(24px,4vw,64px) 28px`(≥1500px 좌우 72px).
-- 작업실 흐름: `.overview` → `.lms-panel` → `.intake` → `.workspace-grid`.
-- `.overview` = 지표 카드 3개(처리 중·완료·미완료 재생) + `.pipeline-summary`(4열). 1180px 이하 카드 3열 + 파이프라인 전폭.
-- `.workspace-grid` = `minmax(360px,1fr) minmax(0,1.2fr)` 2열(작업 목록 / 작업 상세). 1180px 이하 1열(`minmax(0,1fr)`), 자식 `min-width:0`.
+- 기본 화면은 `#workspace`: 제목·가져오기 버튼 → 상태 필터 → 접힌 단계 집계 → 작업 목록·상세.
+- `.workspace-status-bar`의 전체·처리 중·완료·확인 필요는 실제 목록 필터다. 미완료 재생은 별도 큐 이력으로 이동한다.
+- `.workspace-grid` = `minmax(360px,1fr) minmax(0,1.2fr)` 2열. 넓은 화면 상세는 `top:20px`로 sticky.
+- 1180px 이하에서는 목록 또는 상세 하나만 표시한다. 행 선택 시 `#workspace/<job-id>`로 이동하고, 목록 복귀 시 검색·정렬·페이지·선택과 포커스를 유지한다.
+- `#import`는 `.import-page`(최대 1000px) 안에 과목·주차 / URL 입력 / 파일 업로드 선택 버튼과 해당 폼만 표시한다.
+  폼은 마운트 상태를 유지해 화면 이동 중 입력이 사라지지 않는다. 파일과 LMS의 종료 단계는 별도로 유지한다.
+- `#settings`는 처리 설정과 서버 진단을 제공한다. 해시 이동으로 브라우저 뒤로가기·새로고침 시 현재 화면을 유지한다.
 - `.settings-sheet` 단일 카드(최대 960px), 섹션 `fieldset`/`legend`, 필드 `.settings-grid` 2열(900px 이하 1열).
 - 섹션 헤딩은 `.section-heading`(space-between).
 
@@ -269,7 +273,7 @@ Pretendard 가변 폰트 자체 호스팅(`frontend/public/fonts/PretendardVaria
 
 ## Components
 
-근거: `frontend/src/components/*.tsx`, `frontend/src/pages/*.tsx`, `frontend/src/style.css`.
+근거: `frontend/src/components/*.tsx`, `frontend/src/pages/*.tsx`, `frontend/src/styles/*.css`.
 
 ### Buttons
 - `{components.button-primary}` — `.primary`. 단색 `--brand`, 흰 텍스트, 최소 높이 42px. hover `--brand-700`.
@@ -323,11 +327,11 @@ Pretendard 가변 폰트 자체 호스팅(`frontend/public/fonts/PretendardVaria
 ### Data table (작업 목록)
 - `.job-table-head`(sticky, 11px, `white-space:nowrap`) + `.job-row`가
   `grid-template-columns: 84px minmax(0,1fr) 70px 40px 72px`(상태·이름·단계 트랙·시도·만든 시각) 공유.
-- **자동 재생 그룹**: 표 머리글 아래 `.playback-group`(brand-50 배경)으로 `AUTO PLAY` 섹션을 표시한다.
-  재생 큐는 4단계 작업이 아니라 **별도 큐(PlaybackQueue)** 이며, 활성(대기/재생 중) 행은 배지 + 제목 + 시각으로
+- **자동 재생 그룹**: 목록 하단 `.playback-group`(brand-50 배경)으로 `AUTO PLAY` 섹션을 표시한다.
+  위치는 작업 목록·페이지네이션 다음이다. 재생 큐는 4단계 작업이 아니라 **별도 큐(PlaybackQueue)** 이며, 활성(대기/재생 중) 행은 배지 + 제목 + 시각으로
   보여준다. `지난 재생 N건` 토글을 펼치면 완료/실패/중단 이력을 상태 배지 + 제목 + 출석(출석/미출석) +
   연결 작업 수 + 시각으로 최근 20건까지 보여준다(`/playback`는 전체 상태를 반환). `.playback-row`는 flex(비인터랙티브).
-  개요의 **`미완료 재생` 카드**(`button.stat-card.is-warn`, 중단·실패 합계)를 누르면 이력을 펼치고
+  상태 영역의 **`미완료 재생` 버튼**(중단·실패 합계)을 누르면 이력을 펼치고
   `중단·실패` 필터를 켠 뒤 그룹으로 스크롤한다. 이력 필터는 `전체 / 미출석 / 중단·실패` 세그먼트(`.playback-filters`).
   `작업 N` 칩(`.playback-link`)을 누르면 연결된 작업으로 이동한다(필터·검색 초기화 → 해당 페이지로 이동 →
   선택 → 행 스크롤).
@@ -337,13 +341,12 @@ Pretendard 가변 폰트 자체 호스팅(`frontend/public/fonts/PretendardVaria
 - **단계 트랙**: `.stage-mini`가 4개 단계 아이콘(14px)을 나란히 그린다. 슬롯 색 = 단계 상태
   (완료 `--positive`, 진행 `--brand`+링 펄스, 대기 `--brand-500` 50%, 실패 `--danger`, 미도달 `--line-strong`).
   각 슬롯 `title`은 `n. 단계명 · 상태`. `current_stage` 기준 현재 단계 슬롯에 `.current`가 붙는다.
-- **이름 표시**: 목록은 `display_name`(강의 제목)을 **한 줄 말줄임** + `title` 툴팁으로 보여준다. URL 작업은
-  다운로드 완료 시 아티팩트 파일명(강의 제목)으로 이름이 바뀐다. `과목·주차`는 목록에 넣지 않는다.
-- **내부 스크롤 없음**: `.job-list`는 자체 스크롤바 없이 페이지 흐름으로 늘어난다. 좁은 화면(≤1400px)에서는
-  `시도` 열을 숨겨 이름 열 공간을 확보하고, ≤680px에서 트랙·시도·시각과 머리글을 숨겨 아이콘·상태·이름만 남긴다.
+- **이름 표시**: 강의 제목 아래 과목·주차를 보조 텍스트로 표시하고 세 항목을 함께 검색한다. 긴 값은 말줄임한다. URL 작업은 다운로드 완료 시 강의 제목으로 이름이 바뀐다.
+- **내부 스크롤 없음**: `.job-list`는 자체 스크롤바 없이 페이지 흐름으로 늘어난다. 중간 화면(681–1600px)에서는
+  `시도`·`시각` 열을 숨겨 이름 열 공간을 확보하고, ≤680px에서 트랙·시도·시각과 머리글을 숨겨 아이콘·상태·이름만 남긴다.
 - **페이지네이션**: `.job-pager`가 목록 하단(`12px 28px`)에 `1–20 / 24` 범위와 `‹ 현재/전체 ›` 이동을 보여주고,
   오른쪽에 페이지당 개수 세그먼트(`10`/`20`)를 둔다. 기본 20개/페이지, 10/20 선택. 필터·검색·정렬·개수 변경 시
-  1페이지로 돌아간다(`useEffect` 의존성).
+  1페이지로 돌아간다. 페이지는 검색 조건과 함께 관리해 연결 작업으로 이동한 페이지를 덮어쓰지 않는다.
 - **정렬**: `.job-sortby` 세그먼트(`최신순`/`과거순`)가 `created_at` 정렬을 제어하고, 표 머리글 클릭 정렬과
   같은 `sort` 상태를 공유한다(현재 정렬 열이 `만든 시각`일 때만 세그먼트가 활성). `.segment` 공통 스타일은
   도구 행 높이 `var(--control-h)`, 페이저에서는 `34px`.
@@ -372,7 +375,7 @@ Pretendard 가변 폰트 자체 호스팅(`frontend/public/fonts/PretendardVaria
 ### States (로딩 · 오류 · 빈 결과)
 - **초기 로딩**: `.skeleton`(배경 #eceef4, radius 8px) + `prefers-reduced-motion`에서만 shimmer. 통계 카드는
   `.skeleton-num`/`.skeleton-label`, 작업 목록은 `.skeleton-row` 6행, 상세 패널은 `.result-skeleton`.
-  헤더·파이프라인·입력 카드는 그대로 렌더해 레이아웃이 흔들리지 않는다.
+  현재 화면의 헤더와 프레임을 유지한다. 가져오기 폼은 작업실의 로딩 상태에 노출하지 않는다.
 - **서버 오류**: `.server-banner`(danger-soft 배경, 라운드, `!` 아이콘, "서버에 연결하지 못했습니다." +
   "다시 연결" 버튼)를 헤더 아래에 표시한다. 자동 재연결을 시도하고 버튼은 즉시 재시도한다.
 - **검색·필터 빈 결과**: 작업 목록 `.empty`에 "조건에 맞는 작업이 없습니다." + `.secondary` "검색·필터 초기화" 버튼.
@@ -388,18 +391,18 @@ Pretendard 가변 폰트 자체 호스팅(`frontend/public/fonts/PretendardVaria
 - **좌측 accent bar/border를 쓰지 않는다.** 선택 표시가 필요하면 위의 라운드 인디케이터/점을 쓴다.
 - 상태는 "진한 전경 + `-soft` 배경" 쌍을 따르고, 텍스트 라벨을 함께 쓴다(색만으로 구분 금지).
 - 선택 입력은 네이티브 `<select>` 대신 `Dropdown`, 자유 입력은 `Combobox`를 쓴다. 작업 목록형 정보는 표(`.job-row`)로 표현한다.
-- 새 부가 정보는 모달 대신 페이지 전환 또는 `<details>`로 표현한다.
+- 새 부가 정보는 페이지 전환 또는 `<details>`로 표현한다. 기존 결과 전체 보기의 네이티브 `<dialog>`는 유지한다.
 - 포커스는 `:focus-visible` + `--ring`을 유지한다. 진입 모션은 `prefers-reduced-motion` 게이트 안에 둔다.
 - Pretendard 자체 호스팅을 유지한다.
 
 ## Responsive Behavior
 
 - **≥1500px**: `main` 좌우 패딩 72px.
-- **≤1180px**: 레일 216px, `.workspace-grid` 1열(`minmax(0,1fr)`).
-- **≤900px**: `.overview` 2열(파이프라인 전폭), `.intake` 1열, `.settings-grid` 1열, `.course-checks` 1열.
-- **≤680px**: `.app-shell` block(레일 상단 가로 바), 브랜드 서브·캡션·하단·`private-label`·`file-types`·`nav-count` 숨김,
+- **≤1180px**: 레일 216px, 목록과 상세를 한 번에 하나씩 보여준다. 상세에서 목록 복귀 버튼을 제공한다.
+- **≤900px**: `.settings-grid`·`.course-checks` 1열. 가져오기는 모든 폭에서 폼 하나만 보여준다.
+- **≤680px**: `.app-shell` block(레일 브랜드 + 가로 메뉴), 브랜드 서브·캡션·하단·`private-label`·`file-types`·`nav-count` 숨김,
   `h1` 26px, 단계 트랙 2열 wrap, 작업 표 2열(상태·이름), 입력 16px.
-- **`prefers-reduced-motion: no-preference`**: `rise` 진입 모션(0.4s).
+- 화면 전환에는 지연 등장 모션을 적용하지 않는다. 상태 필터와 목록이 즉시 보이게 한다.
 
 ## Spacing & Sizing
 
@@ -422,8 +425,8 @@ Pretendard 가변 폰트 자체 호스팅(`frontend/public/fonts/PretendardVaria
 
 - 대부분 `transition: … var(--speed)`(0.16s). hover 배경/테두리/색, `:focus-visible` 링, `:active` 1px 하강.
 - 선택 상태: 작업 행은 현재 단계 슬롯 칩(`--brand` 채움) + `--brand-50` 배경, 내비는 밝은 오버레이, 탭은 배경/색 반전, 단계는 completed/running.
-- disabled: `opacity:.5`. 로딩 스피너/스켈레톤 없음(텍스트 상태·SSE 라벨로 표현).
-- 진입 애니메이션 `rise`(opacity+translateY(8px))는 `prefers-reduced-motion: no-preference`에서만.
+- disabled: `opacity:.5`. 초기 목록·상세는 스켈레톤으로 표현하고 SSE 연결 상태는 텍스트로 표시한다.
+- 화면 전체 진입 애니메이션은 사용하지 않는다. 개별 컨트롤의 기존 짧은 hover 전환은 유지한다.
 
 ## Known Inconsistencies
 
@@ -439,4 +442,12 @@ Pretendard 가변 폰트 자체 호스팅(`frontend/public/fonts/PretendardVaria
 
 - 데스크톱 GUI(`src/gui`) 시각 시스템은 범위 밖.
 - 접근성 등급은 lint로 확인한 대비만 기록했고 나머지는 측정값이 없다.
-- 다크 테마·모달/드로어 시스템·스켈레톤 로딩은 존재하지 않는다.
+- 다크 테마·일반 모달/드로어 시스템은 없다. 결과 전체 보기만 네이티브 dialog를 사용한다.
+
+## Workspace Design Rationale
+
+2026-10-04 개편은 기능 수를 줄이지 않고 가져오기와 처리·결과 확인의 화면 목적을 분리한다.
+NN/g의 점진적 공개 원칙은 단계 집계·완료 작업의 처리 정보 접기에 적용한다.
+Material의 목록–상세 레이아웃은 넓은 화면 병렬 배치와 좁은 화면 전환에 적용한다.
+Linear Peek의 목록 맥락 유지 방식을 참고해 검색·선택·페이지를 보존한다. Linear의 단축키 전용 진입 방식은 복제하지 않는다.
+관찰 근거·출처·검증 범위는 [작업실 개편 기록](docs/workspace-redesign.md)에 정리한다.

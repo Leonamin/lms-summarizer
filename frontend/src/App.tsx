@@ -7,20 +7,66 @@ import { Rail } from "./components/Rail";
 import { ServerPanel } from "./components/ServerPanel";
 import { SettingsPage } from "./pages/SettingsPage";
 import { WorkspacePage } from "./pages/WorkspacePage";
+import { Plus } from "lucide-react";
+
+const readView = (): View => {
+  const value = window.location.hash.slice(1).split("/")[0];
+  return value === "import" || value === "settings" ? value : "workspace";
+};
+const pageCopy = {
+  workspace: {
+    title: "작업실",
+    description: "처리 현황을 확인하고 강의 결과를 읽으세요.",
+  },
+  import: {
+    title: "강의 가져오기",
+    description: "가져올 자료의 종류를 선택하세요.",
+  },
+  settings: {
+    title: "처리 설정",
+    description:
+      "저장한 설정은 새 작업에 적용됩니다. 진행 중인 작업은 제출 당시 설정을 유지합니다.",
+  },
+};
 
 export function App() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [settings, setSettings] = useState<SettingsResponse | null>(null);
   const [draft, setDraft] = useState<Settings | null>(null);
-  const [view, setView] = useState<View>("workspace");
-  const [saving, setSaving] = useState(false);
+  const [view, updateView] = useState<View>(readView);
+  const viewRef = useRef(view);
+  const viewScroll = useRef<Partial<Record<View, number>>>({});
+  const pageTitleRef = useRef<HTMLHeadingElement>(null);
+  const setView = useCallback((next: View) => {
+    window.location.hash = next;
+  }, []);
+  useEffect(() => {
+    const syncView = () => {
+      const next = readView();
+      if (next === viewRef.current) return;
+      viewScroll.current[viewRef.current] = window.scrollY;
+      viewRef.current = next;
+      updateView(next);
+    };
+    window.addEventListener("hashchange", syncView);
+    return () => window.removeEventListener("hashchange", syncView);
+  }, []);
+  useEffect(() => {
+    document.title = `${pageCopy[view].title} · LMS`;
+    pageTitleRef.current?.focus({ preventScroll: true });
+    window.scrollTo({
+      top: viewScroll.current[view] ?? 0,
+      behavior: "instant",
+    });
+  }, [view]);
+  const [isSaving, setIsSaving] = useState(false);
   const [pending, setPending] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [connection, setConnection] = useState("연결 중");
-  const [ready, setReady] = useState(false);
+  const [isReady, setIsReady] = useState(false);
   const [retryKey, setRetryKey] = useState(0);
-  const [railCollapsed, setRailCollapsed] = useState(() => {
+  const [isRailCollapsed, setIsRailCollapsed] = useState(() => {
     try {
       return localStorage.getItem("lms-rail") === "collapsed";
     } catch {
@@ -28,17 +74,20 @@ export function App() {
     }
   });
   const toggleRail = () =>
-    setRailCollapsed((collapsed) => {
-      const next = !collapsed;
+    setIsRailCollapsed((isCollapsed) => {
+      const isNextCollapsed = !isCollapsed;
       try {
-        localStorage.setItem("lms-rail", next ? "collapsed" : "expanded");
+        localStorage.setItem(
+          "lms-rail",
+          isNextCollapsed ? "collapsed" : "expanded",
+        );
       } catch {
         /* storage may be unavailable */
       }
-      return next;
+      return isNextCollapsed;
     });
   const seenCursor = useRef(0);
-  const bootRef = useRef(false);
+  const hasBootedRef = useRef(false);
 
   const report = useCallback((cause: unknown) => {
     setError(cause instanceof Error ? cause.message : "요청에 실패했습니다.");
@@ -60,7 +109,7 @@ export function App() {
   );
 
   useEffect(() => {
-    let alive = true;
+    let isAlive = true;
     let events: EventSource | null = null;
     let timer: ReturnType<typeof setTimeout>;
     const connect = async () => {
@@ -69,31 +118,31 @@ export function App() {
           allJobs(),
           api<SettingsResponse>("/settings"),
         ]);
-        if (!alive) return;
+        if (!isAlive) return;
         merge(snapshot.jobs);
         seenCursor.current = snapshot.cursor;
         setSettings(config);
         setDraft((old) => old ?? config.settings);
-        bootRef.current = true;
-        setReady(true);
+        hasBootedRef.current = true;
+        setIsReady(true);
         events?.close();
         events = new EventSource("/api/v1/events?cursor=" + snapshot.cursor);
-        events.onopen = () => alive && setConnection("실시간 연결");
-        events.onerror = () => alive && setConnection("재연결 중");
+        events.onopen = () => isAlive && setConnection("실시간 연결");
+        events.onerror = () => isAlive && setConnection("재연결 중");
         events.addEventListener("job.updated", (event) => {
           const message = event as MessageEvent;
           const payload = JSON.parse(message.data);
           seenCursor.current = Number(message.lastEventId);
           api<Job>("/jobs/" + payload.job_id)
-            .then((job) => alive && merge([job]))
+            .then((job) => isAlive && merge([job]))
             .catch(report);
         });
         events.addEventListener("reset", () => {
           events?.close();
-          if (alive) void connect();
+          if (isAlive) void connect();
         });
       } catch (cause) {
-        if (alive) {
+        if (isAlive) {
           report(cause);
           setConnection("연결 끊김");
           timer = setTimeout(connect, 3000);
@@ -103,13 +152,13 @@ export function App() {
     void connect();
     // REST reconciliation also recovers transient detail fetch failures while SSE is connected.
     const reconcile = setInterval(() => {
-      if (bootRef.current)
+      if (hasBootedRef.current)
         allJobs()
-          .then((snapshot) => alive && merge(snapshot.jobs))
-          .catch(() => alive && setConnection("재연결 중"));
+          .then((snapshot) => isAlive && merge(snapshot.jobs))
+          .catch(() => isAlive && setConnection("재연결 중"));
     }, 10000);
     return () => {
-      alive = false;
+      isAlive = false;
       events?.close();
       clearTimeout(timer);
       clearInterval(reconcile);
@@ -118,7 +167,7 @@ export function App() {
 
   const saveSettings = async () => {
     if (!settings || !draft) return;
-    setSaving(true);
+    setIsSaving(true);
     setError("");
     setNotice("");
     try {
@@ -140,14 +189,14 @@ export function App() {
         // Preserve unsaved edits after a concurrent credential/settings update.
       }
     } finally {
-      setSaving(false);
+      setIsSaving(false);
     }
   };
 
   const command = async (
     job: Job,
     action: "cancel" | "retry" | "resume",
-    useCurrentSettings = false,
+    shouldUseCurrentSettings = false,
   ) => {
     setPending(job.id);
     setError("");
@@ -155,19 +204,18 @@ export function App() {
       const body: Record<string, unknown> = {
         attempt_id: job.current_attempt_id,
       };
-      if (action !== "cancel") body.use_current_settings = useCurrentSettings;
+      if (action !== "cancel")
+        body.use_current_settings = shouldUseCurrentSettings;
       const updated = await api<Job>("/jobs/" + job.id + "/" + action, {
         method: "POST",
         headers:
-          action === "cancel"
-            ? undefined
-            : { "Idempotency-Key": requestId() },
+          action === "cancel" ? undefined : { "Idempotency-Key": requestId() },
         body: JSON.stringify(body),
       });
       merge([updated]);
       if (action === "resume")
         setNotice(
-          useCurrentSettings
+          shouldUseCurrentSettings
             ? "현재 설정으로 끊긴 단계부터 이어서 처리합니다."
             : "끊긴 단계부터 이어서 처리합니다.",
         );
@@ -210,34 +258,38 @@ export function App() {
   };
 
   return (
-    <div className={"app-shell" + (railCollapsed ? " rail-collapsed" : "")}>
+    <div className={"app-shell" + (isRailCollapsed ? " rail-collapsed" : "")}>
       <Rail
         view={view}
         setView={setView}
         jobCount={jobs.length}
         connection={connection}
-        collapsed={railCollapsed}
+        isCollapsed={isRailCollapsed}
         onToggle={toggleRail}
       />
       <main>
         <header className="page-header">
           <div>
-            <span className="eyebrow">
-              {view === "settings" ? "PREFERENCES" : "LECTURE WORKSPACE"}
-            </span>
-            <h1>{view === "settings" ? "처리 설정" : "강의에서, 핵심으로."}</h1>
-            <p>
-              {view === "settings"
-                ? "저장한 설정은 새 작업에 적용됩니다. 진행 중인 작업은 제출 당시 설정을 유지합니다."
-                : "자료를 올리고, 처리 흐름을 확인하고, 핵심을 다시 읽으세요."}
-            </p>
+            <h1 ref={pageTitleRef} tabIndex={-1}>
+              {pageCopy[view].title}
+            </h1>
+            <p>{pageCopy[view].description}</p>
           </div>
-          <span className="private-label">개인 작업실</span>
+          {view === "workspace" && (
+            <button
+              className="primary import-action"
+              onClick={() => setView("import")}
+            >
+              <Plus size={18} aria-hidden="true" /> 강의 가져오기
+            </button>
+          )}
         </header>
         <MessageBanner
           error={error}
           notice={notice}
-          onDismiss={(kind) => (kind === "error" ? setError("") : setNotice(""))}
+          onDismiss={(kind) =>
+            kind === "error" ? setError("") : setNotice("")
+          }
         />
         {connection === "연결 끊김" && (
           <div className="server-banner" role="alert">
@@ -261,15 +313,17 @@ export function App() {
         )}
         <div hidden={view === "settings"}>
           <WorkspacePage
+            view={view}
+            onNavigate={setView}
             jobs={jobs}
             settings={settings}
             merge={merge}
             report={report}
             pending={pending}
-            loading={!ready}
+            isLoading={!isReady}
             onNotice={setNotice}
-            onCommand={(job, action, useCurrent) =>
-              void command(job, action, useCurrent)
+            onCommand={(job, action, shouldUseCurrentSettings) =>
+              void command(job, action, shouldUseCurrentSettings)
             }
             onContinue={(job, stage) => void continueJob(job, stage)}
             onStopAll={() => void stopAll()}
@@ -286,11 +340,11 @@ export function App() {
               )
             }
             save={() => void saveSettings()}
-            saving={saving}
+            isSaving={isSaving}
             report={report}
           />
         )}
-        <ServerPanel report={report} />
+        {view === "settings" && <ServerPanel report={report} />}
         <footer className="page-footer">
           <span>LMS SUMMARIZER</span>
           <span>화면을 닫아도 서버의 작업은 계속됩니다.</span>

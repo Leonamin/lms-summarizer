@@ -1,8 +1,10 @@
 import type { View } from "../lib/format";
+import { LayoutList, Plus, Settings, type LucideIcon } from "lucide-react";
 
-const items: { key: View; icon: string; label: string }[] = [
-  { key: "workspace", icon: "▤", label: "작업실" },
-  { key: "settings", icon: "⚙", label: "처리 설정" },
+const items: { key: View; icon: LucideIcon; label: string }[] = [
+  { key: "workspace", icon: LayoutList, label: "작업실" },
+  { key: "import", icon: Plus, label: "강의 가져오기" },
+  { key: "settings", icon: Settings, label: "처리 설정" },
 ];
 
 export function Rail({
@@ -10,20 +12,20 @@ export function Rail({
   setView,
   jobCount,
   connection,
-  collapsed,
+  isCollapsed,
   onToggle,
 }: {
   view: View;
   setView: (view: View) => void;
   jobCount: number;
   connection: string;
-  collapsed: boolean;
+  isCollapsed: boolean;
   onToggle: () => void;
 }) {
   return (
-    <aside className={"rail" + (collapsed ? " collapsed" : "")}>
+    <aside className={"rail" + (isCollapsed ? " collapsed" : "")}>
       <div className="rail-head">
-        <a className="brand" href="/" aria-label="강의 작업실 홈">
+        <a className="brand" href="#workspace" aria-label="강의 작업실 홈">
           <span className="brand-mark">L</span>
           <span className="brand-text">
             LMS<span className="brand-sub">강의 작업실</span>
@@ -32,26 +34,26 @@ export function Rail({
         <button
           type="button"
           className="rail-toggle"
-          aria-label={collapsed ? "메뉴 펼치기" : "메뉴 접기"}
-          aria-expanded={!collapsed}
+          aria-label={isCollapsed ? "메뉴 펼치기" : "메뉴 접기"}
+          aria-expanded={!isCollapsed}
           aria-controls="rail-nav"
-          title={collapsed ? "메뉴 펼치기" : "메뉴 접기"}
+          title={isCollapsed ? "메뉴 펼치기" : "메뉴 접기"}
           onClick={onToggle}
         >
-          {collapsed ? "»" : "«"}
+          {isCollapsed ? "»" : "«"}
         </button>
       </div>
-      <div className="rail-caption">YOUR LEARNING, IN ORDER</div>
+      <div className="rail-caption">나의 강의</div>
       <nav id="rail-nav" aria-label="메뉴">
         {items.map((item) => (
           <button
             key={item.key}
             className={"nav-item" + (view === item.key ? " selected" : "")}
-            aria-current={view === item.key}
+            aria-current={view === item.key ? "page" : undefined}
             title={item.label}
             onClick={() => setView(item.key)}
           >
-            <span aria-hidden="true">{item.icon}</span>
+            <item.icon size={18} aria-hidden="true" />
             <span className="nav-label">{item.label}</span>
             {item.key === "workspace" && (
               <span className="nav-count">{jobCount}</span>

@@ -1,0 +1,259 @@
+/* --------------------------------------------------------------- intake -- */
+.intake {
+  display: grid;
+  grid-template-columns: 232px minmax(0, 1fr);
+  gap: 32px;
+  padding: 30px;
+  margin-bottom: 26px;
+}
+
+.intake-title h2 {
+  line-height: 1.35;
+}
+
+.intake-title p {
+  margin-top: 12px;
+  font-size: var(--t-sm);
+  color: var(--muted);
+}
+
+.intake-body {
+  min-width: 0;
+}
+
+.drop-zone {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  padding: 24px;
+  border-radius: var(--radius);
+  border: 1.5px dashed var(--line-strong);
+  background: var(--paper-2);
+  cursor: pointer;
+  transition:
+    border-color var(--speed),
+    background var(--speed);
+}
+
+.drop-zone:hover {
+  border-color: var(--brand-500);
+  background: var(--brand-50);
+}
+
+.drop-zone.disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.upload-symbol {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: var(--radius-sm);
+  font-size: 22px;
+  color: #fff;
+  background: var(--brand);
+  flex-shrink: 0;
+}
+
+.drop-zone strong {
+  display: block;
+  font-size: var(--t-md);
+  font-weight: 650;
+  color: var(--ink);
+}
+
+.drop-zone small {
+  display: block;
+  margin-top: 4px;
+  font-size: var(--t-sm);
+}
+
+.file-types {
+  margin-left: auto;
+  font-size: var(--t-xs);
+  font-weight: 650;
+  letter-spacing: 0.4px;
+  color: var(--brand-700);
+  background: var(--brand-100);
+  padding: 6px 12px;
+  border-radius: var(--pill);
+}
+
+.file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  overflow: hidden;
+}
+
+.file-list {
+  list-style: none;
+  padding: 0;
+  margin: 14px 0 0;
+}
+
+.file-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: var(--t-sm);
+}
+
+.file-list li > span {
+  flex: 1;
+  word-break: break-word;
+  color: var(--ink);
+}
+
+.file-list button {
+  font-size: 20px;
+  color: var(--faint);
+}
+
+.intake-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+  margin-top: 22px;
+}
+
+.inline-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: var(--t-sm);
+}
+
+.inline-label select {
+  max-width: 300px;
+}
+
+/* ------------------------------------------------------------ lms panel -- */
+.lms-panel {
+  padding: 30px;
+  margin-bottom: 26px;
+}
+
+.course-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  margin: 18px 0;
+}
+
+.course-tools label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.segmented {
+  display: inline-flex;
+  padding: 4px;
+  gap: 4px;
+  border-radius: var(--pill);
+  background: var(--bg);
+}
+
+.segmented button {
+  padding: 9px 18px;
+  border-radius: var(--pill);
+  font-size: var(--t-sm);
+  font-weight: 650;
+  color: var(--muted);
+}
+
+.segmented button.active {
+  color: var(--brand-700);
+  background: var(--paper);
+  box-shadow: var(--shadow-sm);
+}
+
+/* URL textarea: full width of the card. */
+.lms-panel > label {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  width: 100%;
+  max-width: none;
+  margin: 18px 0;
+  font-size: var(--t-sm);
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.lms-panel textarea {
+  width: 100%;
+  max-width: none;
+}
+
+.lecture-week {
+  border-bottom: 1px solid var(--line);
+  padding: 16px 0;
+}
+
+.lecture-week summary {
+  cursor: pointer;
+  font-weight: 650;
+  color: var(--ink);
+  padding: 4px 0;
+}
+
+.lecture-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 8px;
+  margin: 0;
+  border-radius: var(--radius-xs);
+}
+
+.lecture-row:hover {
+  background: var(--paper-2);
+}
+
+.lecture-row input {
+  width: 18px;
+  height: 18px;
+  min-height: 0;
+  flex-shrink: 0;
+  accent-color: var(--brand);
+}
+
+.lecture-row strong {
+  display: block;
+  font-size: var(--t-sm);
+  font-weight: 600;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.lecture-row small {
+  display: block;
+  font-size: var(--t-xs);
+  margin-top: 3px;
+}
+
+.lecture-row:has(input:disabled) {
+  opacity: 0.55;
+}
+
+.lms-panel .manual-note {
+  margin: 0 0 12px;
+}
+
+.manual-note {
+  padding: 13px 16px;
+  border-radius: var(--radius-sm);
+  font-size: var(--t-sm);
+  color: #7a5c06;
+  background: var(--warning-100);
+}

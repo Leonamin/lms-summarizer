@@ -1,0 +1,180 @@
+/* ==========================================================================
+   LMS 강의 작업실 — design tokens (Direction B: Soft Editorial)
+   Flat near-black indigo rail, generous whitespace, hairline cards,
+   typography-led hierarchy, indigo/violet accent used sparingly.
+   ========================================================================== */
+@font-face {
+  font-family: "Pretendard Variable";
+  font-weight: 45 920;
+  font-style: normal;
+  font-display: swap;
+  src: url("/fonts/PretendardVariable.woff2") format("woff2");
+}
+
+:root {
+  color-scheme: light;
+  font-family:
+    "Pretendard Variable",
+    Pretendard,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Apple SD Gothic Neo",
+    "Noto Sans KR",
+    system-ui,
+    sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+
+  /* brand */
+  --brand: #4f46b8;
+  --brand-700: #3b338f;
+  --brand-500: #635ac9;
+  --brand-100: #ecebfa;
+  --brand-50: #f5f5fd;
+  --violet: #b771e5;
+
+  /* status */
+  --positive: #2f7a5b;
+  --positive-100: #dff1e7;
+  --warning: #9a6b0a;
+  --warning-100: #fdf3d6;
+  --danger: #c93b58;
+  --danger-100: #fbe6ea;
+
+  /* neutrals */
+  --ink: #1b1a33;
+  --ink-2: #3a3850;
+  --muted: #666579;
+  --faint: #8f8ea0;
+  --line: #e9eaf2;
+  --line-strong: #d8d9e5;
+  --bg: #f6f7fb;
+  --paper: #ffffff;
+  --paper-2: #fafbfe;
+  --rail: #17142f;
+  --rail-line: rgba(255, 255, 255, 0.08);
+
+  /* shape + depth */
+  --radius: 18px;
+  --radius-sm: 12px;
+  --radius-xs: 10px;
+  --pill: 999px;
+  --control-h: 46px;
+  --shadow-sm: 0 1px 2px rgba(24, 22, 51, 0.05);
+  --shadow: 0 24px 48px -30px rgba(24, 22, 51, 0.4);
+  --ring: 0 0 0 3px rgba(79, 70, 184, 0.2);
+  --speed: 0.16s;
+
+  /* type scale */
+  --t-2xs: 11px;
+  --t-xs: 12px;
+  --t-sm: 13.5px;
+  --t-md: 15px;
+  --t-lg: 17px;
+  --t-xl: 21px;
+  --t-2xl: 33px;
+  --t-display: 36px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  color: var(--ink-2);
+  background: var(--bg);
+  font-size: var(--t-md);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button {
+  cursor: pointer;
+  border: 0;
+  background: none;
+}
+
+button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+a {
+  color: var(--brand-700);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+:where(button, a, input, select, textarea, [tabindex]):focus-visible,
+label.drop-zone:focus-within {
+  outline: none;
+  box-shadow: var(--ring);
+  border-radius: var(--radius-xs);
+}
+
+h1,
+h2,
+h3,
+p,
+ol,
+ul {
+  margin: 0;
+}
+
+h1 {
+  font-size: var(--t-2xl);
+  line-height: 1.22;
+  letter-spacing: -0.6px;
+  font-weight: 760;
+  color: var(--ink);
+}
+
+h2 {
+  font-size: var(--t-xl);
+  letter-spacing: -0.3px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+h3 {
+  font-size: var(--t-lg);
+  font-weight: 650;
+  color: var(--ink);
+}
+
+small,
+.muted {
+  color: var(--muted);
+}
+
+.sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}

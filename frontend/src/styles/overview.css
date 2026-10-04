@@ -1,0 +1,101 @@
+/* ------------------------------------------------------------- overview -- */
+/* Status is navigation into the list, not a row of dashboard cards. */
+.workspace-overview {
+  margin-bottom: 20px;
+}
+.workspace-status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.status-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.status-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: var(--radius-xs);
+  color: var(--muted);
+  font-size: var(--t-sm);
+}
+.status-filter span {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+.status-filter:hover {
+  background: var(--brand-100);
+  color: var(--brand-700);
+}
+.status-filter.active {
+  background: var(--brand);
+  color: var(--paper);
+}
+.playback-alert {
+  min-height: 44px;
+  padding: 0 12px;
+  font-size: var(--t-sm);
+  color: var(--warning);
+  border-radius: var(--radius-xs);
+  background: var(--warning-100);
+}
+.pipeline-details {
+  margin-top: 12px;
+}
+.pipeline-details > summary {
+  width: fit-content;
+  min-height: 36px;
+  padding: 6px 0;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: var(--t-sm);
+}
+.pipeline-details > summary span {
+  margin-left: 12px;
+  font-size: var(--t-xs);
+}
+.pipeline-details .pipeline-summary {
+  margin-top: 12px;
+}
+.pipeline-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+/* Same 1px hairline border as every other card (no top accent). */
+.pipeline-step {
+  padding: 18px 18px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: var(--paper);
+  box-shadow: var(--shadow-sm);
+}
+
+.step-index {
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 1.2px;
+  color: var(--faint);
+}
+
+.pipeline-step strong {
+  display: block;
+  margin-top: 8px;
+  font-size: var(--t-md);
+  font-weight: 650;
+  color: var(--ink);
+}
+
+.pipeline-step small {
+  display: block;
+  margin-top: 10px;
+  font-size: var(--t-xs);
+  color: var(--muted);
+}
