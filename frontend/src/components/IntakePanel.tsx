@@ -1,14 +1,9 @@
+import { fileEndStageOptions } from "../lib/processingOptions";
 import { useRef, useState } from "react";
 import { api, ApiError } from "../api";
 import type { SettingsResponse, Upload } from "../types";
 import { bytes, requestId } from "../lib/format";
 import { Dropdown } from "./Dropdown";
-
-const intakeStageOptions = [
-  { value: "4", label: "요약 / 프롬프트 준비" },
-  { value: "3", label: "음성 인식까지만" },
-  { value: "2", label: "오디오 변환까지만" },
-];
 
 const allowed = /\.(mp4|ts|wav|mp3|txt)$/i;
 
@@ -33,8 +28,8 @@ export function IntakePanel({
 }) {
   const [files, setFiles] = useState<File[]>([]);
   const [uploads, setUploads] = useState<Upload[]>([]);
-  const [busy, setBusy] = useState(false);
-  const [uncertain, setUncertain] = useState(false);
+  const [isBusy, setIsBusy] = useState(false);
+  const [isUncertain, setIsUncertain] = useState(false);
   const [error, setError] = useState("");
   const fileInput = useRef<HTMLInputElement>(null);
   const batchRef = useRef<{
@@ -62,10 +57,10 @@ export function IntakePanel({
 
   const submit = async () => {
     if (!settings || !files.length) return;
-    setBusy(true);
+    setIsBusy(true);
     setError("");
     const staged: Upload[] = batchRef.current?.uploads ?? [];
-    let acknowledged = false;
+    let isAcknowledged = false;
     try {
       const revision = batchRef.current?.revision ?? settings.settings_revision;
       if (!batchRef.current)
@@ -113,22 +108,25 @@ export function IntakePanel({
           end_stage: batch.endStage,
         }),
       });
-      acknowledged = true;
+      isAcknowledged = true;
       await onSubmitted(result.job_ids);
       batchRef.current = null;
-      setUncertain(false);
+      setIsUncertain(false);
       setFiles([]);
       setUploads([]);
     } catch (cause) {
       report(cause);
-      if (batchRef.current && (!(cause instanceof ApiError) || acknowledged)) {
-        setUncertain(true);
+      if (
+        batchRef.current &&
+        (!(cause instanceof ApiError) || isAcknowledged)
+      ) {
+        setIsUncertain(true);
         setError(
           "제출 응답을 확인하지 못했습니다. 다시 확인하면 같은 요청을 이어서 조회합니다.",
         );
       } else {
         batchRef.current = null;
-        setUncertain(false);
+        setIsUncertain(false);
         await Promise.all(
           staged.map((item) =>
             api("/uploads/" + item.id, { method: "DELETE" }).catch(() => {}),
@@ -136,7 +134,7 @@ export function IntakePanel({
         );
       }
     } finally {
-      setBusy(false);
+      setIsBusy(false);
     }
   };
 
@@ -153,17 +151,17 @@ export function IntakePanel({
           type="file"
           multiple
           accept=".mp4,.ts,.wav,.mp3,.txt"
-          disabled={busy || uncertain}
+          disabled={isBusy || isUncertain}
           onChange={(e) => addFiles(e.target.files)}
           className="file-input"
         />
         <label
           htmlFor="file-input"
-          className={"drop-zone" + (busy || uncertain ? " disabled" : "")}
+          className={"drop-zone" + (isBusy || isUncertain ? " disabled" : "")}
           onDragOver={(e) => e.preventDefault()}
           onDrop={(e) => {
             e.preventDefault();
-            if (!busy && !uncertain) addFiles(e.dataTransfer.files);
+            if (!isBusy && !isUncertain) addFiles(e.dataTransfer.files);
           }}
         >
           <span className="upload-symbol" aria-hidden="true">
@@ -200,7 +198,7 @@ export function IntakePanel({
                 </small>
                 <button
                   aria-label={file.name + " 제거"}
-                  disabled={busy || uncertain}
+                  disabled={isBusy || isUncertain}
                   onClick={() =>
                     setFiles((old) => old.filter((_, i) => i !== index))
                   }
@@ -217,19 +215,19 @@ export function IntakePanel({
             <Dropdown
               value={String(endStage)}
               onChange={(value) => setEndStage(Number(value))}
-              options={intakeStageOptions}
+              options={fileEndStageOptions}
               ariaLabel="마지막 처리 단계"
-              disabled={busy || uncertain}
+              disabled={isBusy || isUncertain}
             />
           </label>
           <button
             className="primary"
-            disabled={busy || !files.length || !settings}
+            disabled={isBusy || !files.length || !settings}
             onClick={() => void submit()}
           >
-            {busy
+            {isBusy
               ? "업로드·작업 추가 중…"
-              : uncertain
+              : isUncertain
                 ? "제출 다시 확인 →"
                 : files.length
                   ? `${files.length}개 작업 시작 →`

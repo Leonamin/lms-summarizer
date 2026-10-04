@@ -12,18 +12,18 @@ export function Rail({
   setView,
   jobCount,
   connection,
-  collapsed,
+  isCollapsed,
   onToggle,
 }: {
   view: View;
   setView: (view: View) => void;
   jobCount: number;
   connection: string;
-  collapsed: boolean;
+  isCollapsed: boolean;
   onToggle: () => void;
 }) {
   return (
-    <aside className={"rail" + (collapsed ? " collapsed" : "")}>
+    <aside className={"rail" + (isCollapsed ? " collapsed" : "")}>
       <div className="rail-head">
         <a className="brand" href="#workspace" aria-label="강의 작업실 홈">
           <span className="brand-mark">L</span>
@@ -34,13 +34,13 @@ export function Rail({
         <button
           type="button"
           className="rail-toggle"
-          aria-label={collapsed ? "메뉴 펼치기" : "메뉴 접기"}
-          aria-expanded={!collapsed}
+          aria-label={isCollapsed ? "메뉴 펼치기" : "메뉴 접기"}
+          aria-expanded={!isCollapsed}
           aria-controls="rail-nav"
-          title={collapsed ? "메뉴 펼치기" : "메뉴 접기"}
+          title={isCollapsed ? "메뉴 펼치기" : "메뉴 접기"}
           onClick={onToggle}
         >
-          {collapsed ? "»" : "«"}
+          {isCollapsed ? "»" : "«"}
         </button>
       </div>
       <div className="rail-caption">나의 강의</div>

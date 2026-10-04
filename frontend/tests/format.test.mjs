@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { webcrypto } from "node:crypto";
 import {
   requestId,
-  matchesJobFilter,
+  isJobInFilter,
   isPlaybackIncomplete,
   statusText,
   chatbotUrls,
@@ -31,7 +31,7 @@ test("LAN HTTP generates distinct UUIDv4 idempotency keys without randomUUID", (
 
 test("cancelling jobs remain active and prompt-ready results remain completed", () => {
   assert.equal(
-    matchesJobFilter({ status: "cancelling", retryable: false }, "active"),
+    isJobInFilter({ status: "cancelling", retryable: false }, "active"),
     true,
   );
   const prompt = {
@@ -39,14 +39,11 @@ test("cancelling jobs remain active and prompt-ready results remain completed", 
     result_kind: "manual_ready",
     retryable: false,
   };
-  assert.equal(matchesJobFilter(prompt, "completed"), true);
-  assert.equal(matchesJobFilter(prompt, "retryable"), false);
+  assert.equal(isJobInFilter(prompt, "completed"), true);
+  assert.equal(isJobInFilter(prompt, "retryable"), false);
   assert.equal(statusText(prompt), "프롬프트 준비");
   for (const status of ["failed", "cancelled", "interrupted"])
-    assert.equal(
-      matchesJobFilter({ status, retryable: true }, "retryable"),
-      true,
-    );
+    assert.equal(isJobInFilter({ status, retryable: true }, "retryable"), true);
   assert.equal(isPlaybackIncomplete("completed"), false);
   assert.equal(isPlaybackIncomplete("interrupted"), true);
 });

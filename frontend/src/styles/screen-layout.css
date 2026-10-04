@@ -1,0 +1,274 @@
+/* Task-oriented workspace and import screens. */
+[hidden] {
+  display: none !important;
+}
+:where(summary):focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 4px;
+  border-radius: var(--radius-xs);
+}
+.page-header {
+  align-items: center;
+  margin-bottom: 24px;
+}
+.page-header h1:focus {
+  outline: none;
+  box-shadow: none;
+}
+.import-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+.nav-item > svg {
+  flex-shrink: 0;
+}
+.import-page {
+  max-width: 1000px;
+  margin-inline: auto;
+}
+.source-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.source-option {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+  text-align: left;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--paper);
+  color: var(--muted);
+}
+.source-option strong,
+.source-option small {
+  display: block;
+}
+.source-option strong {
+  font-size: var(--t-md);
+  color: var(--ink);
+}
+.source-option small {
+  margin-top: 4px;
+  font-size: var(--t-xs);
+}
+.source-option.active {
+  border-color: var(--brand);
+  background: var(--brand-50);
+  color: var(--brand);
+}
+.source-option.active strong {
+  color: var(--brand-700);
+}
+.source-option:hover {
+  border-color: var(--brand);
+}
+.import-page .lms-panel .section-heading {
+  padding: 0 0 20px;
+}
+.import-page .lms-panel .section-heading p {
+  margin-top: 6px;
+}
+.import-page .course-tools:first-of-type {
+  justify-content: space-between;
+}
+.import-page .intake {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
+}
+.import-hint {
+  margin-top: 18px;
+  color: var(--muted);
+  font-size: var(--t-sm);
+}
+.workspace-detail-pane {
+  min-width: 0;
+  scroll-margin-top: 20px;
+}
+.workspace-detail-pane:focus {
+  outline: none;
+  box-shadow: none;
+}
+.back-to-list {
+  display: none;
+}
+.job-row .job-name strong,
+.job-row .job-name small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.job-row .job-name strong {
+  font-weight: 600;
+}
+.job-row .job-name small {
+  margin-top: 4px;
+  font-size: var(--t-xs);
+  font-weight: 400;
+}
+.job-tools input {
+  flex-basis: 180px;
+}
+.jobs-panel .section-heading {
+  padding-top: 24px;
+}
+.job-row .status {
+  white-space: normal;
+  text-align: center;
+}
+.playback-group {
+  border-top: 1px solid var(--line);
+  border-radius: 0 0 var(--radius) var(--radius);
+}
+.playback-group-head strong {
+  font-size: var(--t-sm);
+}
+.processing-details {
+  margin: 0 28px 18px;
+  border-bottom: 1px solid var(--line);
+}
+.processing-details > summary {
+  padding: 10px 0;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: var(--t-sm);
+}
+.processing-details .stage-track {
+  margin: 16px 0;
+}
+.processing-details .detail-actions {
+  padding: 12px 0 18px;
+}
+.result-subtitle {
+  white-space: normal;
+}
+@media (min-width: 1181px) {
+  .workspace-detail-pane {
+    position: sticky;
+    top: 20px;
+  }
+}
+@media (min-width: 681px) and (max-width: 1600px) {
+  .job-row,
+  .job-table-head {
+    grid-template-columns: 84px minmax(0, 1fr) 70px;
+  }
+  .job-attempts,
+  .job-time,
+  .job-table-head > span:nth-child(4),
+  .job-table-head > span:nth-child(5) {
+    display: none;
+  }
+}
+@media (max-width: 1180px) {
+  .workspace:not(.has-detail) .workspace-detail-pane {
+    display: none;
+  }
+  .workspace.has-detail .workspace-list-pane,
+  .workspace.has-detail .workspace-list-overview {
+    display: none;
+  }
+  .back-to-list {
+    display: inline-flex;
+    margin-bottom: 16px;
+  }
+}
+@media (max-width: 680px) {
+  .rail {
+    flex-wrap: wrap;
+    gap: 12px;
+    border-radius: 0;
+    padding: 14px 16px;
+  }
+  .rail nav {
+    width: 100%;
+    margin: 0;
+  }
+  .nav-item {
+    flex: 1;
+    justify-content: center;
+    padding: 10px 6px;
+    gap: 6px;
+    font-size: var(--t-xs);
+    white-space: nowrap;
+  }
+  .nav-item > svg {
+    width: 16px;
+    height: 16px;
+  }
+  .page-header {
+    gap: 12px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .page-header p {
+    font-size: var(--t-sm);
+  }
+  .page-header .import-action {
+    width: 100%;
+  }
+  .status-filters {
+    gap: 2px;
+    width: 100%;
+  }
+  .status-filter {
+    flex: 1;
+    gap: 6px;
+    padding: 0 8px;
+    font-size: var(--t-xs);
+  }
+  .pipeline-details > summary span {
+    display: none;
+  }
+  .source-options {
+    gap: 6px;
+  }
+  .source-option {
+    flex-direction: column;
+    gap: 8px;
+    padding: 16px 6px;
+    text-align: center;
+  }
+  .source-option strong {
+    font-size: var(--t-sm);
+  }
+  .source-option small {
+    display: none;
+  }
+  .import-page .course-tools {
+    align-items: stretch;
+  }
+  .import-page .course-tools > label {
+    width: 100%;
+  }
+  .import-page .lms-panel {
+    padding: 20px;
+  }
+  .jobs-panel .job-tools {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+  .job-tools input {
+    flex-basis: 100%;
+  }
+  .processing-details {
+    margin-left: 20px;
+    margin-right: 20px;
+  }
+  .job-row {
+    min-height: 68px;
+  }
+  .playback-row {
+    flex-wrap: wrap;
+  }
+  .playback-row .job-name {
+    flex-basis: 50%;
+  }
+}

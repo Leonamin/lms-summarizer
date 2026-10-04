@@ -121,3 +121,16 @@ uv run --extra web python -m src.web
 개발 서버 접속에 사용할 origin은 백엔드 `LMS_ALLOWED_ORIGINS`에 명시합니다.
 기본 데이터는 `.local/web-data`, 모델은 `.local/web-models`이며 환경 변수 `LMS_DATA_DIR`,
 `LMS_MODELS_DIR`, `LMS_STATIC_DIR`, `LMS_PORT`로 변경할 수 있습니다.
+
+### 프런트엔드 구조와 로컬 검증
+
+`frontend/src/pages`는 화면을 조합하고, 설정 섹션은 `components/settings`,
+조회·선택 상태는 `hooks`, 공통 결과·단계·페이지 계산은 `lib`에 둡니다.
+CSS 진입점은 `style.css`이며 `styles`의 적용 순서를 유지합니다.
+
+```bash
+npm test --prefix frontend # Node 24: 순수 상태 계산 회귀 테스트
+npm run build --prefix frontend
+```
+
+작업실 개편의 발견 사항·수정·검증은 [코드 리뷰 기록](workspace-code-review.md)을 참고하세요.

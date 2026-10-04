@@ -59,14 +59,14 @@ export function App() {
       behavior: "instant",
     });
   }, [view]);
-  const [saving, setSaving] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [pending, setPending] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [connection, setConnection] = useState("연결 중");
-  const [ready, setReady] = useState(false);
+  const [isReady, setIsReady] = useState(false);
   const [retryKey, setRetryKey] = useState(0);
-  const [railCollapsed, setRailCollapsed] = useState(() => {
+  const [isRailCollapsed, setIsRailCollapsed] = useState(() => {
     try {
       return localStorage.getItem("lms-rail") === "collapsed";
     } catch {
@@ -74,17 +74,20 @@ export function App() {
     }
   });
   const toggleRail = () =>
-    setRailCollapsed((collapsed) => {
-      const next = !collapsed;
+    setIsRailCollapsed((isCollapsed) => {
+      const isNextCollapsed = !isCollapsed;
       try {
-        localStorage.setItem("lms-rail", next ? "collapsed" : "expanded");
+        localStorage.setItem(
+          "lms-rail",
+          isNextCollapsed ? "collapsed" : "expanded",
+        );
       } catch {
         /* storage may be unavailable */
       }
-      return next;
+      return isNextCollapsed;
     });
   const seenCursor = useRef(0);
-  const bootRef = useRef(false);
+  const hasBootedRef = useRef(false);
 
   const report = useCallback((cause: unknown) => {
     setError(cause instanceof Error ? cause.message : "요청에 실패했습니다.");
@@ -106,7 +109,7 @@ export function App() {
   );
 
   useEffect(() => {
-    let alive = true;
+    let isAlive = true;
     let events: EventSource | null = null;
     let timer: ReturnType<typeof setTimeout>;
     const connect = async () => {
@@ -115,31 +118,31 @@ export function App() {
           allJobs(),
           api<SettingsResponse>("/settings"),
         ]);
-        if (!alive) return;
+        if (!isAlive) return;
         merge(snapshot.jobs);
         seenCursor.current = snapshot.cursor;
         setSettings(config);
         setDraft((old) => old ?? config.settings);
-        bootRef.current = true;
-        setReady(true);
+        hasBootedRef.current = true;
+        setIsReady(true);
         events?.close();
         events = new EventSource("/api/v1/events?cursor=" + snapshot.cursor);
-        events.onopen = () => alive && setConnection("실시간 연결");
-        events.onerror = () => alive && setConnection("재연결 중");
+        events.onopen = () => isAlive && setConnection("실시간 연결");
+        events.onerror = () => isAlive && setConnection("재연결 중");
         events.addEventListener("job.updated", (event) => {
           const message = event as MessageEvent;
           const payload = JSON.parse(message.data);
           seenCursor.current = Number(message.lastEventId);
           api<Job>("/jobs/" + payload.job_id)
-            .then((job) => alive && merge([job]))
+            .then((job) => isAlive && merge([job]))
             .catch(report);
         });
         events.addEventListener("reset", () => {
           events?.close();
-          if (alive) void connect();
+          if (isAlive) void connect();
         });
       } catch (cause) {
-        if (alive) {
+        if (isAlive) {
           report(cause);
           setConnection("연결 끊김");
           timer = setTimeout(connect, 3000);
@@ -149,13 +152,13 @@ export function App() {
     void connect();
     // REST reconciliation also recovers transient detail fetch failures while SSE is connected.
     const reconcile = setInterval(() => {
-      if (bootRef.current)
+      if (hasBootedRef.current)
         allJobs()
-          .then((snapshot) => alive && merge(snapshot.jobs))
-          .catch(() => alive && setConnection("재연결 중"));
+          .then((snapshot) => isAlive && merge(snapshot.jobs))
+          .catch(() => isAlive && setConnection("재연결 중"));
     }, 10000);
     return () => {
-      alive = false;
+      isAlive = false;
       events?.close();
       clearTimeout(timer);
       clearInterval(reconcile);
@@ -164,7 +167,7 @@ export function App() {
 
   const saveSettings = async () => {
     if (!settings || !draft) return;
-    setSaving(true);
+    setIsSaving(true);
     setError("");
     setNotice("");
     try {
@@ -186,14 +189,14 @@ export function App() {
         // Preserve unsaved edits after a concurrent credential/settings update.
       }
     } finally {
-      setSaving(false);
+      setIsSaving(false);
     }
   };
 
   const command = async (
     job: Job,
     action: "cancel" | "retry" | "resume",
-    useCurrentSettings = false,
+    shouldUseCurrentSettings = false,
   ) => {
     setPending(job.id);
     setError("");
@@ -201,7 +204,8 @@ export function App() {
       const body: Record<string, unknown> = {
         attempt_id: job.current_attempt_id,
       };
-      if (action !== "cancel") body.use_current_settings = useCurrentSettings;
+      if (action !== "cancel")
+        body.use_current_settings = shouldUseCurrentSettings;
       const updated = await api<Job>("/jobs/" + job.id + "/" + action, {
         method: "POST",
         headers:
@@ -211,7 +215,7 @@ export function App() {
       merge([updated]);
       if (action === "resume")
         setNotice(
-          useCurrentSettings
+          shouldUseCurrentSettings
             ? "현재 설정으로 끊긴 단계부터 이어서 처리합니다."
             : "끊긴 단계부터 이어서 처리합니다.",
         );
@@ -254,13 +258,13 @@ export function App() {
   };
 
   return (
-    <div className={"app-shell" + (railCollapsed ? " rail-collapsed" : "")}>
+    <div className={"app-shell" + (isRailCollapsed ? " rail-collapsed" : "")}>
       <Rail
         view={view}
         setView={setView}
         jobCount={jobs.length}
         connection={connection}
-        collapsed={railCollapsed}
+        isCollapsed={isRailCollapsed}
         onToggle={toggleRail}
       />
       <main>
@@ -316,10 +320,10 @@ export function App() {
             merge={merge}
             report={report}
             pending={pending}
-            loading={!ready}
+            isLoading={!isReady}
             onNotice={setNotice}
-            onCommand={(job, action, useCurrent) =>
-              void command(job, action, useCurrent)
+            onCommand={(job, action, shouldUseCurrentSettings) =>
+              void command(job, action, shouldUseCurrentSettings)
             }
             onContinue={(job, stage) => void continueJob(job, stage)}
             onStopAll={() => void stopAll()}
@@ -336,7 +340,7 @@ export function App() {
               )
             }
             save={() => void saveSettings()}
-            saving={saving}
+            isSaving={isSaving}
             report={report}
           />
         )}

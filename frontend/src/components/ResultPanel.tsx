@@ -1,3 +1,4 @@
+import { getResumableStage } from "../lib/jobResults";
 import { useEffect, useState } from "react";
 import type { Artifact, Job } from "../types";
 import {
@@ -18,42 +19,43 @@ export function ResultPanel({
   available,
   artifact,
   text,
-  loading,
+  isLoading,
   pending,
   jobModel,
   onOpenArtifact,
   onCommand,
   onContinue,
   onNotice,
-  loadingFallback = false,
+  isLoadingFallback = false,
 }: {
   job: Job | null;
   available: Artifact[];
   artifact: Artifact | null;
   text: string;
-  loading: boolean;
+  isLoading: boolean;
   pending: string | null;
   jobModel: string;
   onOpenArtifact: (artifact: Artifact) => void;
   onCommand: (
     job: Job,
     action: "cancel" | "retry" | "resume",
-    useCurrentSettings?: boolean,
+    shouldUseCurrentSettings?: boolean,
   ) => void;
   onContinue: (job: Job, endStage: number) => void;
   onNotice: (message: string) => void;
-  loadingFallback?: boolean;
+  isLoadingFallback?: boolean;
 }) {
   const [continueStage, setContinueStage] = useState<number | null>(null);
-  const [useCurrent, setUseCurrent] = useState(false);
+  const [shouldUseCurrentSettings, setShouldUseCurrentSettings] =
+    useState(false);
   useEffect(() => {
     setContinueStage(null);
-    setUseCurrent(false);
+    setShouldUseCurrentSettings(false);
   }, [job?.id]);
   if (!job) {
     return (
       <section className="result-panel panel" aria-label="작업 상세">
-        {loadingFallback ? (
+        {isLoadingFallback ? (
           <div className="result-skeleton" aria-hidden="true">
             <div className="skeleton sk-title" />
             <div className="skeleton sk-track" />
@@ -78,31 +80,10 @@ export function ResultPanel({
   }
 
   const latest = job.attempts.at(-1);
-  const completeArtifacts = new Set(
-    job.artifacts
-      .filter((item) => item.state === "complete")
-      .map((item) => item.id),
+  const resumableStage = getResumableStage(job);
+  const downloads = available.filter(
+    (item) => !artifact || !item.display_name.endsWith(".txt"),
   );
-  // Resume from the highest completed stage across all attempts whose artifact
-  // is still on disk, so a failed resume attempt can still be resumed again.
-  const resumableStage = (() => {
-    if (!job.retryable) return null;
-    const points: number[] = [];
-    for (const attempt of job.attempts) {
-      for (const stage of attempt.stages) {
-        if (
-          stage.status === "completed" &&
-          stage.output_id &&
-          completeArtifacts.has(stage.output_id)
-        ) {
-          points.push(stage.stage);
-        }
-      }
-    }
-    if (points.length === 0) return null;
-    const stage = Math.max(...points) + 1;
-    return stage <= job.end_stage ? stage : null;
-  })();
   return (
     <section className="result-panel panel" aria-label="작업 상세">
       <div className="section-heading">
@@ -150,8 +131,10 @@ export function ResultPanel({
                 >
                   <input
                     type="checkbox"
-                    checked={useCurrent}
-                    onChange={(event) => setUseCurrent(event.target.checked)}
+                    checked={shouldUseCurrentSettings}
+                    onChange={(event) =>
+                      setShouldUseCurrentSettings(event.target.checked)
+                    }
                   />
                   현재 설정 사용
                 </label>
@@ -159,8 +142,10 @@ export function ResultPanel({
                   <button
                     disabled={pending === job.id}
                     className="secondary"
-                    title={`${resumableStage}단계부터 이어서 처리합니다. 이전 단계 결과를 재사용합니다.${useCurrent ? " 현재 설정으로 실행합니다." : ""}`}
-                    onClick={() => onCommand(job, "resume", useCurrent)}
+                    title={`${resumableStage}단계부터 이어서 처리합니다. 이전 단계 결과를 재사용합니다.${shouldUseCurrentSettings ? " 현재 설정으로 실행합니다." : ""}`}
+                    onClick={() =>
+                      onCommand(job, "resume", shouldUseCurrentSettings)
+                    }
                   >
                     이어서 재개
                   </button>
@@ -168,8 +153,10 @@ export function ResultPanel({
                 <button
                   disabled={pending === job.id}
                   className={resumableStage !== null ? "quiet" : "secondary"}
-                  title={`${job.initial_stage}단계부터 처음부터 다시 시도합니다.${useCurrent ? " 현재 설정으로 실행합니다." : ""}`}
-                  onClick={() => onCommand(job, "retry", useCurrent)}
+                  title={`${job.initial_stage}단계부터 처음부터 다시 시도합니다.${shouldUseCurrentSettings ? " 현재 설정으로 실행합니다." : ""}`}
+                  onClick={() =>
+                    onCommand(job, "retry", shouldUseCurrentSettings)
+                  }
                 >
                   {resumableStage !== null ? "처음부터" : "다시 시도"}
                 </button>
@@ -233,33 +220,9 @@ export function ResultPanel({
               </button>
             ))}
           </div>
-          {artifact &&
-            available.some((item) => !item.display_name.endsWith(".txt")) && (
-              <div className="file-downloads">
-                {available
-                  .filter((item) => !item.display_name.endsWith(".txt"))
-                  .map((item) => (
-                    <a
-                      key={item.id}
-                      href={"/api/v1/artifacts/" + item.id + "/download"}
-                      download
-                    >
-                      {kindLabels[item.kind] ?? item.kind} 다운로드 ↓
-                    </a>
-                  ))}
-              </div>
-            )}
-          {artifact && (
-            <ArtifactReader
-              artifact={artifact}
-              text={text}
-              loading={loading}
-              onNotice={onNotice}
-            />
-          )}
-          {!artifact && (
+          {downloads.length > 0 && (
             <div className="file-downloads">
-              {available.map((item) => (
+              {downloads.map((item) => (
                 <a
                   key={item.id}
                   href={"/api/v1/artifacts/" + item.id + "/download"}
@@ -269,6 +232,14 @@ export function ResultPanel({
                 </a>
               ))}
             </div>
+          )}
+          {artifact && (
+            <ArtifactReader
+              artifact={artifact}
+              text={text}
+              loading={isLoading}
+              onNotice={onNotice}
+            />
           )}
         </>
       ) : (

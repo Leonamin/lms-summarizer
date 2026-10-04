@@ -1,0 +1,453 @@
+.result-panel {
+  padding-bottom: 24px;
+}
+
+.result-panel .section-heading {
+  align-items: flex-start;
+}
+
+.result-panel h2 {
+  max-width: 460px;
+  font-size: var(--t-xl);
+  word-break: break-word;
+}
+
+.result-subtitle {
+  max-width: 460px;
+  margin-top: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--t-sm);
+  color: var(--muted);
+}
+
+/* Connected 4-step track */
+.stage-track {
+  display: flex;
+  gap: 0;
+  list-style: none;
+  padding: 0;
+  margin: 4px 28px 22px;
+}
+
+.stage-track li {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+  font-size: var(--t-xs);
+  font-weight: 600;
+  color: var(--faint);
+  text-align: center;
+}
+
+.stage-track li::after {
+  content: "";
+  position: absolute;
+  top: 13px;
+  left: 50%;
+  width: 100%;
+  height: 2px;
+  background: var(--line-strong);
+  z-index: 0;
+}
+
+.stage-track li:last-child::after {
+  display: none;
+}
+
+.stage-track li > span {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid var(--line-strong);
+  background: var(--paper);
+  font-size: var(--t-xs);
+  font-weight: 700;
+}
+
+.stage-track li.completed {
+  color: var(--positive);
+}
+
+.stage-track li.completed::after {
+  background: #bcdccb;
+}
+
+.stage-track li.completed > span {
+  color: #fff;
+  border-color: var(--positive);
+  background: var(--positive);
+}
+
+.stage-track li.running {
+  color: var(--brand-700);
+}
+
+.stage-track li.running > span {
+  color: #fff;
+  border-color: var(--brand);
+  background: var(--brand);
+  box-shadow: 0 0 0 4px var(--brand-100);
+}
+
+.detail-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 28px 18px;
+}
+
+.detail-actions small {
+  font-size: var(--t-xs);
+}
+
+.detail-actions > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.detail-actions .check.compact {
+  font-size: var(--t-xs);
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.detail-actions .check.compact input {
+  width: 15px;
+  height: 15px;
+}
+
+/* Continue a completed early-stage job to a later stage. */
+.continue-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 0 28px 18px;
+}
+
+.continue-row .muted {
+  font-size: var(--t-sm);
+}
+
+.continue-row .dropdown {
+  min-width: 180px;
+}
+
+.artifact-tabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 0 28px 16px;
+}
+
+.artifact-tabs button {
+  padding: 8px 15px;
+  border-radius: var(--pill);
+  font-size: var(--t-sm);
+  font-weight: 600;
+  color: var(--muted);
+  background: var(--bg);
+  white-space: nowrap;
+}
+
+.artifact-tabs button.active {
+  color: #fff;
+  background: var(--brand);
+}
+
+.reader {
+  padding: 0 28px;
+}
+
+.reader-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 0 14px;
+  font-size: var(--t-sm);
+  color: var(--muted);
+}
+
+.reader-toolbar > div {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.reader-caption {
+  display: block;
+  margin-bottom: 8px;
+  font-size: var(--t-xs);
+  color: var(--muted);
+}
+
+/* In-card reader is height-limited; the full content opens in the viewer dialog. */
+.reader-body {
+  max-height: min(46vh, 520px);
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.reader .source-text {
+  height: 340px;
+  min-height: 0;
+}
+
+.result-text {
+  width: 100%;
+  min-height: 280px;
+  padding: 20px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background: var(--paper-2);
+  color: var(--ink-2);
+  font-size: var(--t-sm);
+  line-height: 1.9;
+}
+
+.source-text {
+  width: 100%;
+  min-height: 240px;
+  padding: 20px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background: var(--paper-2);
+  font-size: var(--t-sm);
+  line-height: 1.85;
+}
+
+/* Full-screen artifact viewer (lightbox-style modal dialog). */
+.viewer-dialog {
+  width: min(1100px, 94vw);
+  height: min(90vh, 1040px);
+  max-width: none;
+  max-height: none;
+  margin: auto;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+/* Keep the closed dialog hidden; only lay it out while open (UA hides [not open]). */
+.viewer-dialog[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+.viewer-dialog::backdrop {
+  background: rgba(15, 14, 30, 0.55);
+}
+
+.viewer-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 24px;
+  border-bottom: 1px solid var(--line);
+  font-size: var(--t-sm);
+  color: var(--muted);
+}
+
+.viewer-head > div {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.viewer-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 22px 26px 28px;
+  overscroll-behavior: contain;
+}
+
+.viewer-body .markdown {
+  max-width: 80ch;
+  margin: 0 auto;
+}
+
+.viewer-body .source-text {
+  min-height: 70vh;
+}
+
+.markdown {
+  margin-bottom: 18px;
+  font-size: var(--t-md);
+  line-height: 1.85;
+  color: var(--ink-2);
+  word-break: break-word;
+}
+
+.markdown h1,
+.markdown h2,
+.markdown h3 {
+  margin: 20px 0 8px;
+  font-size: var(--t-lg);
+  color: var(--ink);
+}
+
+.markdown p {
+  margin: 9px 0;
+}
+
+.markdown ul,
+.markdown ol {
+  padding-left: 22px;
+}
+
+.markdown li {
+  margin: 4px 0;
+}
+
+.markdown a {
+  text-decoration: underline;
+}
+
+/* Long display equations scroll within the block instead of widening the card. */
+.markdown .katex-display {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 2px 0;
+}
+
+.markdown pre {
+  overflow: auto;
+  padding: 16px;
+  border-radius: var(--radius-xs);
+  background: var(--bg);
+}
+
+.markdown code {
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--bg);
+  font-size: 0.92em;
+}
+
+.file-downloads {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 18px 28px;
+}
+
+.file-downloads a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line-strong);
+  background: var(--paper);
+  font-size: var(--t-sm);
+  font-weight: 600;
+  color: var(--brand-700);
+}
+
+.file-downloads a:hover {
+  border-color: var(--brand-500);
+  text-decoration: none;
+}
+
+.attempt-history {
+  margin: 0 28px;
+  padding: 16px 0;
+  border-top: 1px solid var(--line);
+  font-size: var(--t-sm);
+  color: var(--muted);
+}
+
+.attempt-history summary {
+  cursor: pointer;
+  font-weight: 650;
+  color: var(--ink-2);
+}
+
+.attempt-history p {
+  margin-top: 10px;
+  font-size: var(--t-sm);
+  line-height: 1.7;
+}
+
+.job-logs {
+  list-style: none;
+  padding: 12px 0 0;
+  max-height: 320px;
+  overflow: auto;
+  font-size: var(--t-sm);
+}
+
+.job-logs li {
+  display: flex;
+  gap: 16px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.job-logs time {
+  color: var(--faint);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --------------------------------------------------------------- empty -- */
+.empty {
+  padding: 60px 28px;
+  text-align: center;
+  color: var(--muted);
+}
+
+.empty > span {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  margin: 0 auto 20px;
+  border-radius: var(--radius-sm);
+  font-size: 24px;
+  color: var(--brand);
+  background: var(--brand-50);
+}
+
+.empty h3 {
+  font-size: var(--t-md);
+  font-weight: 650;
+  color: var(--ink-2);
+  margin-bottom: 8px;
+}
+
+.empty p {
+  font-size: var(--t-sm);
+  line-height: 1.9;
+}
+
+.result-empty {
+  padding: 120px 28px;
+}
+
+.reader-empty {
+  padding: 44px;
+  text-align: center;
+  color: var(--muted);
+  font-size: var(--t-sm);
+}

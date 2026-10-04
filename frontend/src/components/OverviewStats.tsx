@@ -1,10 +1,5 @@
 import type { Job } from "../types";
-import {
-  isActive,
-  matchesJobFilter,
-  stages,
-  type JobFilter,
-} from "../lib/format";
+import { isActive, isJobInFilter, stages, type JobFilter } from "../lib/format";
 
 const filters: { value: JobFilter; label: string }[] = [
   { value: "all", label: "전체" },
@@ -50,7 +45,7 @@ export function OverviewStats({
               <span>
                 {isLoading
                   ? "…"
-                  : jobs.filter((job) => matchesJobFilter(job, value)).length}
+                  : jobs.filter((job) => isJobInFilter(job, value)).length}
               </span>
             </button>
           ))}

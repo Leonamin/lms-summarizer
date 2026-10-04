@@ -56,7 +56,7 @@ export const statusText = (job: Job): string =>
   job.status === "completed" && job.result_kind === "manual_ready"
     ? "프롬프트 준비"
     : (statusLabels[job.status] ?? job.status);
-export const matchesJobFilter = (job: Job, filter: JobFilter): boolean =>
+export const isJobInFilter = (job: Job, filter: JobFilter): boolean =>
   filter === "all" ||
   (filter === "active"
     ? isActive(job)

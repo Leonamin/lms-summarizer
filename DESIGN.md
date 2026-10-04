@@ -1,7 +1,7 @@
 ---
 version: alpha
 name: LMS 강의 작업실 (Web Dashboard)
-description: "Docker 웹 대시보드(frontend/)의 실제 구현 디자인 시스템. 토큰은 frontend/src/style.css :root 에 정의되어 있다."
+description: "Docker 웹 대시보드(frontend/)의 실제 구현 디자인 시스템. 토큰은 frontend/src/styles/foundation.css :root 에 정의되어 있다."
 colors:
   brand: "#4f46b8"
   brand-strong: "#3b338f"
@@ -201,7 +201,7 @@ components:
 ## Overview
 
 **범위.** Vite/React 웹 대시보드 `frontend/`에만 적용된다. 설치는 `src/gui`(Flet), 서버는 `src/web`으로 별도다.
-스타일 단일 소스는 `frontend/src/style.css`이며 Tailwind/PostCSS/토큰 파일은 없다.
+스타일 진입점은 `frontend/src/style.css`이며 `styles/`의 토큰·공용 요소·기능별 스타일·반응형 규칙을 순서대로 가져온다. 토큰은 `styles/foundation.css`의 `:root`에 정의한다. Tailwind나 별도 토큰 생성기는 사용하지 않는다.
 
 **반복되는 시각 특성.**
 
@@ -273,7 +273,7 @@ Pretendard 가변 폰트 자체 호스팅(`frontend/public/fonts/PretendardVaria
 
 ## Components
 
-근거: `frontend/src/components/*.tsx`, `frontend/src/pages/*.tsx`, `frontend/src/style.css`.
+근거: `frontend/src/components/*.tsx`, `frontend/src/pages/*.tsx`, `frontend/src/styles/*.css`.
 
 ### Buttons
 - `{components.button-primary}` — `.primary`. 단색 `--brand`, 흰 텍스트, 최소 높이 42px. hover `--brand-700`.
@@ -346,7 +346,7 @@ Pretendard 가변 폰트 자체 호스팅(`frontend/public/fonts/PretendardVaria
   `시도`·`시각` 열을 숨겨 이름 열 공간을 확보하고, ≤680px에서 트랙·시도·시각과 머리글을 숨겨 아이콘·상태·이름만 남긴다.
 - **페이지네이션**: `.job-pager`가 목록 하단(`12px 28px`)에 `1–20 / 24` 범위와 `‹ 현재/전체 ›` 이동을 보여주고,
   오른쪽에 페이지당 개수 세그먼트(`10`/`20`)를 둔다. 기본 20개/페이지, 10/20 선택. 필터·검색·정렬·개수 변경 시
-  1페이지로 돌아간다(`useEffect` 의존성).
+  1페이지로 돌아간다. 페이지는 검색 조건과 함께 관리해 연결 작업으로 이동한 페이지를 덮어쓰지 않는다.
 - **정렬**: `.job-sortby` 세그먼트(`최신순`/`과거순`)가 `created_at` 정렬을 제어하고, 표 머리글 클릭 정렬과
   같은 `sort` 상태를 공유한다(현재 정렬 열이 `만든 시각`일 때만 세그먼트가 활성). `.segment` 공통 스타일은
   도구 행 높이 `var(--control-h)`, 페이저에서는 `34px`.

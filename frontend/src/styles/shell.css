@@ -1,0 +1,242 @@
+/* ---------------------------------------------------------------- shell -- */
+.app-shell {
+  display: grid;
+  grid-template-columns: 264px minmax(0, 1fr);
+  min-height: 100vh;
+  transition: grid-template-columns 240ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.rail {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  height: 100vh;
+  /* Same horizontal padding in both states so the rail contents never shift. */
+  padding: 30px 12px;
+  color: #d9d7ea;
+  background: var(--rail);
+  border-right: 1px solid var(--rail-line);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rail-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 53px; /* reserve the brand row so nav icons keep their position when collapsed */
+}
+
+.rail-toggle {
+  position: absolute;
+  top: 41px;
+  right: 12px;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  min-height: 0;
+  border-radius: var(--radius-xs);
+  color: #c7c4e0;
+  font-size: 16px;
+  line-height: 1;
+  transition:
+    right 240ms cubic-bezier(0.4, 0, 0.2, 1),
+    background var(--speed),
+    color var(--speed);
+}
+
+.rail-toggle:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+/* Collapsed rail (desktop only; mobile turns the rail into a horizontal bar). */
+@media (min-width: 681px) {
+  .app-shell.rail-collapsed {
+    grid-template-columns: 78px minmax(0, 1fr);
+  }
+  .rail.collapsed .brand {
+    display: none;
+  }
+  /* Slide the toggle from the right edge to the centre as the rail narrows. */
+  .rail.collapsed .rail-toggle {
+    right: 24px;
+  }
+  .rail.collapsed .nav-item {
+    justify-content: center;
+    width: 100%;
+    padding: 12px 0;
+  }
+  .rail.collapsed .rail-bottom {
+    text-align: center;
+  }
+  .rail.collapsed .connection-dot {
+    margin-right: 0;
+  }
+  .rail.collapsed .brand-text,
+  .rail.collapsed .nav-label,
+  .rail.collapsed .nav-count,
+  .rail.collapsed .rail-conn,
+  .rail.collapsed .rail-bottom p {
+    display: none;
+  }
+  /* Hide the caption but keep its space so `nav` does not shift up. */
+  .rail.collapsed .rail-caption {
+    visibility: hidden;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+}
+
+.brand {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  color: #fff;
+  font-size: 20px;
+  font-weight: 750;
+  letter-spacing: -0.2px;
+}
+
+.brand:hover {
+  text-decoration: none;
+}
+
+.brand-mark {
+  height: 42px;
+  width: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  font-size: 22px;
+  font-weight: 800;
+  color: #fff;
+  background: linear-gradient(135deg, var(--brand-500), var(--violet));
+}
+
+.brand-sub {
+  display: block;
+  font-size: var(--t-xs);
+  font-weight: 500;
+  letter-spacing: 0.2px;
+  color: #a7a3c8;
+  margin-top: 2px;
+}
+
+.rail-caption {
+  font-size: 11px;
+  letter-spacing: 1.6px;
+  color: #7d79a8;
+  margin: 30px 4px 14px;
+}
+
+.rail nav {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  font-size: var(--t-md);
+  font-weight: 600;
+  color: #c7c4e0;
+  text-align: left;
+  transition:
+    background var(--speed),
+    color var(--speed);
+}
+
+.nav-item > span:first-child {
+  opacity: 0.8;
+}
+
+.nav-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+}
+
+.nav-item.selected {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.nav-count {
+  margin-left: auto;
+  font-size: var(--t-xs);
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.14);
+  padding: 2px 9px;
+  border-radius: var(--pill);
+}
+
+.rail-bottom {
+  margin-top: auto;
+  font-size: var(--t-sm);
+  color: #c2bfe0;
+}
+
+.rail-bottom p {
+  font-size: var(--t-xs);
+  margin-top: 6px;
+  color: #8b87b4;
+}
+
+.connection-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+  background: #6ee7b7;
+}
+
+main {
+  width: 100%;
+  max-width: 1480px;
+  margin: 0 auto;
+  padding: 44px clamp(24px, 4vw, 64px) 28px;
+}
+
+/* -------------------------------------------------------------- header -- */
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 24px;
+  margin-bottom: 34px;
+}
+
+.eyebrow {
+  display: block;
+  font-size: var(--t-2xs);
+  font-weight: 750;
+  letter-spacing: 1.8px;
+  color: var(--brand);
+  margin-bottom: 12px;
+}
+
+.page-header p {
+  font-size: var(--t-md);
+  color: var(--muted);
+  margin-top: 12px;
+  max-width: 620px;
+}
+
+.private-label {
+  flex-shrink: 0;
+  margin-top: 8px;
+  padding: 8px 15px;
+  border-radius: var(--pill);
+  font-size: var(--t-xs);
+  font-weight: 600;
+  color: var(--muted);
+  background: var(--paper);
+  border: 1px solid var(--line);
+}

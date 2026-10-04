@@ -1,0 +1,452 @@
+/* ------------------------------------------------------------ workspace -- */
+.workspace-grid {
+  display: grid;
+  grid-template-columns: minmax(360px, 1fr) minmax(0, 1.2fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.workspace-grid > * {
+  min-width: 0;
+}
+
+.jobs-panel .job-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 0 28px 18px;
+}
+
+.job-tools input {
+  flex: 1 1 100%;
+  min-width: 0;
+}
+
+.job-tools .dropdown {
+  flex: 0 0 auto;
+  min-width: 148px;
+}
+
+.job-sortby,
+.job-pagesize {
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+.segment {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--control-h);
+  min-height: 0;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 0;
+  background: var(--paper-2);
+  color: var(--muted);
+  font-size: var(--t-sm);
+  font-weight: 650;
+  transition:
+    background var(--speed),
+    color var(--speed),
+    border-color var(--speed);
+}
+
+.segment + .segment {
+  border-left-color: transparent;
+}
+
+.segment:first-child {
+  border-radius: var(--radius-xs) 0 0 var(--radius-xs);
+}
+
+.segment:last-child {
+  border-radius: 0 var(--radius-xs) var(--radius-xs) 0;
+}
+
+.segment:hover:not(:disabled) {
+  color: var(--ink);
+}
+
+.segment.active {
+  position: relative;
+  z-index: 1;
+  color: var(--ink);
+  background: var(--paper);
+  border-color: var(--line-strong);
+}
+
+.segment:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.job-pagesize .segment {
+  height: 34px;
+  padding: 0 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.job-pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 28px;
+  font-size: var(--t-xs);
+  color: var(--faint);
+}
+
+.job-pager-range {
+  font-variant-numeric: tabular-nums;
+}
+
+.job-pager-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pager-btn {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  min-height: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xs);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 16px;
+  line-height: 1;
+}
+
+.pager-btn:hover:not(:disabled) {
+  background: var(--paper-2);
+  border-color: var(--line-strong);
+}
+
+.pager-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.job-pager-page {
+  min-width: 46px;
+  text-align: center;
+  font-weight: 700;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.job-list {
+  border-top: 1px solid var(--line);
+}
+
+.job-table-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr) 70px 40px 72px;
+  gap: 8px;
+  padding: 11px 24px;
+  border-bottom: 1px solid var(--line);
+  background: var(--paper-2);
+  font-size: var(--t-2xs);
+  font-weight: 750;
+  letter-spacing: 0.8px;
+  color: var(--faint);
+}
+
+.job-table-head > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.job-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+}
+
+.job-sort:hover {
+  color: var(--ink);
+}
+
+.job-sort-caret {
+  font-size: 9px;
+  color: var(--brand);
+}
+
+.job-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr) 70px 40px 72px;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px 24px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  transition: background var(--speed);
+}
+
+.job-row:last-child {
+  border-bottom: 0;
+}
+
+.job-row:hover {
+  background: var(--paper-2);
+}
+
+/* Selected row: background plus a filled chip on the current stage slot,
+   so no separate leading indicator is needed. */
+.job-row.selected {
+  background: var(--brand-50);
+}
+
+.job-row.selected .job-name {
+  color: var(--brand-700);
+}
+
+.job-row.selected .stage-mini-slot.current {
+  opacity: 1;
+  color: #fff;
+  background: var(--brand);
+  border-radius: 5px;
+  box-shadow:
+    0 0 0 3px var(--brand),
+    0 4px 10px -4px rgba(79, 70, 184, 0.6);
+}
+
+/* Compact 4-step pipeline indicator; each icon is coloured by its stage status. */
+.stage-mini {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.stage-mini-slot {
+  display: inline-flex;
+  color: var(--line-strong);
+}
+
+.stage-mini-slot.completed {
+  color: var(--positive);
+}
+
+.stage-mini-slot.running {
+  color: var(--brand);
+  border-radius: 5px;
+  animation: stage-ring 1.6s ease-out infinite;
+}
+
+.stage-mini-slot.failed {
+  color: var(--danger);
+}
+
+.stage-mini-slot.queued {
+  color: var(--brand-500);
+  opacity: 0.5;
+}
+
+@keyframes stage-ring {
+  0% {
+    box-shadow: 0 0 0 0 rgba(99, 90, 201, 0.45);
+  }
+  70%,
+  100% {
+    box-shadow: 0 0 0 6px rgba(99, 90, 201, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stage-mini-slot.running {
+    animation: none;
+  }
+}
+
+/* Auto-play rows share the job table columns but are non-interactive. */
+.playback-group {
+  background: var(--brand-50);
+  border-bottom: 1px solid var(--line);
+}
+
+.playback-group-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 28px 6px;
+}
+
+.playback-group-head .eyebrow {
+  margin-bottom: 0;
+}
+
+.playback-group-head small {
+  font-size: var(--t-xs);
+  color: var(--muted);
+}
+
+.playback-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  min-height: 0;
+  padding: 5px 9px;
+  border-radius: var(--radius-xs);
+  font-size: var(--t-xs);
+  font-weight: 650;
+  color: var(--brand-700);
+}
+
+.playback-toggle:hover {
+  background: rgba(79, 70, 184, 0.1);
+}
+
+.playback-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 28px;
+  border-bottom: 1px solid var(--line);
+  pointer-events: none;
+}
+
+.playback-row:last-child {
+  border-bottom: 0;
+}
+
+.playback-row .job-name {
+  flex: 1;
+  min-width: 0;
+}
+
+.playback-time {
+  font-size: var(--t-xs);
+  color: var(--muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.playback-attend {
+  flex: 0 0 auto;
+  padding: 2px 8px;
+  border-radius: var(--pill);
+  font-size: var(--t-xs);
+  font-weight: 650;
+}
+
+.playback-attend.yes {
+  color: var(--positive);
+  background: var(--positive-100);
+}
+
+.playback-attend.no {
+  color: var(--muted);
+  background: var(--bg);
+}
+
+.playback-link {
+  flex: 0 0 auto;
+  pointer-events: auto;
+  padding: 3px 9px;
+  border-radius: var(--pill);
+  font-size: var(--t-xs);
+  font-weight: 650;
+  color: var(--brand-700);
+  background: var(--brand-100);
+}
+
+.playback-link:hover {
+  text-decoration: underline;
+}
+
+.playback-filters {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 28px 8px;
+}
+
+.playback-filters .segment {
+  height: 30px;
+  padding: 0 10px;
+  font-size: var(--t-xs);
+}
+
+.playback-count {
+  font-size: var(--t-xs);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.job-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--t-sm);
+  font-weight: 650;
+  color: var(--ink);
+}
+
+.job-attempts,
+.job-time {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: var(--t-xs);
+  color: var(--muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 12px;
+  border-radius: var(--pill);
+  font-size: var(--t-xs);
+  font-weight: 650;
+  white-space: nowrap;
+  color: var(--muted);
+  background: var(--bg);
+}
+
+.status.completed {
+  color: var(--positive);
+  background: var(--positive-100);
+}
+
+.status.running {
+  color: #fff;
+  background: var(--brand);
+}
+
+.status.queued {
+  color: var(--brand-700);
+  background: var(--brand-100);
+}
+
+.status.cancelling,
+.status.interrupted {
+  color: var(--warning);
+  background: var(--warning-100);
+}
+
+.status.failed,
+.status.cancelled {
+  color: #a32749;
+  background: var(--danger-100);
+}
