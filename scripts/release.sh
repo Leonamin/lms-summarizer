@@ -6,8 +6,8 @@ set -euo pipefail
 #
 # Usage: scripts/release.sh <patch|minor|major>
 #
-# 1. pyproject.toml + lms-summarizer.spec 버전 범프
-# 2. release 커밋 + 태그 생성
+# 1. pyproject.toml 버전 범프 (패키징 spec은 자동으로 읽음)
+# 2. chore(release) 커밋 + 태그 생성
 # 3. push → GitHub Actions가 빌드 + Release 생성
 # ───────────────────────────────────────────────────────
 
@@ -81,10 +81,7 @@ fi
 # pyproject.toml
 sed -i '' "s/^version = \"${CURRENT}\"/version = \"${NEW_VERSION}\"/" pyproject.toml
 
-# lms-summarizer.spec (PyInstaller / macOS info.plist에 사용)
-sed -i '' "s/^APP_VERSION = \".*\"/APP_VERSION = \"${NEW_VERSION}\"/" lms-summarizer.spec
-
-echo "✏️  pyproject.toml, lms-summarizer.spec 버전 업데이트 완료"
+echo "✏️  pyproject.toml 버전 업데이트 완료 (packaging/lms-summarizer.spec에서 자동 참조)"
 
 # ── uv.lock 동기화 ───────────────────────────────────────
 if command -v uv >/dev/null 2>&1; then
@@ -95,8 +92,10 @@ if command -v uv >/dev/null 2>&1; then
 fi
 
 # ── 커밋 & 태그 ──────────────────────────────────────────
-git add pyproject.toml lms-summarizer.spec uv.lock 2>/dev/null || git add pyproject.toml lms-summarizer.spec
-git commit -m "release: ${TAG}"
+git add pyproject.toml uv.lock
+git diff --cached --check
+git diff --cached
+git commit -m "chore(release): ${TAG}"
 git tag -a "$TAG" -m "Release ${TAG}"
 
 echo ""

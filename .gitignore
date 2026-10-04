@@ -31,7 +31,7 @@ MANIFEST
 #  before PyInstaller builds the exe, so as to inject date/other infos into it.
 *.manifest
 *.spec
-!lms-summarizer.spec
+!packaging/lms-summarizer.spec
 
 # 사용자 설정 파일 (로컬 전용)
 src/settings.json
@@ -198,7 +198,8 @@ cython_debug/
 .cursorignore
 .cursorindexingignore
 
-user_settings.json.claude/
+user_settings.json
+!examples/user_settings.json
 .claude/
 .omc/
 

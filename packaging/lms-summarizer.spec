@@ -3,8 +3,8 @@
 # LMS Summarizer - PyInstaller spec file
 #
 # 빌드 명령:
-#   Mac:     pyinstaller lms-summarizer.spec
-#   Windows: pyinstaller lms-summarizer.spec
+#   Mac:     pyinstaller packaging/lms-summarizer.spec
+#   Windows: pyinstaller packaging/lms-summarizer.spec
 #
 # 용량 최적화 참고:
 #   - faster-whisper (CTranslate2 기반): STT 엔진
@@ -16,12 +16,13 @@ import os
 from pathlib import Path
 
 APP_NAME = "LMS-Summarizer"
+PROJECT_ROOT = Path(SPECPATH).resolve().parent
 
 # pyproject.toml에서 버전 자동 읽기
 def _read_version():
     try:
         import tomllib
-        with open("pyproject.toml", "rb") as f:
+        with (PROJECT_ROOT / "pyproject.toml").open("rb") as f:
             return tomllib.load(f)["project"]["version"]
     except Exception:
         return "0.0.0"
@@ -40,9 +41,9 @@ certifi_cacert = find_certifi_cacert()
 
 # 추가 데이터 파일
 datas = [
-    ("src", "src"),
-    ("assets", "assets"),
-    ("pyproject.toml", "."),  # 버전 정보 (src/__init__.py에서 읽음)
+    (str(PROJECT_ROOT / "src"), "src"),
+    (str(PROJECT_ROOT / "assets"), "assets"),
+    (str(PROJECT_ROOT / "pyproject.toml"), "."),  # 버전 정보 (src/__init__.py에서 읽음)
 ]
 if certifi_cacert:
     datas.append((certifi_cacert, "certifi"))
@@ -59,8 +60,8 @@ except ImportError:
 binaries = []
 
 a = Analysis(
-    ["src/desktop/main.py"],
-    pathex=[".", "src"],
+    [str(PROJECT_ROOT / "src/desktop/main.py")],
+    pathex=[str(PROJECT_ROOT), str(PROJECT_ROOT / "src")],
     binaries=binaries,
     datas=datas,
     hiddenimports=[
@@ -129,7 +130,7 @@ exe = EXE(
     upx_exclude=[],
     runtime_tmpdir=None,
     console=False,   # GUI 앱: 콘솔 창 숨김
-    icon='assets/icon.ico',
+    icon=str(PROJECT_ROOT / 'assets/icon.ico'),
     disable_windowed_traceback=False,
     target_arch=None,
     codesign_identity=None,
@@ -161,7 +162,7 @@ if sys.platform == "darwin":
     app = BUNDLE(
         coll,
         name=f"{APP_NAME}.app",
-        icon='assets/icon.icns',
+        icon=str(PROJECT_ROOT / 'assets/icon.icns'),
         bundle_identifier="com.lms-summarizer.app",
         info_plist={
             "CFBundleDisplayName": "LMS 강의 다운로드 & 요약",

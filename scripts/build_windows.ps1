@@ -7,6 +7,8 @@
 
 $ErrorActionPreference = "Stop"
 
+Set-Location (Split-Path -Parent $PSScriptRoot)
+
 $APP_NAME = "LMS-Summarizer"
 $APP_VERSION = (Select-String -Path "pyproject.toml" -Pattern '^version = "(.*)"' |
     Select-Object -First 1).Matches[0].Groups[1].Value
@@ -42,7 +44,7 @@ if (Test-Path "dist") { Remove-Item -Recurse -Force "dist" }
 
 # spec 파일로 빌드
 Write-Host "🔨 PyInstaller 빌드 시작..."
-uv run --extra desktop --extra cuda pyinstaller lms-summarizer.spec
+uv run --extra desktop --extra cuda pyinstaller packaging/lms-summarizer.spec
 
 # 빌드 결과 확인
 $distExe = "dist\$APP_NAME\$APP_NAME.exe"
